@@ -546,35 +546,27 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   </div>
                 )}
 
-                {/* Meta & System Information */}
-                <div className="pt-3 border-t border-zinc-100 dark:border-zinc-800/60 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-zinc-600 dark:text-zinc-400">
-                  <div className="flex items-center justify-between pr-4">
-                    <span>Application ID:</span>
-                    <span className="font-mono text-[11px] text-zinc-800 dark:text-zinc-300">com.termlet.desktop</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span>Architecture:</span>
-                    <span className="font-mono text-[11px] text-zinc-800 dark:text-zinc-300">Wails v2 (WebKitGTK Linux)</span>
-                  </div>
-                  <div className="flex items-center justify-between pr-4">
+                {/* Meta & Links */}
+                <div className="pt-3 border-t border-zinc-100 dark:border-zinc-800/60 flex flex-wrap items-center justify-between gap-3 text-xs text-zinc-600 dark:text-zinc-400">
+                  <div className="flex items-center gap-1.5">
                     <span>License:</span>
                     <button
                       type="button"
                       onClick={() => handleOpenExternal('https://github.com/Amanbig/termlet/blob/main/LICENSE')}
-                      className="inline-flex items-center gap-1 text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                      className="inline-flex items-center gap-1 text-blue-600 dark:text-blue-400 hover:underline cursor-pointer font-medium"
                     >
                       <span>Apache-2.0</span>
                       <ExternalLink className="w-3 h-3" />
                     </button>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span>GitHub Repository:</span>
+                  <div className="flex items-center gap-1.5">
+                    <span>Source:</span>
                     <button
                       type="button"
                       onClick={() => handleOpenExternal('https://github.com/Amanbig/termlet')}
-                      className="inline-flex items-center gap-1 text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                      className="inline-flex items-center gap-1 text-blue-600 dark:text-blue-400 hover:underline cursor-pointer font-medium"
                     >
-                      <span>Amanbig/termlet</span>
+                      <span>GitHub</span>
                       <ExternalLink className="w-3 h-3" />
                     </button>
                   </div>

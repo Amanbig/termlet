@@ -18,6 +18,8 @@ import {
   ExternalLink,
   Info,
   Download,
+  Minus,
+  Plus,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { CheckForUpdates, GetAppVersion } from '../../wailsjs/go/main/App';
@@ -288,15 +290,33 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Input
-                      type="number"
-                      min={10}
-                      max={28}
-                      value={settings.fontSize}
-                      onChange={(e) => onUpdateSettings({ fontSize: Number(e.target.value) || 13 })}
-                      className="w-20 h-8 text-xs bg-zinc-50 dark:bg-zinc-800/90 border-zinc-300 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 focus:ring-1 focus:ring-blue-500"
-                    />
-                    <span className="text-xs text-zinc-500">px</span>
+                    <div className="flex items-center bg-zinc-100 dark:bg-zinc-850 rounded-lg border border-zinc-300 dark:border-zinc-700 overflow-hidden shadow-2xs">
+                      <button
+                        type="button"
+                        onClick={() => onUpdateSettings({ fontSize: Math.max(10, settings.fontSize - 1) })}
+                        className="w-8 h-8 flex items-center justify-center text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 hover:bg-zinc-200 dark:hover:bg-zinc-750 transition-colors cursor-pointer"
+                        title="Decrease font size"
+                      >
+                        <Minus className="w-3.5 h-3.5" />
+                      </button>
+                      <input
+                        type="number"
+                        min={10}
+                        max={32}
+                        value={settings.fontSize}
+                        onChange={(e) => onUpdateSettings({ fontSize: Math.min(36, Math.max(8, Number(e.target.value) || 13)) })}
+                        className="w-12 h-8 text-center font-mono text-xs font-semibold bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 border-x border-zinc-300 dark:border-zinc-700 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => onUpdateSettings({ fontSize: Math.min(32, settings.fontSize + 1) })}
+                        className="w-8 h-8 flex items-center justify-center text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 hover:bg-zinc-200 dark:hover:bg-zinc-750 transition-colors cursor-pointer"
+                        title="Increase font size"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                    <span className="text-xs text-zinc-500 font-medium">px</span>
                   </div>
                 </div>
 
@@ -394,7 +414,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     max={65535}
                     value={settings.defaultPort}
                     onChange={(e) => onUpdateSettings({ defaultPort: Number(e.target.value) || 22 })}
-                    className="w-24 h-8 text-xs bg-zinc-50 dark:bg-zinc-800/90 border-zinc-300 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 focus:ring-1 focus:ring-blue-500"
+                    className="w-24 sm:w-28 h-8 text-center font-mono text-xs bg-zinc-50 dark:bg-zinc-800/90 border-zinc-300 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 rounded-md focus:ring-1 focus:ring-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   />
                 </div>
 

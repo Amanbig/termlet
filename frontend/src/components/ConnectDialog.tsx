@@ -170,7 +170,7 @@ export const ConnectDialog: React.FC<ConnectDialogProps> = ({
                   type="number"
                   value={port}
                   onChange={(e) => setPort(Number(e.target.value))}
-                  className="bg-zinc-900 border-zinc-800 text-xs h-8"
+                  className="bg-zinc-900 border-zinc-800 text-xs h-8 font-mono [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 />
               </div>
             </div>

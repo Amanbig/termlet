@@ -146,7 +146,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({
           type="button"
           onClick={onOpenSettings}
           title="Open Settings"
-          className="h-full px-2.5 flex items-center justify-center text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-200/70 dark:hover:bg-zinc-850 transition-colors cursor-pointer"
+          className="h-full px-2.5 flex items-center justify-center text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-200/70 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
         >
           <SettingsIcon className="w-3.5 h-3.5" />
         </button>

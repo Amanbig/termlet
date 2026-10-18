@@ -290,27 +290,35 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <div className="flex items-center bg-zinc-100 dark:bg-zinc-850 rounded-lg border border-zinc-300 dark:border-zinc-700 overflow-hidden shadow-2xs">
+                    <div className="flex items-center bg-zinc-100 dark:bg-zinc-800 rounded-md border border-zinc-300 dark:border-zinc-700 overflow-hidden shadow-2xs">
                       <button
                         type="button"
                         onClick={() => onUpdateSettings({ fontSize: Math.max(10, settings.fontSize - 1) })}
-                        className="w-8 h-8 flex items-center justify-center text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 hover:bg-zinc-200 dark:hover:bg-zinc-750 transition-colors cursor-pointer"
+                        className="w-8 h-8 flex items-center justify-center text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
                         title="Decrease font size"
                       >
                         <Minus className="w-3.5 h-3.5" />
                       </button>
                       <input
-                        type="number"
-                        min={10}
-                        max={32}
+                        type="text"
+                        inputMode="numeric"
                         value={settings.fontSize}
-                        onChange={(e) => onUpdateSettings({ fontSize: Math.min(36, Math.max(8, Number(e.target.value) || 13)) })}
-                        className="w-12 h-8 text-center font-mono text-xs font-semibold bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 border-x border-zinc-300 dark:border-zinc-700 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/\D/g, '');
+                          const num = parseInt(val, 10);
+                          onUpdateSettings({ fontSize: isNaN(num) ? 0 : Math.min(36, num) });
+                        }}
+                        onBlur={() => {
+                          if (!settings.fontSize || settings.fontSize < 8) {
+                            onUpdateSettings({ fontSize: 13 });
+                          }
+                        }}
+                        className="w-12 h-8 text-center font-mono text-xs font-semibold bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 border-x border-zinc-300 dark:border-zinc-700 focus:outline-none"
                       />
                       <button
                         type="button"
                         onClick={() => onUpdateSettings({ fontSize: Math.min(32, settings.fontSize + 1) })}
-                        className="w-8 h-8 flex items-center justify-center text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 hover:bg-zinc-200 dark:hover:bg-zinc-750 transition-colors cursor-pointer"
+                        className="w-8 h-8 flex items-center justify-center text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
                         title="Increase font size"
                       >
                         <Plus className="w-3.5 h-3.5" />
@@ -409,12 +417,20 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     </p>
                   </div>
                   <Input
-                    type="number"
-                    min={1}
-                    max={65535}
+                    type="text"
+                    inputMode="numeric"
                     value={settings.defaultPort}
-                    onChange={(e) => onUpdateSettings({ defaultPort: Number(e.target.value) || 22 })}
-                    className="w-24 sm:w-28 h-8 text-center font-mono text-xs bg-zinc-50 dark:bg-zinc-800/90 border-zinc-300 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 rounded-md focus:ring-1 focus:ring-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, '');
+                      const num = parseInt(val, 10);
+                      onUpdateSettings({ defaultPort: isNaN(num) ? 0 : Math.min(65535, num) });
+                    }}
+                    onBlur={() => {
+                      if (!settings.defaultPort || settings.defaultPort < 1) {
+                        onUpdateSettings({ defaultPort: 22 });
+                      }
+                    }}
+                    className="w-24 sm:w-28 h-8 text-center font-mono text-xs bg-zinc-50 dark:bg-zinc-800/90 border-zinc-300 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 rounded-md focus:ring-1 focus:ring-blue-500"
                   />
                 </div>
 

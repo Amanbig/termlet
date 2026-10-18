@@ -344,7 +344,7 @@ export function App() {
                 setEditingProfile(null);
                 setConnectDialogOpen(true);
               }}
-              className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-zinc-200/70 dark:bg-zinc-900 hover:bg-zinc-300/80 dark:hover:bg-zinc-850 border border-zinc-300/60 dark:border-zinc-800 text-zinc-800 dark:text-zinc-300 font-medium text-[11px] cursor-pointer transition-colors shadow-2xs"
+              className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-zinc-200/70 dark:bg-zinc-900 hover:bg-zinc-300/80 dark:hover:bg-zinc-800 border border-zinc-300/60 dark:border-zinc-800 text-zinc-800 dark:text-zinc-300 font-medium text-[11px] cursor-pointer transition-colors shadow-2xs"
             >
               <span className="font-mono text-[10px]">&gt;&lt;</span>
               <span>Open Remote SSH...</span>

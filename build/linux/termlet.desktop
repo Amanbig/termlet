@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=Termlet
+Comment=Modern Remote SSH File Editor & Terminal Suite
+Exec=env WEBKIT_DISABLE_DMABUF_RENDERER=1 /usr/bin/termlet
+Icon=termlet
+Terminal=false
+Type=Application
+Categories=Development;TextEditor;Utility;
+Keywords=ssh;sftp;remote;editor;terminal;vps;
+StartupWMClass=termlet

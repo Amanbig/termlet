@@ -1,0 +1,196 @@
+export namespace connections {
+	
+	export class SessionSummary {
+	    id: string;
+	    profile_id: string;
+	    profile_name: string;
+	    host: string;
+	    port: number;
+	    username: string;
+	    connected_at: number;
+	    start_directory: string;
+	    is_alive: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new SessionSummary(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.profile_id = source["profile_id"];
+	        this.profile_name = source["profile_name"];
+	        this.host = source["host"];
+	        this.port = source["port"];
+	        this.username = source["username"];
+	        this.connected_at = source["connected_at"];
+	        this.start_directory = source["start_directory"];
+	        this.is_alive = source["is_alive"];
+	    }
+	}
+
+}
+
+export namespace main {
+	
+	export class ConnectResponse {
+	    success: boolean;
+	    session?: connections.SessionSummary;
+	    host_key_prompt?: models.HostKeyPrompt;
+	    error?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ConnectResponse(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.success = source["success"];
+	        this.session = this.convertValues(source["session"], connections.SessionSummary);
+	        this.host_key_prompt = this.convertValues(source["host_key_prompt"], models.HostKeyPrompt);
+	        this.error = source["error"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+
+}
+
+export namespace models {
+	
+	export class FileContent {
+	    path: string;
+	    content: string;
+	    size: number;
+	    mod_time: number;
+	    permissions: number;
+	    is_binary: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new FileContent(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.path = source["path"];
+	        this.content = source["content"];
+	        this.size = source["size"];
+	        this.mod_time = source["mod_time"];
+	        this.permissions = source["permissions"];
+	        this.is_binary = source["is_binary"];
+	    }
+	}
+	export class HostKeyPrompt {
+	    hostname: string;
+	    address: string;
+	    key_type: string;
+	    fingerprint: string;
+	    status: string;
+	    message: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new HostKeyPrompt(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.hostname = source["hostname"];
+	        this.address = source["address"];
+	        this.key_type = source["key_type"];
+	        this.fingerprint = source["fingerprint"];
+	        this.status = source["status"];
+	        this.message = source["message"];
+	    }
+	}
+	export class Profile {
+	    id: string;
+	    name: string;
+	    host: string;
+	    port: number;
+	    username: string;
+	    auth_method: string;
+	    key_path?: string;
+	    start_directory?: string;
+	    created_at: number;
+	    updated_at: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new Profile(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.host = source["host"];
+	        this.port = source["port"];
+	        this.username = source["username"];
+	        this.auth_method = source["auth_method"];
+	        this.key_path = source["key_path"];
+	        this.start_directory = source["start_directory"];
+	        this.created_at = source["created_at"];
+	        this.updated_at = source["updated_at"];
+	    }
+	}
+	export class RemoteFile {
+	    name: string;
+	    path: string;
+	    is_dir: boolean;
+	    size: number;
+	    mod_time: number;
+	    permissions: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new RemoteFile(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.path = source["path"];
+	        this.is_dir = source["is_dir"];
+	        this.size = source["size"];
+	        this.mod_time = source["mod_time"];
+	        this.permissions = source["permissions"];
+	    }
+	}
+
+}
+
+export namespace sftpclient {
+	
+	export class SaveResult {
+	    path: string;
+	    size: number;
+	    mod_time: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new SaveResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.path = source["path"];
+	        this.size = source["size"];
+	        this.mod_time = source["mod_time"];
+	    }
+	}
+
+}
+

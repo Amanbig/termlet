@@ -50,9 +50,10 @@ func main() {
 
 	// Create application with options
 	err := wails.Run(&options.App{
-		Title:  "Termlet",
-		Width:  1100,
-		Height: 800,
+		Title:     "Termlet",
+		Width:     1100,
+		Height:    800,
+		Frameless: true,
 		AssetServer: &assetserver.Options{
 			Assets: assets,
 		},
@@ -63,12 +64,15 @@ func main() {
 			app,
 		},
 		Linux: &linux.Options{
-			Icon:             appIcon,
-			ProgramName:      "termlet",
-			WebviewGpuPolicy: linux.WebviewGpuPolicyOnDemand,
+			Icon:                appIcon,
+			ProgramName:         "termlet",
+			WindowIsTranslucent: true,
+			WebviewGpuPolicy:    linux.WebviewGpuPolicyOnDemand,
 		},
 		Windows: &windows.Options{
-			WebviewIsTransparent: true,
+			DisableFramelessWindowDecorations: false,
+			WindowIsTranslucent:               true,
+			WebviewIsTransparent:              true,
 		},
 	})
 

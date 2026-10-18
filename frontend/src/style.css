@@ -5,6 +5,14 @@
 
 @custom-variant dark (&:is(.dark *));
 
+.wails-drag {
+    --wails-draggable: drag;
+}
+
+.wails-no-drag {
+    --wails-draggable: no-drag;
+}
+
 @theme inline {
     --font-heading: var(--font-mono);
     --font-mono: 'JetBrains Mono Variable', monospace;

@@ -15,6 +15,7 @@ import { CodeEditor } from './components/CodeEditor';
 import { ConnectDialog } from './components/ConnectDialog';
 import { SettingsView } from './components/SettingsView';
 import { WelcomeScreen } from './components/WelcomeScreen';
+import { TitleBar } from './components/TitleBar';
 import { useRemoteFiles } from './hooks/useRemoteFiles';
 import { useSettings } from './hooks/useSettings';
 import { Toaster, toast } from 'sonner';
@@ -180,8 +181,24 @@ export function App() {
 
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 font-sans antialiased">
+      {/* Custom Frameless Window Title Bar */}
+      <TitleBar
+        currentSession={currentSession}
+        activeFilePath={activeFilePath}
+        isSettingsOpen={isSettingsOpen}
+        onOpenSettings={handleOpenSettingsTab}
+        onNewConnection={() => {
+          setEditingProfile(null);
+          setConnectDialogOpen(true);
+        }}
+        onOpenProfiles={() => {
+          setActiveActivityView('connections');
+          setSidebarOpen(true);
+        }}
+      />
+
       {/* Main Body Area */}
-      <div className="flex-1 flex h-[calc(100vh-24px)] overflow-hidden">
+      <div className="flex-1 min-h-0 flex overflow-hidden">
         {/* 1. VS Code Style Activity Bar (Slim left strip) */}
         <ActivityBar
           activeView={activeActivityView}

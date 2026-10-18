@@ -113,15 +113,15 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
 
   if (!file) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center bg-zinc-950 text-zinc-500 select-none">
-        <FileCode className="w-16 h-16 stroke-[1.2] mb-4 text-zinc-600" />
-        <h3 className="text-lg font-medium text-zinc-300">No File Open</h3>
-        <p className="text-sm text-zinc-500 mt-1 max-w-sm text-center">
+      <div className="flex-1 flex flex-col items-center justify-center bg-zinc-50 dark:bg-zinc-950 text-zinc-500 select-none">
+        <FileCode className="w-16 h-16 stroke-[1.2] mb-4 text-zinc-400 dark:text-zinc-600" />
+        <h3 className="text-lg font-medium text-zinc-800 dark:text-zinc-300">No File Open</h3>
+        <p className="text-sm text-zinc-600 dark:text-zinc-500 mt-1 max-w-sm text-center">
           Select a file from the remote file explorer on the left or connect to a server.
         </p>
-        <div className="mt-4 flex items-center gap-2 text-xs text-zinc-600 bg-zinc-900/80 px-3 py-1.5 rounded-md border border-zinc-800">
-          <kbd className="font-mono bg-zinc-800 text-zinc-300 px-1.5 py-0.5 rounded">Ctrl</kbd> +{' '}
-          <kbd className="font-mono bg-zinc-800 text-zinc-300 px-1.5 py-0.5 rounded">S</kbd> to save
+        <div className="mt-4 flex items-center gap-2 text-xs text-zinc-600 dark:text-zinc-400 bg-white dark:bg-zinc-900/80 px-3 py-1.5 rounded-md border border-zinc-200 dark:border-zinc-800 shadow-2xs">
+          <kbd className="font-mono bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 px-1.5 py-0.5 rounded">Ctrl</kbd> +{' '}
+          <kbd className="font-mono bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 px-1.5 py-0.5 rounded">S</kbd> to save
         </div>
       </div>
     );
@@ -129,19 +129,19 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
 
   if (file.isBinary) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center bg-zinc-950 text-zinc-400 select-none p-6">
+      <div className="flex-1 flex flex-col items-center justify-center bg-zinc-50 dark:bg-zinc-950 text-zinc-600 dark:text-zinc-400 select-none p-6">
         <AlertCircle className="w-12 h-12 text-amber-500 mb-3" />
-        <h3 className="text-base font-semibold text-zinc-200">Binary File Detected</h3>
+        <h3 className="text-base font-semibold text-zinc-800 dark:text-zinc-200">Binary File Detected</h3>
         <p className="text-sm text-zinc-500 mt-1 text-center max-w-md">
           {file.name} cannot be displayed in the text editor because it contains binary data.
         </p>
-        <p className="text-xs text-zinc-600 mt-2">Size: {(file.size / 1024).toFixed(1)} KB</p>
+        <p className="text-xs text-zinc-400 dark:text-zinc-600 mt-2">Size: {(file.size / 1024).toFixed(1)} KB</p>
       </div>
     );
   }
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-zinc-950 overflow-hidden">
+    <div className="flex-1 flex flex-col h-full bg-white dark:bg-zinc-950 overflow-hidden">
       {/* Editor Main Canvas */}
       <div
         className="flex-1 overflow-auto relative"
@@ -185,18 +185,18 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
       </div>
 
       {/* Editor Bottom Status Bar */}
-      <div className="h-6 bg-zinc-900 border-t border-zinc-800/80 px-3 flex items-center justify-between text-[11px] text-zinc-400 select-none">
+      <div className="h-6 bg-zinc-100 dark:bg-zinc-900 border-t border-zinc-200 dark:border-zinc-800/80 px-3 flex items-center justify-between text-[11px] text-zinc-600 dark:text-zinc-400 select-none">
         <div className="flex items-center gap-3">
-          <span className="flex items-center gap-1.5 font-medium text-zinc-300">
+          <span className="flex items-center gap-1.5 font-medium text-zinc-800 dark:text-zinc-300">
             {file.isDirty ? (
-              <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+              <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
             ) : (
-              <CheckCircle2 className="w-3 h-3 text-emerald-500" />
+              <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-500" />
             )}
             {file.name}
           </span>
-          <span className="text-zinc-600">|</span>
-          <span className="text-zinc-400 font-mono text-[10px] truncate max-w-xs" title={file.path}>
+          <span className="text-zinc-300 dark:text-zinc-600">|</span>
+          <span className="text-zinc-500 dark:text-zinc-400 font-mono text-[10px] truncate max-w-xs" title={file.path}>
             {file.path}
           </span>
         </div>
@@ -205,19 +205,19 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
           <span>
             Ln {cursorPos.line}, Col {cursorPos.col}
           </span>
-          <span className="text-zinc-600">|</span>
-          <span className="bg-zinc-800 text-zinc-300 px-1.5 py-0.5 rounded text-[10px]">
+          <span className="text-zinc-300 dark:text-zinc-600">|</span>
+          <span className="bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 px-1.5 py-0.5 rounded text-[10px]">
             {langName}
           </span>
-          <span className="text-zinc-600">|</span>
+          <span className="text-zinc-300 dark:text-zinc-600">|</span>
           <span>UTF-8</span>
-          <span className="text-zinc-600">|</span>
+          <span className="text-zinc-300 dark:text-zinc-600">|</span>
           <Button
             size="sm"
             variant="ghost"
             disabled={!file.isDirty || isSaving}
             onClick={onSave}
-            className="h-5 px-2 text-[11px] text-zinc-200 hover:bg-zinc-800 flex items-center gap-1 cursor-pointer"
+            className="h-5 px-2 text-[11px] text-zinc-700 dark:text-zinc-200 hover:text-zinc-950 dark:hover:text-zinc-100 hover:bg-zinc-200/80 dark:hover:bg-zinc-800 flex items-center gap-1 cursor-pointer disabled:opacity-40"
           >
             <Save className="w-3 h-3" />
             {isSaving ? 'Saving...' : 'Save'}

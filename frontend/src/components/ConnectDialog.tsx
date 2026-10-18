@@ -130,13 +130,13 @@ export const ConnectDialog: React.FC<ConnectDialogProps> = ({
   return (
     <>
       <Dialog open={open && !hostKeyPrompt} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-[480px] bg-zinc-950 border-zinc-800 text-zinc-100">
+        <DialogContent className="sm:max-w-[480px] bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-xl">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-zinc-100">
-              <Server className="w-5 h-5 text-blue-400" />
+            <DialogTitle className="flex items-center gap-2 text-zinc-900 dark:text-zinc-100">
+              <Server className="w-5 h-5 text-blue-500" />
               {initialProfile ? 'Edit Connection Profile' : 'New SSH Connection'}
             </DialogTitle>
-            <DialogDescription className="text-zinc-400 text-xs">
+            <DialogDescription className="text-zinc-500 dark:text-zinc-400 text-xs">
               Configure remote server connection settings and credentials.
             </DialogDescription>
           </DialogHeader>
@@ -144,33 +144,33 @@ export const ConnectDialog: React.FC<ConnectDialogProps> = ({
           <div className="space-y-4 py-2">
             {/* Profile Name */}
             <div className="space-y-1.5">
-              <Label className="text-xs text-zinc-300">Profile Name (optional)</Label>
+              <Label className="text-xs text-zinc-700 dark:text-zinc-300">Profile Name (optional)</Label>
               <Input
                 placeholder="e.g. Production Web Server"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="bg-zinc-900 border-zinc-800 text-xs h-8"
+                className="bg-zinc-50 dark:bg-zinc-900 border-zinc-300 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 text-xs h-8"
               />
             </div>
 
             {/* Host & Port */}
             <div className="grid grid-cols-4 gap-2">
               <div className="col-span-3 space-y-1.5">
-                <Label className="text-xs text-zinc-300">Host / IP *</Label>
+                <Label className="text-xs text-zinc-700 dark:text-zinc-300">Host / IP *</Label>
                 <Input
                   placeholder="192.168.1.10 or example.com"
                   value={host}
                   onChange={(e) => setHost(e.target.value)}
-                  className="bg-zinc-900 border-zinc-800 text-xs h-8"
+                  className="bg-zinc-50 dark:bg-zinc-900 border-zinc-300 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 text-xs h-8"
                 />
               </div>
               <div className="col-span-1 space-y-1.5">
-                <Label className="text-xs text-zinc-300">Port</Label>
+                <Label className="text-xs text-zinc-700 dark:text-zinc-300">Port</Label>
                 <Input
                   type="number"
                   value={port}
                   onChange={(e) => setPort(Number(e.target.value))}
-                  className="bg-zinc-900 border-zinc-800 text-xs h-8 font-mono [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  className="bg-zinc-50 dark:bg-zinc-900 border-zinc-300 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 text-xs h-8 font-mono [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 />
               </div>
             </div>
@@ -178,34 +178,34 @@ export const ConnectDialog: React.FC<ConnectDialogProps> = ({
             {/* Username & Start Directory */}
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1.5">
-                <Label className="text-xs text-zinc-300">Username *</Label>
+                <Label className="text-xs text-zinc-700 dark:text-zinc-300">Username *</Label>
                 <Input
                   placeholder="root or ubuntu"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  className="bg-zinc-900 border-zinc-800 text-xs h-8"
+                  className="bg-zinc-50 dark:bg-zinc-900 border-zinc-300 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 text-xs h-8"
                 />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs text-zinc-300">Remote Directory</Label>
+                <Label className="text-xs text-zinc-700 dark:text-zinc-300">Remote Directory</Label>
                 <Input
                   placeholder="/var/www or ."
                   value={startDirectory}
                   onChange={(e) => setStartDirectory(e.target.value)}
-                  className="bg-zinc-900 border-zinc-800 text-xs h-8"
+                  className="bg-zinc-50 dark:bg-zinc-900 border-zinc-300 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 text-xs h-8"
                 />
               </div>
             </div>
 
             {/* Auth Method Tabs */}
             <div className="space-y-2 pt-1">
-              <Label className="text-xs text-zinc-300">Authentication</Label>
+              <Label className="text-xs text-zinc-700 dark:text-zinc-300">Authentication</Label>
               <Tabs
                 value={authMethod}
                 onValueChange={(v) => setAuthMethod(v as any)}
                 className="w-full"
               >
-                <TabsList className="grid grid-cols-3 bg-zinc-900 h-8 p-0.5 border border-zinc-800">
+                <TabsList className="grid grid-cols-3 bg-zinc-100 dark:bg-zinc-900 h-8 p-0.5 border border-zinc-200 dark:border-zinc-800">
                   <TabsTrigger value="password" className="text-xs h-7">
                     Password
                   </TabsTrigger>
@@ -219,42 +219,42 @@ export const ConnectDialog: React.FC<ConnectDialogProps> = ({
 
                 <TabsContent value="password" className="space-y-2 pt-2">
                   <div className="space-y-1.5">
-                    <Label className="text-xs text-zinc-400">Password</Label>
+                    <Label className="text-xs text-zinc-600 dark:text-zinc-400">Password</Label>
                     <Input
                       type="password"
                       placeholder="••••••••••••"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="bg-zinc-900 border-zinc-800 text-xs h-8"
+                      className="bg-zinc-50 dark:bg-zinc-900 border-zinc-300 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 text-xs h-8"
                     />
                   </div>
                 </TabsContent>
 
                 <TabsContent value="private_key" className="space-y-2 pt-2">
                   <div className="space-y-1.5">
-                    <Label className="text-xs text-zinc-400">Private Key File Path</Label>
+                    <Label className="text-xs text-zinc-600 dark:text-zinc-400">Private Key File Path</Label>
                     <Input
                       placeholder="/home/user/.ssh/id_ed25519"
                       value={keyPath}
                       onChange={(e) => setKeyPath(e.target.value)}
-                      className="bg-zinc-900 border-zinc-800 text-xs h-8"
+                      className="bg-zinc-50 dark:bg-zinc-900 border-zinc-300 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 text-xs h-8"
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-xs text-zinc-400">Passphrase (if encrypted)</Label>
+                    <Label className="text-xs text-zinc-600 dark:text-zinc-400">Passphrase (if encrypted)</Label>
                     <Input
                       type="password"
                       placeholder="••••••••••••"
                       value={passphrase}
                       onChange={(e) => setPassphrase(e.target.value)}
-                      className="bg-zinc-900 border-zinc-800 text-xs h-8"
+                      className="bg-zinc-50 dark:bg-zinc-900 border-zinc-300 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 text-xs h-8"
                     />
                   </div>
                 </TabsContent>
 
                 <TabsContent value="agent" className="pt-2">
                   <p className="text-xs text-zinc-500">
-                    Will use identities from the local SSH Agent (<code className="text-zinc-400">$SSH_AUTH_SOCK</code>).
+                    Will use identities from the local SSH Agent (<code className="text-zinc-700 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-800 px-1 py-0.5 rounded">$SSH_AUTH_SOCK</code>).
                   </p>
                 </TabsContent>
               </Tabs>
@@ -267,9 +267,9 @@ export const ConnectDialog: React.FC<ConnectDialogProps> = ({
                 id="saveProfile"
                 checked={saveProfileCheckbox}
                 onChange={(e) => setSaveProfileCheckbox(e.target.checked)}
-                className="rounded border-zinc-700 bg-zinc-900 text-blue-500"
+                className="rounded border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-blue-600 cursor-pointer"
               />
-              <Label htmlFor="saveProfile" className="text-xs text-zinc-400 cursor-pointer">
+              <Label htmlFor="saveProfile" className="text-xs text-zinc-600 dark:text-zinc-400 cursor-pointer">
                 Save connection profile to termlet
               </Label>
             </div>
@@ -279,14 +279,14 @@ export const ConnectDialog: React.FC<ConnectDialogProps> = ({
             <Button
               variant="outline"
               onClick={() => onOpenChange(false)}
-              className="bg-zinc-900 border-zinc-800 text-xs h-8 hover:bg-zinc-800"
+              className="bg-zinc-100 dark:bg-zinc-900 border-zinc-300 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 text-xs h-8 hover:bg-zinc-200 dark:hover:bg-zinc-800 cursor-pointer"
             >
               Cancel
             </Button>
             <Button
               onClick={() => handleSubmit(false)}
               disabled={isConnecting}
-              className="bg-blue-600 hover:bg-blue-500 text-xs h-8"
+              className="bg-blue-600 hover:bg-blue-500 text-white text-xs h-8 cursor-pointer"
             >
               {isConnecting ? (
                 <>
@@ -303,9 +303,9 @@ export const ConnectDialog: React.FC<ConnectDialogProps> = ({
       {/* Host Key Inspection & Approval Modal */}
       {hostKeyPrompt && (
         <Dialog open={true} onOpenChange={() => setHostKeyPrompt(null)}>
-          <DialogContent className="sm:max-w-[500px] bg-zinc-950 border-zinc-800 text-zinc-100">
+          <DialogContent className="sm:max-w-[500px] bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-xl">
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-zinc-100">
+              <DialogTitle className="flex items-center gap-2 text-zinc-900 dark:text-zinc-100">
                 <ShieldAlert
                   className={`w-5 h-5 ${
                     hostKeyPrompt.status === 'changed' ? 'text-rose-500' : 'text-amber-500'
@@ -315,28 +315,28 @@ export const ConnectDialog: React.FC<ConnectDialogProps> = ({
                   ? 'SECURITY WARNING: Host Key Changed!'
                   : 'Untrusted Host Key Detected'}
               </DialogTitle>
-              <DialogDescription className="text-zinc-400 text-xs">
+              <DialogDescription className="text-zinc-500 dark:text-zinc-400 text-xs">
                 {hostKeyPrompt.message}
               </DialogDescription>
             </DialogHeader>
 
-            <div className="bg-zinc-900 border border-zinc-800 rounded-md p-3 space-y-2 text-xs font-mono">
+            <div className="bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-md p-3 space-y-2 text-xs font-mono">
               <div className="flex justify-between">
                 <span className="text-zinc-500">Host:</span>
-                <span className="text-zinc-200">{hostKeyPrompt.hostname} ({hostKeyPrompt.address})</span>
+                <span className="text-zinc-800 dark:text-zinc-200">{hostKeyPrompt.hostname} ({hostKeyPrompt.address})</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-zinc-500">Key Type:</span>
-                <span className="text-zinc-200">{hostKeyPrompt.key_type}</span>
+                <span className="text-zinc-800 dark:text-zinc-200">{hostKeyPrompt.key_type}</span>
               </div>
               <div>
                 <span className="text-zinc-500 block mb-1">Fingerprint (SHA256):</span>
-                <span className="text-amber-400 break-all select-all">{hostKeyPrompt.fingerprint}</span>
+                <span className="text-amber-600 dark:text-amber-400 break-all select-all">{hostKeyPrompt.fingerprint}</span>
               </div>
             </div>
 
             {hostKeyPrompt.status === 'changed' && (
-              <p className="text-xs text-rose-400 bg-rose-950/40 p-2.5 rounded border border-rose-900/60">
+              <p className="text-xs text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 p-2.5 rounded border border-rose-200 dark:border-rose-900/60">
                 Someone could be eavesdropping on you right now (man-in-the-middle attack)! If the server was not recently re-installed, do NOT continue.
               </p>
             )}
@@ -345,7 +345,7 @@ export const ConnectDialog: React.FC<ConnectDialogProps> = ({
               <Button
                 variant="outline"
                 onClick={() => setHostKeyPrompt(null)}
-                className="bg-zinc-900 border-zinc-800 text-xs h-8 hover:bg-zinc-800"
+                className="bg-zinc-100 dark:bg-zinc-900 border-zinc-300 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 text-xs h-8 hover:bg-zinc-200 dark:hover:bg-zinc-800 cursor-pointer"
               >
                 Reject & Abort
               </Button>

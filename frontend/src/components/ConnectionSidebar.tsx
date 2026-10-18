@@ -43,19 +43,20 @@ export const ConnectionSidebar: React.FC<ConnectionSidebarProps> = ({
   onDisconnectSession,
 }) => {
   return (
-    <div className="w-64 bg-zinc-950 border-r border-zinc-800/80 flex flex-col h-full select-none">
-      {/* Brand & New Button Header */}
-      <div className="p-3 border-b border-zinc-800/80 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <HardDrive className="w-5 h-5 text-blue-500" />
-          <span className="font-bold text-sm tracking-wide text-zinc-100">TERMLET</span>
-        </div>
+    <div className="w-full bg-zinc-950 border-r border-zinc-800/80 flex flex-col h-full select-none">
+      {/* Remote Explorer Header */}
+      <div className="px-3 py-2.5 border-b border-zinc-800/80 flex items-center justify-between">
+        <span className="font-semibold text-xs tracking-wider uppercase text-zinc-300">
+          Remote Explorer
+        </span>
         <Button
-          size="sm"
+          size="icon"
+          variant="ghost"
           onClick={onNewConnection}
-          className="h-7 px-2.5 text-xs bg-blue-600 hover:bg-blue-500 text-white flex items-center gap-1 cursor-pointer"
+          title="New Connection Profile"
+          className="h-6 w-6 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 cursor-pointer"
         >
-          <Plus className="w-3.5 h-3.5" /> New
+          <Plus className="w-4 h-4" />
         </Button>
       </div>
 

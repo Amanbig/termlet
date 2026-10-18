@@ -256,7 +256,7 @@ export const RemoteFileTree: React.FC<RemoteFileTreeProps> = ({
       case 'svg':
         return <FileImage className="w-4 h-4 text-violet-400 shrink-0" />;
       default:
-        return <File className="w-4 h-4 text-zinc-400 shrink-0" />;
+        return <File className="w-4 h-4 text-zinc-500 dark:text-zinc-400 shrink-0" />;
     }
   };
 
@@ -280,7 +280,7 @@ export const RemoteFileTree: React.FC<RemoteFileTreeProps> = ({
                 if (e.key === 'Escape') setRenamingPath(null);
               }}
               onBlur={() => handleRename(item.path)}
-              className="h-6 text-xs bg-zinc-900 border-zinc-700 py-0 px-2"
+              className="h-6 text-xs bg-white dark:bg-zinc-900 border-zinc-300 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 py-0 px-2"
             />
           </div>
         );
@@ -299,22 +299,22 @@ export const RemoteFileTree: React.FC<RemoteFileTreeProps> = ({
             }}
             className={`group flex items-center justify-between py-1 px-2 text-xs cursor-pointer select-none rounded transition-colors ${
               isSelected
-                ? 'bg-blue-600/20 text-blue-200 font-medium'
-                : 'text-zinc-300 hover:bg-zinc-800/60'
+                ? 'bg-blue-100 dark:bg-blue-600/25 text-blue-800 dark:text-blue-200 font-semibold shadow-2xs'
+                : 'text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200/60 dark:hover:bg-zinc-800/60 hover:text-zinc-950 dark:hover:text-zinc-100'
             }`}
           >
             <div className="flex items-center gap-1.5 min-w-0">
               {item.is_dir ? (
                 <>
                   {item.isLoading ? (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin text-zinc-400 shrink-0" />
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-zinc-500 dark:text-zinc-400 shrink-0" />
                   ) : item.isOpen ? (
-                    <ChevronDown className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                    <ChevronDown className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400 shrink-0" />
                   ) : (
-                    <ChevronRight className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                    <ChevronRight className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400 shrink-0" />
                   )}
                   {item.isOpen ? (
-                    <FolderOpen className="w-4 h-4 text-amber-400 shrink-0" />
+                    <FolderOpen className="w-4 h-4 text-amber-500 dark:text-amber-400 shrink-0" />
                   ) : (
                     <Folder className="w-4 h-4 text-amber-500 shrink-0" />
                   )}
@@ -333,11 +333,11 @@ export const RemoteFileTree: React.FC<RemoteFileTreeProps> = ({
               <DropdownMenu>
                 <DropdownMenuTrigger
                   onClick={(e) => e.stopPropagation()}
-                  className="p-0.5 rounded text-zinc-400 hover:text-zinc-100 hover:bg-zinc-700 cursor-pointer"
+                  className="p-0.5 rounded text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-100 hover:bg-zinc-200 dark:hover:bg-zinc-700 cursor-pointer"
                 >
                   <span className="text-xs px-1">•••</span>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="bg-zinc-900 border-zinc-800 text-zinc-200 text-xs">
+                <DropdownMenuContent align="end" className="bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-200 text-xs shadow-lg">
                   {item.is_dir && (
                     <>
                       <DropdownMenuItem
@@ -358,7 +358,7 @@ export const RemoteFileTree: React.FC<RemoteFileTreeProps> = ({
                       >
                         <FolderPlus className="w-3.5 h-3.5 mr-2" /> New Folder in Folder
                       </DropdownMenuItem>
-                      <DropdownMenuSeparator className="bg-zinc-800" />
+                      <DropdownMenuSeparator className="bg-zinc-200 dark:bg-zinc-800" />
                     </>
                   )}
                   <DropdownMenuItem
@@ -375,7 +375,7 @@ export const RemoteFileTree: React.FC<RemoteFileTreeProps> = ({
                       e.stopPropagation();
                       handleDelete(item.path, item.is_dir, item.name);
                     }}
-                    className="text-rose-400 focus:text-rose-400"
+                    className="text-rose-500 dark:text-rose-400 focus:text-rose-600 dark:focus:text-rose-300"
                   >
                     <Trash2 className="w-3.5 h-3.5 mr-2" /> Delete
                   </DropdownMenuItem>
@@ -462,7 +462,7 @@ export const RemoteFileTree: React.FC<RemoteFileTreeProps> = ({
           <Button
             variant="ghost"
             size="icon"
-            className="h-6 w-6 text-zinc-400 hover:text-zinc-200"
+            className="h-6 w-6 text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200 hover:bg-zinc-200/70 dark:hover:bg-zinc-800 cursor-pointer"
             title="New File"
             onClick={() => {
               setTargetParentPath(currentPath);
@@ -475,7 +475,7 @@ export const RemoteFileTree: React.FC<RemoteFileTreeProps> = ({
           <Button
             variant="ghost"
             size="icon"
-            className="h-6 w-6 text-zinc-400 hover:text-zinc-200"
+            className="h-6 w-6 text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200 hover:bg-zinc-200/70 dark:hover:bg-zinc-800 cursor-pointer"
             title="New Folder"
             onClick={() => {
               setTargetParentPath(currentPath);
@@ -488,7 +488,7 @@ export const RemoteFileTree: React.FC<RemoteFileTreeProps> = ({
           <Button
             variant="ghost"
             size="icon"
-            className="h-6 w-6 text-zinc-400 hover:text-zinc-200"
+            className="h-6 w-6 text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200 hover:bg-zinc-200/70 dark:hover:bg-zinc-800 cursor-pointer"
             title="Upload File"
             onClick={() => fileInputRef.current?.click()}
           >
@@ -498,7 +498,7 @@ export const RemoteFileTree: React.FC<RemoteFileTreeProps> = ({
           <Button
             variant="ghost"
             size="icon"
-            className="h-6 w-6 text-zinc-400 hover:text-zinc-200"
+            className="h-6 w-6 text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200 hover:bg-zinc-200/70 dark:hover:bg-zinc-800 cursor-pointer"
             title="Refresh"
             onClick={() => fetchDirectory(currentPath)}
           >
@@ -510,11 +510,11 @@ export const RemoteFileTree: React.FC<RemoteFileTreeProps> = ({
 
       {/* Inline Create Input */}
       {newItemType && (
-        <div className="p-2 border-b border-zinc-800 bg-zinc-900/60 flex items-center gap-1.5">
+        <div className="p-2 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-900/60 flex items-center gap-1.5">
           {newItemType === 'file' ? (
-            <File className="w-3.5 h-3.5 text-zinc-400" />
+            <File className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400" />
           ) : (
-            <Folder className="w-3.5 h-3.5 text-amber-400" />
+            <Folder className="w-3.5 h-3.5 text-amber-500" />
           )}
           <Input
             autoFocus
@@ -525,7 +525,7 @@ export const RemoteFileTree: React.FC<RemoteFileTreeProps> = ({
               if (e.key === 'Enter') handleCreate();
               if (e.key === 'Escape') setNewItemType(null);
             }}
-            className="h-6 text-xs bg-zinc-950 border-zinc-700 py-0 px-2"
+            className="h-6 text-xs bg-white dark:bg-zinc-950 border-zinc-300 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 py-0 px-2"
           />
         </div>
       )}

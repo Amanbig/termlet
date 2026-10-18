@@ -395,13 +395,13 @@ export const RemoteFileTree: React.FC<RemoteFileTreeProps> = ({
 
   if (!sessionId) {
     return (
-      <div className="flex flex-col h-full bg-zinc-950/60 border-r border-zinc-800/80 p-4">
-        <div className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider mb-4">
+      <div className="flex flex-col h-full bg-zinc-50 dark:bg-zinc-950/60 border-r border-zinc-200 dark:border-zinc-800/80 p-4">
+        <div className="text-[11px] font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-4">
           Explorer
         </div>
         <div className="flex-1 flex flex-col items-center justify-center text-center p-2">
-          <p className="text-xs text-zinc-400 font-medium">No remote folder open</p>
-          <p className="text-[11px] text-zinc-600 mt-1 mb-4">
+          <p className="text-xs text-zinc-700 dark:text-zinc-400 font-medium">No remote folder open</p>
+          <p className="text-[11px] text-zinc-500 dark:text-zinc-600 mt-1 mb-4">
             Select a server profile from the welcome screen or profiles view.
           </p>
           {onOpenProfiles && (
@@ -419,7 +419,7 @@ export const RemoteFileTree: React.FC<RemoteFileTreeProps> = ({
   }
 
   return (
-    <div className="flex flex-col h-full bg-zinc-950/60 border-r border-zinc-800/80">
+    <div className="flex flex-col h-full bg-zinc-50 dark:bg-zinc-950/60 border-r border-zinc-200 dark:border-zinc-800/80">
       {/* Hidden File Input for Upload */}
       <input
         type="file"
@@ -429,14 +429,14 @@ export const RemoteFileTree: React.FC<RemoteFileTreeProps> = ({
       />
 
       {/* Explorer Top Toolbar */}
-      <div className="px-3 py-2 border-b border-zinc-800/80 text-xs text-zinc-400">
+      <div className="px-3 py-2 border-b border-zinc-200 dark:border-zinc-800/80 text-xs text-zinc-600 dark:text-zinc-400">
         <div className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider mb-1 flex items-center justify-between">
           <span>Explorer</span>
           {onDisconnect && (
             <button
               onClick={() => onDisconnect(sessionId)}
               title="Close Remote Connection"
-              className="text-[10px] text-zinc-500 hover:text-rose-400 font-normal lowercase tracking-normal cursor-pointer"
+              className="text-[10px] text-zinc-500 hover:text-rose-500 font-normal lowercase tracking-normal cursor-pointer"
             >
               close folder
             </button>
@@ -447,7 +447,7 @@ export const RemoteFileTree: React.FC<RemoteFileTreeProps> = ({
           <div className="flex items-center gap-1 min-w-0 pr-1">
             <ChevronDown className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
             <span
-              className="font-bold text-zinc-200 uppercase tracking-wide text-xs truncate"
+              className="font-bold text-zinc-800 dark:text-zinc-200 uppercase tracking-wide text-xs truncate"
               title={
                 sessionSummary
                   ? `${sessionSummary.username}@${sessionSummary.host}:${sessionSummary.port} (${currentPath})`

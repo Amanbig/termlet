@@ -19,7 +19,7 @@ export const ActivityBar: React.FC<ActivityBarProps> = ({
   hasActiveSession,
 }) => {
   return (
-    <div className="w-12 bg-zinc-950 border-r border-zinc-800/80 flex flex-col justify-between items-center py-2 select-none shrink-0 z-20">
+    <div className="w-12 bg-zinc-100 dark:bg-zinc-950 border-r border-zinc-200 dark:border-zinc-800/80 flex flex-col justify-between items-center py-2 select-none shrink-0 z-20">
       {/* Top Section */}
       <div className="flex flex-col items-center gap-1 w-full">
         {/* Termlet Logo icon */}

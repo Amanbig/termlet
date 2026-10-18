@@ -18,7 +18,6 @@ import {
   ExternalLink,
   Info,
   Download,
-  Terminal,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { CheckForUpdates, GetAppVersion } from '../../wailsjs/go/main/App';
@@ -50,7 +49,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   onClose,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeCategory, setActiveCategory] = useState<'all' | 'appearance' | 'editor' | 'ssh' | 'about'>('all');
   const [appVersion, setAppVersion] = useState('0.1.0');
   const [isCheckingUpdates, setIsCheckingUpdates] = useState(false);
   const [updateInfo, setUpdateInfo] = useState<updater.UpdateInfo | null>(null);
@@ -111,9 +109,15 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     return text.toLowerCase().includes(searchQuery.toLowerCase());
   };
 
+  const showAppearance = matchesSearch('theme appearance dark light mode syntax editor ui');
+  const showEditor = matchesSearch('editor font size tab indentation wrap line numbers');
+  const showSsh = matchesSearch('ssh port delete confirm reset general preferences');
+  const showAbout = matchesSearch('about version update release license repository termlet info');
+  const hasMatches = showAppearance || showEditor || showSsh || showAbout;
+
   return (
     <div className="flex-1 flex flex-col h-full bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 overflow-hidden select-none">
-      {/* Top Header Bar - Centered responsive container */}
+      {/* Top Header Bar */}
       <div className="px-6 sm:px-8 lg:px-12 py-5 border-b border-zinc-200 dark:border-zinc-800/80 bg-white dark:bg-zinc-950">
         <div className="w-full max-w-5xl mx-auto flex items-center justify-between">
           <div>
@@ -138,70 +142,27 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         </div>
       </div>
 
-      {/* Search & Category Filter - Centered responsive container */}
+      {/* Search Bar - Clean full-width search without category pills */}
       <div className="px-6 sm:px-8 lg:px-12 py-3 border-b border-zinc-200 dark:border-zinc-800/80 bg-zinc-100/50 dark:bg-zinc-900/30">
-        <div className="w-full max-w-5xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="relative max-w-md w-full">
+        <div className="w-full max-w-5xl mx-auto">
+          <div className="relative w-full max-w-md">
             <Search className="w-4 h-4 absolute left-3 top-2.5 text-zinc-400" />
             <Input
-              placeholder="Search settings (e.g. theme, font, wrap, update)..."
+              placeholder="Search settings (e.g. theme, font, wrap, port, update)..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 h-8 text-xs bg-white dark:bg-zinc-900 border-zinc-300 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 focus:ring-1 focus:ring-blue-500"
+              className="pl-9 pr-8 h-8 text-xs bg-white dark:bg-zinc-900 border-zinc-300 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 focus:ring-1 focus:ring-blue-500 w-full"
             />
-          </div>
-
-          <div className="flex items-center gap-1 overflow-x-auto pb-1 sm:pb-0">
-            <button
-              onClick={() => setActiveCategory('all')}
-              className={`px-3 py-1 rounded text-xs font-medium transition-colors cursor-pointer shrink-0 ${
-                activeCategory === 'all'
-                  ? 'bg-blue-600 text-white'
-                  : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-800'
-              }`}
-            >
-              All
-            </button>
-            <button
-              onClick={() => setActiveCategory('appearance')}
-              className={`px-3 py-1 rounded text-xs font-medium transition-colors cursor-pointer shrink-0 ${
-                activeCategory === 'appearance'
-                  ? 'bg-blue-600 text-white'
-                  : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-800'
-              }`}
-            >
-              Appearance
-            </button>
-            <button
-              onClick={() => setActiveCategory('editor')}
-              className={`px-3 py-1 rounded text-xs font-medium transition-colors cursor-pointer shrink-0 ${
-                activeCategory === 'editor'
-                  ? 'bg-blue-600 text-white'
-                  : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-800'
-              }`}
-            >
-              Editor
-            </button>
-            <button
-              onClick={() => setActiveCategory('ssh')}
-              className={`px-3 py-1 rounded text-xs font-medium transition-colors cursor-pointer shrink-0 ${
-                activeCategory === 'ssh'
-                  ? 'bg-blue-600 text-white'
-                  : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-800'
-              }`}
-            >
-              SSH
-            </button>
-            <button
-              onClick={() => setActiveCategory('about')}
-              className={`px-3 py-1 rounded text-xs font-medium transition-colors cursor-pointer shrink-0 ${
-                activeCategory === 'about'
-                  ? 'bg-blue-600 text-white'
-                  : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-800'
-              }`}
-            >
-              About &amp; Updates
-            </button>
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2.5 top-2 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 cursor-pointer p-0.5"
+                title="Clear search"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -209,8 +170,26 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       {/* Main Settings Content Area - Balanced layout for large screens */}
       <div className="flex-1 overflow-y-auto px-6 sm:px-8 lg:px-12 py-6">
         <div className="w-full max-w-5xl mx-auto space-y-8 pb-12">
+          {/* Empty search state */}
+          {!hasMatches && (
+            <div className="text-center py-16 space-y-3">
+              <Search className="w-8 h-8 mx-auto text-zinc-400/80" />
+              <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                No settings found matching <span className="font-semibold text-zinc-900 dark:text-zinc-200">"{searchQuery}"</span>
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setSearchQuery('')}
+                className="text-xs h-8 cursor-pointer border-zinc-300 dark:border-zinc-700"
+              >
+                Clear Search
+              </Button>
+            </div>
+          )}
+
           {/* --- 1. APPEARANCE SECTION --- */}
-          {(activeCategory === 'all' || activeCategory === 'appearance') && matchesSearch('theme appearance dark light') && (
+          {showAppearance && (
             <div className="space-y-4">
               <div className="flex items-center gap-2 pb-2 border-b border-zinc-200 dark:border-zinc-800">
                 <Palette className="w-4 h-4 text-blue-500" />
@@ -300,7 +279,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           )}
 
           {/* --- 2. EDITOR SECTION --- */}
-          {(activeCategory === 'all' || activeCategory === 'editor') && matchesSearch('editor font size tab wrap numbers') && (
+          {showEditor && (
             <div className="space-y-4">
               <div className="flex items-center gap-2 pb-2 border-b border-zinc-200 dark:border-zinc-800">
                 <Sliders className="w-4 h-4 text-blue-500" />
@@ -333,7 +312,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   </div>
                 </div>
 
-                {/* Tab Size - Modern segmented pill controls (immune to native select dark mode quirks) */}
+                {/* Tab Size - Modern segmented pill controls */}
                 <div className="flex items-center justify-between border-t border-zinc-100 dark:border-zinc-800/60 pt-3">
                   <div>
                     <Label className="text-xs font-semibold text-zinc-900 dark:text-zinc-200">
@@ -401,7 +380,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           )}
 
           {/* --- 3. SSH & GENERAL SECTION --- */}
-          {(activeCategory === 'all' || activeCategory === 'ssh') && matchesSearch('ssh port delete reset general') && (
+          {showSsh && (
             <div className="space-y-4">
               <div className="flex items-center gap-2 pb-2 border-b border-zinc-200 dark:border-zinc-800">
                 <Shield className="w-4 h-4 text-blue-500" />
@@ -473,7 +452,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           )}
 
           {/* --- 4. ABOUT & UPDATES SECTION --- */}
-          {(activeCategory === 'all' || activeCategory === 'about') && matchesSearch('about version update release termlet info') && (
+          {showAbout && (
             <div className="space-y-4">
               <div className="flex items-center gap-2 pb-2 border-b border-zinc-200 dark:border-zinc-800">
                 <Info className="w-4 h-4 text-blue-500" />

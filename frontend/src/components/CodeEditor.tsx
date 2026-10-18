@@ -2,22 +2,43 @@ import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import CodeMirror, { Extension, ViewUpdate } from '@uiw/react-codemirror';
 import { languages } from '@codemirror/language-data';
 import { LanguageDescription } from '@codemirror/language';
+import { EditorView } from '@codemirror/view';
 import { OpenFile } from '../types/remote';
+import { AppSettings, DEFAULT_SETTINGS } from '../types/settings';
 import { Save, AlertCircle, FileCode, CheckCircle2 } from 'lucide-react';
 import { Button } from './ui/button';
+
+import { vscodeDark } from '@uiw/codemirror-theme-vscode';
+import { tokyoNight } from '@uiw/codemirror-theme-tokyo-night';
+import { dracula } from '@uiw/codemirror-theme-dracula';
+import { nord } from '@uiw/codemirror-theme-nord';
+import { monokai } from '@uiw/codemirror-theme-monokai';
+import { githubDark, githubLight } from '@uiw/codemirror-theme-github';
 
 interface CodeEditorProps {
   file: OpenFile | null;
   onChange: (content: string) => void;
   onSave: () => void;
   isSaving: boolean;
+  settings?: AppSettings;
 }
+
+const THEME_MAP: Record<string, Extension> = {
+  vscodeDark,
+  tokyoNight,
+  dracula,
+  nord,
+  monokai,
+  githubDark,
+  githubLight,
+};
 
 export const CodeEditor: React.FC<CodeEditorProps> = ({
   file,
   onChange,
   onSave,
   isSaving,
+  settings = DEFAULT_SETTINGS,
 }) => {
   const [langExtension, setLangExtension] = useState<Extension[]>([]);
   const [langName, setLangName] = useState<string>('Plain Text');
@@ -34,11 +55,14 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
     const desc = LanguageDescription.matchFilename(languages, file.name);
     if (desc) {
       setLangName(desc.name);
-      desc.load().then((support) => {
-        setLangExtension([support]);
-      }).catch(() => {
-        setLangExtension([]);
-      });
+      desc
+        .load()
+        .then((support) => {
+          setLangExtension([support]);
+        })
+        .catch(() => {
+          setLangExtension([]);
+        });
     } else {
       setLangName('Plain Text');
       setLangExtension([]);
@@ -71,6 +95,22 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
     }
   }, []);
 
+  // Compute editor extensions including selected theme & wrap options
+  const editorExtensions = useMemo(() => {
+    const exts: Extension[] = [...langExtension];
+
+    // Theme extension
+    const selectedTheme = THEME_MAP[settings.editorTheme] || vscodeDark;
+    exts.push(selectedTheme);
+
+    // Word wrap
+    if (settings.wordWrap) {
+      exts.push(EditorView.lineWrapping);
+    }
+
+    return exts;
+  }, [langExtension, settings.editorTheme, settings.wordWrap]);
+
   if (!file) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center bg-zinc-950 text-zinc-500 select-none">
@@ -80,7 +120,8 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
           Select a file from the remote file explorer on the left or connect to a server.
         </p>
         <div className="mt-4 flex items-center gap-2 text-xs text-zinc-600 bg-zinc-900/80 px-3 py-1.5 rounded-md border border-zinc-800">
-          <kbd className="font-mono bg-zinc-800 text-zinc-300 px-1.5 py-0.5 rounded">Ctrl</kbd> + <kbd className="font-mono bg-zinc-800 text-zinc-300 px-1.5 py-0.5 rounded">S</kbd> to save
+          <kbd className="font-mono bg-zinc-800 text-zinc-300 px-1.5 py-0.5 rounded">Ctrl</kbd> +{' '}
+          <kbd className="font-mono bg-zinc-800 text-zinc-300 px-1.5 py-0.5 rounded">S</kbd> to save
         </div>
       </div>
     );
@@ -102,16 +143,19 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
   return (
     <div className="flex-1 flex flex-col h-full bg-zinc-950 overflow-hidden">
       {/* Editor Main Canvas */}
-      <div className="flex-1 overflow-auto relative">
+      <div
+        className="flex-1 overflow-auto relative"
+        style={{ fontSize: `${settings.fontSize}px` }}
+      >
         <CodeMirror
           value={file.content}
           height="100%"
-          theme="dark"
-          extensions={langExtension}
+          theme={settings.editorTheme === 'githubLight' ? 'light' : 'dark'}
+          extensions={editorExtensions}
           onChange={onChange}
           onUpdate={handleCursorChange}
           basicSetup={{
-            lineNumbers: true,
+            lineNumbers: settings.lineNumbers,
             highlightActiveLineGutter: true,
             highlightSpecialChars: true,
             history: true,
@@ -136,7 +180,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
             completionKeymap: true,
             lintKeymap: true,
           }}
-          className="h-full text-sm font-mono"
+          className="h-full font-mono"
         />
       </div>
 
@@ -158,9 +202,13 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
         </div>
 
         <div className="flex items-center gap-4 font-mono text-[11px]">
-          <span>Ln {cursorPos.line}, Col {cursorPos.col}</span>
+          <span>
+            Ln {cursorPos.line}, Col {cursorPos.col}
+          </span>
           <span className="text-zinc-600">|</span>
-          <span className="bg-zinc-800 text-zinc-300 px-1.5 py-0.5 rounded text-[10px]">{langName}</span>
+          <span className="bg-zinc-800 text-zinc-300 px-1.5 py-0.5 rounded text-[10px]">
+            {langName}
+          </span>
           <span className="text-zinc-600">|</span>
           <span>UTF-8</span>
           <span className="text-zinc-600">|</span>

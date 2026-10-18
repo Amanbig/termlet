@@ -1,5 +1,5 @@
 import React from 'react';
-import { Files, Server, Plus, HardDrive } from 'lucide-react';
+import { Files, Server, Plus, HardDrive, Settings } from 'lucide-react';
 
 export type ActivityView = 'explorer' | 'connections';
 
@@ -7,6 +7,7 @@ interface ActivityBarProps {
   activeView: ActivityView;
   onSelectView: (view: ActivityView) => void;
   onNewConnection: () => void;
+  onOpenSettings: () => void;
   hasActiveSession: boolean;
 }
 
@@ -14,6 +15,7 @@ export const ActivityBar: React.FC<ActivityBarProps> = ({
   activeView,
   onSelectView,
   onNewConnection,
+  onOpenSettings,
   hasActiveSession,
 }) => {
   return (
@@ -66,6 +68,15 @@ export const ActivityBar: React.FC<ActivityBarProps> = ({
           className="w-full h-10 flex items-center justify-center text-zinc-500 hover:text-zinc-200 transition-colors cursor-pointer"
         >
           <Plus className="w-5 h-5 stroke-[1.8]" />
+        </button>
+
+        {/* Settings Button */}
+        <button
+          onClick={onOpenSettings}
+          title="Settings (Themes & Preferences)"
+          className="w-full h-10 flex items-center justify-center text-zinc-500 hover:text-zinc-200 transition-colors cursor-pointer"
+        >
+          <Settings className="w-5 h-5 stroke-[1.6]" />
         </button>
       </div>
     </div>

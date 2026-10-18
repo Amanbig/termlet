@@ -13,8 +13,10 @@ import { RemoteFileTree } from './components/RemoteFileTree';
 import { EditorTabs } from './components/EditorTabs';
 import { CodeEditor } from './components/CodeEditor';
 import { ConnectDialog } from './components/ConnectDialog';
+import { SettingsDialog } from './components/SettingsDialog';
 import { WelcomeScreen } from './components/WelcomeScreen';
 import { useRemoteFiles } from './hooks/useRemoteFiles';
+import { useSettings } from './hooks/useSettings';
 import { Toaster, toast } from 'sonner';
 import { Terminal, Radio, ChevronRight, X, Power } from 'lucide-react';
 import {
@@ -34,6 +36,9 @@ export function App() {
 
   const [connectDialogOpen, setConnectDialogOpen] = useState(false);
   const [editingProfile, setEditingProfile] = useState<Profile | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+
+  const { settings, updateSettings, resetSettings } = useSettings();
 
   const {
     openFiles,
@@ -169,6 +174,7 @@ export function App() {
             setEditingProfile(null);
             setConnectDialogOpen(true);
           }}
+          onOpenSettings={() => setSettingsOpen(true)}
           hasActiveSession={!!currentSessionId}
         />
 
@@ -245,6 +251,7 @@ export function App() {
                 }}
                 onSave={saveCurrentFile}
                 isSaving={isSaving}
+                settings={settings}
               />
             </div>
           )}
@@ -325,6 +332,15 @@ export function App() {
         initialProfile={editingProfile}
         onConnected={handleConnected}
         onProfileSaved={refreshProfiles}
+      />
+
+      {/* Settings & Themes Dialog */}
+      <SettingsDialog
+        open={settingsOpen}
+        onOpenChange={setSettingsOpen}
+        settings={settings}
+        onUpdateSettings={updateSettings}
+        onResetSettings={resetSettings}
       />
 
       {/* Notifications */}

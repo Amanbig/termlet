@@ -304,7 +304,7 @@ export function App() {
       </div>
 
       {/* 4. Global VS Code Style Bottom Status Bar */}
-      <div className="h-6 bg-zinc-100 dark:bg-zinc-900 border-t border-zinc-200 dark:border-zinc-800 flex items-center justify-between px-2 text-[11px] text-zinc-600 dark:text-zinc-400 select-none z-30">
+      <div className="h-6 bg-zinc-50 dark:bg-zinc-950 border-t border-zinc-200 dark:border-zinc-800/80 flex items-center justify-between px-2 text-[11px] text-zinc-600 dark:text-zinc-400 select-none z-30">
         {/* Left: Remote Status Badge (like VS Code '>< SSH: Host') */}
         <div className="flex items-center gap-2">
           {currentSession ? (
@@ -344,7 +344,7 @@ export function App() {
                 setEditingProfile(null);
                 setConnectDialogOpen(true);
               }}
-              className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-300 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-300 font-medium text-[11px] cursor-pointer transition-colors"
+              className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-zinc-200/70 dark:bg-zinc-900 hover:bg-zinc-300/80 dark:hover:bg-zinc-850 border border-zinc-300/60 dark:border-zinc-800 text-zinc-800 dark:text-zinc-300 font-medium text-[11px] cursor-pointer transition-colors shadow-2xs"
             >
               <span className="font-mono text-[10px]">&gt;&lt;</span>
               <span>Open Remote SSH...</span>

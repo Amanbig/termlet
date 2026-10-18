@@ -117,9 +117,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
   return (
     <div className="flex-1 flex flex-col h-full bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 overflow-hidden select-none">
-      {/* Top Header Bar */}
-      <div className="px-6 sm:px-8 lg:px-12 py-5 border-b border-zinc-200 dark:border-zinc-800/80 bg-white dark:bg-zinc-950">
-        <div className="w-full max-w-5xl mx-auto flex items-center justify-between">
+      {/* Top Header Bar & Centered Search with Equal Width on Both Sides */}
+      <div className="px-6 sm:px-8 lg:px-12 pt-6 pb-4 border-b border-zinc-200 dark:border-zinc-800/80 bg-white dark:bg-zinc-950">
+        <div className="w-full max-w-5xl mx-auto space-y-4">
           <div>
             <div className="flex items-center gap-2">
               <Settings className="w-5 h-5 text-blue-500" />
@@ -130,39 +130,27 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             </p>
           </div>
 
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onClose}
-            title="Close Settings (Esc)"
-            className="h-8 w-8 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-md cursor-pointer"
-          >
-            <X className="w-4 h-4" />
-          </Button>
-        </div>
-      </div>
-
-      {/* Search Bar - Clean full-width search without category pills */}
-      <div className="px-6 sm:px-8 lg:px-12 py-3 border-b border-zinc-200 dark:border-zinc-800/80 bg-zinc-100/50 dark:bg-zinc-900/30">
-        <div className="w-full max-w-5xl mx-auto">
-          <div className="relative w-full max-w-md">
-            <Search className="w-4 h-4 absolute left-3 top-2.5 text-zinc-400" />
-            <Input
-              placeholder="Search settings (e.g. theme, font, wrap, port, update)..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 pr-8 h-8 text-xs bg-white dark:bg-zinc-900 border-zinc-300 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 focus:ring-1 focus:ring-blue-500 w-full"
-            />
-            {searchQuery && (
-              <button
-                type="button"
-                onClick={() => setSearchQuery('')}
-                className="absolute right-2.5 top-2 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 cursor-pointer p-0.5"
-                title="Clear search"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            )}
+          {/* Centered Search Bar with equal margins/width on left and right */}
+          <div className="flex justify-center w-full">
+            <div className="relative w-full max-w-2xl">
+              <Search className="w-4 h-4 absolute left-3.5 top-2.5 text-zinc-400" />
+              <Input
+                placeholder="Search settings (e.g. theme, font, wrap, port, update)..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 pr-9 h-9 text-xs bg-zinc-50 dark:bg-zinc-900 border-zinc-300 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 rounded-lg focus:ring-1 focus:ring-blue-500 w-full shadow-xs"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 top-2.5 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 cursor-pointer p-0.5"
+                  title="Clear search"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>

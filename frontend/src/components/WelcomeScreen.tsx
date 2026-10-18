@@ -13,6 +13,8 @@ import {
 } from 'lucide-react';
 import { Button } from './ui/button';
 
+import logoImg from '../assets/images/logo.png';
+
 interface WelcomeScreenProps {
   profiles: Profile[];
   onOpenProfile: (profile: Profile) => void;
@@ -33,13 +35,15 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
       <div className="max-w-4xl w-full mx-auto px-8 py-12 flex-1 flex flex-col justify-center">
         {/* Header */}
         <div className="mb-10">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 rounded-lg bg-blue-600/10 dark:bg-blue-600/20 border border-blue-500/30 flex items-center justify-center">
-              <HardDrive className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-            </div>
+          <div className="flex items-center gap-3.5 mb-2">
+            <img
+              src={logoImg}
+              alt="Termlet"
+              className="w-11 h-11 rounded-xl object-contain border border-zinc-200 dark:border-zinc-800 shadow-xs"
+            />
             <div>
               <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">Termlet</h1>
-              <p className="text-xs text-zinc-500 dark:text-zinc-400">SSH Remote Workspace & Code Editor</p>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">SSH Remote Workspace &amp; Code Editor</p>
             </div>
           </div>
         </div>

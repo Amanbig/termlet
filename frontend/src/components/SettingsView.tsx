@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AppSettings, EditorTheme } from '../types/settings';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -14,10 +14,17 @@ import {
   Sun,
   Search,
   X,
-  Type,
-  FileCode,
+  RefreshCw,
+  ExternalLink,
+  Info,
+  Download,
+  Terminal,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { CheckForUpdates, GetAppVersion } from '../../wailsjs/go/main/App';
+import { BrowserOpenURL } from '../../wailsjs/runtime/runtime';
+import { updater } from '../../wailsjs/go/models';
+import logoImg from '../assets/images/logo.png';
 
 interface SettingsViewProps {
   settings: AppSettings;
@@ -43,7 +50,19 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   onClose,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeCategory, setActiveCategory] = useState<'all' | 'appearance' | 'editor' | 'ssh'>('all');
+  const [activeCategory, setActiveCategory] = useState<'all' | 'appearance' | 'editor' | 'ssh' | 'about'>('all');
+  const [appVersion, setAppVersion] = useState('0.1.0');
+  const [isCheckingUpdates, setIsCheckingUpdates] = useState(false);
+  const [updateInfo, setUpdateInfo] = useState<updater.UpdateInfo | null>(null);
+  const [hasCheckedUpdates, setHasCheckedUpdates] = useState(false);
+
+  useEffect(() => {
+    GetAppVersion()
+      .then((v) => {
+        if (v) setAppVersion(v);
+      })
+      .catch(() => {});
+  }, []);
 
   const handleReset = () => {
     if (window.confirm('Reset all settings to default values?')) {
@@ -61,6 +80,30 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       newPartial.editorTheme = 'vscodeDark';
     }
     onUpdateSettings(newPartial);
+  };
+
+  const handleCheckUpdates = async () => {
+    setIsCheckingUpdates(true);
+    try {
+      const info = await CheckForUpdates();
+      setUpdateInfo(info);
+      setHasCheckedUpdates(true);
+      if (info.available) {
+        toast.info(`Version ${info.latest_version} is available!`);
+      } else {
+        toast.success('Termlet is up to date!');
+      }
+    } catch (err: any) {
+      toast.error(`Update check failed: ${err?.message || err}`);
+    } finally {
+      setIsCheckingUpdates(false);
+    }
+  };
+
+  const handleOpenExternal = (url: string) => {
+    if (url) {
+      BrowserOpenURL(url);
+    }
   };
 
   const matchesSearch = (text: string) => {
@@ -98,10 +141,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         <div className="relative max-w-md w-full">
           <Search className="w-4 h-4 absolute left-3 top-2.5 text-zinc-400" />
           <Input
-            placeholder="Search settings (e.g. theme, font, wrap)..."
+            placeholder="Search settings (e.g. theme, font, wrap, update)..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9 h-8 text-xs bg-white dark:bg-zinc-900 border-zinc-300 dark:border-zinc-800"
+            className="pl-9 h-8 text-xs bg-white dark:bg-zinc-900 border-zinc-300 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100"
           />
         </div>
 
@@ -145,6 +188,16 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             }`}
           >
             SSH
+          </button>
+          <button
+            onClick={() => setActiveCategory('about')}
+            className={`px-3 py-1 rounded text-xs font-medium transition-colors cursor-pointer ${
+              activeCategory === 'about'
+                ? 'bg-blue-600 text-white'
+                : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-800'
+            }`}
+          >
+            About & Updates
           </button>
         </div>
       </div>
@@ -269,13 +322,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     max={28}
                     value={settings.fontSize}
                     onChange={(e) => onUpdateSettings({ fontSize: Number(e.target.value) || 13 })}
-                    className="w-20 h-8 text-xs bg-zinc-50 dark:bg-zinc-900 border-zinc-300 dark:border-zinc-800"
+                    className="w-20 h-8 text-xs bg-white dark:bg-zinc-900 border-zinc-300 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100"
                   />
                   <span className="text-xs text-zinc-500">px</span>
                 </div>
               </div>
 
-              {/* Tab Size */}
+              {/* Tab Size with explicitly styled select and options for robust dark/light mode contrast */}
               <div className="flex items-center justify-between border-t border-zinc-100 dark:border-zinc-800/60 pt-3">
                 <div>
                   <Label className="text-xs font-semibold text-zinc-900 dark:text-zinc-200">
@@ -288,11 +341,17 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 <select
                   value={settings.tabSize}
                   onChange={(e) => onUpdateSettings({ tabSize: Number(e.target.value) || 2 })}
-                  className="bg-zinc-50 dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-800 text-zinc-900 dark:text-zinc-200 text-xs rounded px-2.5 py-1.5 h-8 focus:outline-none"
+                  className="bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 text-xs rounded px-2.5 py-1.5 h-8 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer shadow-xs"
                 >
-                  <option value={2}>2 Spaces</option>
-                  <option value={4}>4 Spaces</option>
-                  <option value={8}>8 Spaces</option>
+                  <option value={2} className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100">
+                    2 Spaces
+                  </option>
+                  <option value={4} className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100">
+                    4 Spaces
+                  </option>
+                  <option value={8} className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100">
+                    8 Spaces
+                  </option>
                 </select>
               </div>
 
@@ -362,7 +421,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   max={65535}
                   value={settings.defaultPort}
                   onChange={(e) => onUpdateSettings({ defaultPort: Number(e.target.value) || 22 })}
-                  className="w-24 h-8 text-xs bg-zinc-50 dark:bg-zinc-900 border-zinc-300 dark:border-zinc-800"
+                  className="w-24 h-8 text-xs bg-white dark:bg-zinc-900 border-zinc-300 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100"
                 />
               </div>
 
@@ -402,6 +461,110 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 >
                   <RotateCcw className="w-3.5 h-3.5" /> Reset All
                 </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* --- 4. ABOUT & UPDATES SECTION --- */}
+        {(activeCategory === 'all' || activeCategory === 'about') && matchesSearch('about version update release termlet info') && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 pb-2 border-b border-zinc-200 dark:border-zinc-800">
+              <Info className="w-4 h-4 text-blue-500" />
+              <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-700 dark:text-zinc-300">
+                About &amp; Updates
+              </h2>
+            </div>
+
+            <div className="p-5 rounded-lg bg-white dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800/80 shadow-xs space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-3.5">
+                  <img
+                    src={logoImg}
+                    alt="Termlet Logo"
+                    className="w-11 h-11 rounded-xl object-contain shadow-xs border border-zinc-200 dark:border-zinc-800"
+                  />
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">Termlet Desktop</h3>
+                      <span className="px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 font-mono text-[11px] font-semibold">
+                        v{appVersion.replace(/^v/, '')}
+                      </span>
+                    </div>
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+                      Modern SSH Remote Workspace &amp; Fast Code Editor
+                    </p>
+                  </div>
+                </div>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCheckUpdates}
+                  disabled={isCheckingUpdates}
+                  className="h-8 text-xs flex items-center gap-1.5 cursor-pointer self-start sm:self-auto border-zinc-300 dark:border-zinc-700"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isCheckingUpdates ? 'animate-spin text-blue-500' : ''}`} />
+                  <span>{isCheckingUpdates ? 'Checking for Updates...' : 'Check for Updates'}</span>
+                </Button>
+              </div>
+
+              {/* Update Status Feedback */}
+              {updateInfo?.available && (
+                <div className="p-3.5 rounded-md bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/60 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-blue-700 dark:text-blue-300">
+                      Update Available: v{updateInfo.latest_version}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenExternal(updateInfo.release_url || updateInfo.download_url)}
+                      className="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:underline font-medium cursor-pointer"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      Download Release
+                    </button>
+                  </div>
+                  {updateInfo.release_notes && (
+                    <p className="text-[11px] text-zinc-600 dark:text-zinc-300 line-clamp-3 whitespace-pre-line font-mono bg-white/60 dark:bg-black/30 p-2 rounded border border-blue-100 dark:border-blue-900/40">
+                      {updateInfo.release_notes}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {hasCheckedUpdates && !updateInfo?.available && (
+                <div className="p-3 rounded-md bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/50 flex items-center gap-2 text-xs text-emerald-700 dark:text-emerald-300">
+                  <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  <span>You are running the latest version of Termlet!</span>
+                </div>
+              )}
+
+              {/* Meta & System Information */}
+              <div className="pt-3 border-t border-zinc-100 dark:border-zinc-800/60 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-zinc-600 dark:text-zinc-400">
+                <div className="flex items-center justify-between pr-4">
+                  <span>Application ID:</span>
+                  <span className="font-mono text-[11px] text-zinc-800 dark:text-zinc-300">com.termlet.desktop</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span>Architecture:</span>
+                  <span className="font-mono text-[11px] text-zinc-800 dark:text-zinc-300">Wails v2 (WebKitGTK Linux)</span>
+                </div>
+                <div className="flex items-center justify-between pr-4">
+                  <span>License:</span>
+                  <span className="text-zinc-800 dark:text-zinc-300">MIT Open Source</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span>GitHub Repository:</span>
+                  <button
+                    type="button"
+                    onClick={() => handleOpenExternal('https://github.com/Amanbig/termlet')}
+                    className="inline-flex items-center gap-1 text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                  >
+                    <span>Amanbig/termlet</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </button>
+                </div>
               </div>
             </div>
           </div>

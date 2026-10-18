@@ -10,6 +10,8 @@ import (
 	"termlet/internal/models"
 	"termlet/internal/sftpclient"
 	"termlet/internal/storage"
+	"termlet/internal/updater"
+	"termlet/internal/version"
 )
 
 // App is the main application bridge between Wails frontend and Go backend.
@@ -18,6 +20,7 @@ type App struct {
 	connMgr      *connections.Manager
 	profileStore *storage.ProfileStorage
 	secretStore  *storage.SecretStorage
+	updater      *updater.Updater
 }
 
 // ConnectResponse wraps the outcome of a Connect request.
@@ -42,10 +45,13 @@ func NewApp() *App {
 		fmt.Printf("warning: failed to init connection manager: %v\n", err)
 	}
 
+	upd := updater.NewUpdater()
+
 	return &App{
 		profileStore: profileStore,
 		secretStore:  secretStore,
 		connMgr:      connMgr,
+		updater:      upd,
 	}
 }
 
@@ -292,4 +298,24 @@ func (a *App) UploadFileContent(sessionID string, remoteDir string, fileName str
 	destPath := path.Join(remoteDir, fileName)
 	reader := strings.NewReader(string(data))
 	return sftpCl.UploadStream(destPath, reader)
+}
+
+// GetAppVersion returns the current version string.
+func (a *App) GetAppVersion() string {
+	return version.Version
+}
+
+// CheckForUpdates checks GitHub releases for a newer version.
+func (a *App) CheckForUpdates() (*updater.UpdateInfo, error) {
+	if a.updater == nil {
+		return &updater.UpdateInfo{
+			Available:      false,
+			CurrentVersion: version.Version,
+		}, nil
+	}
+	ctx := a.ctx
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	return a.updater.CheckForUpdate(ctx)
 }

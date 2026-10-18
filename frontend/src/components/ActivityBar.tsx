@@ -33,8 +33,8 @@ export const ActivityBar: React.FC<ActivityBarProps> = ({
           title="Explorer (Files)"
           className={`relative w-full h-10 flex items-center justify-center transition-colors cursor-pointer ${
             activeView === 'explorer'
-              ? 'text-zinc-100'
-              : 'text-zinc-500 hover:text-zinc-300'
+              ? 'text-zinc-900 dark:text-zinc-100'
+              : 'text-zinc-400 hover:text-zinc-800 dark:text-zinc-500 dark:hover:text-zinc-200'
           }`}
         >
           {activeView === 'explorer' && (
@@ -49,8 +49,8 @@ export const ActivityBar: React.FC<ActivityBarProps> = ({
           title="Remote Profiles & Sessions"
           className={`relative w-full h-10 flex items-center justify-center transition-colors cursor-pointer ${
             activeView === 'connections'
-              ? 'text-zinc-100'
-              : 'text-zinc-500 hover:text-zinc-300'
+              ? 'text-zinc-900 dark:text-zinc-100'
+              : 'text-zinc-400 hover:text-zinc-800 dark:text-zinc-500 dark:hover:text-zinc-200'
           }`}
         >
           {activeView === 'connections' && (
@@ -65,7 +65,7 @@ export const ActivityBar: React.FC<ActivityBarProps> = ({
         <button
           onClick={onNewConnection}
           title="New SSH Connection"
-          className="w-full h-10 flex items-center justify-center text-zinc-500 hover:text-zinc-200 transition-colors cursor-pointer"
+          className="w-full h-10 flex items-center justify-center text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition-colors cursor-pointer"
         >
           <Plus className="w-5 h-5 stroke-[1.8]" />
         </button>
@@ -74,7 +74,7 @@ export const ActivityBar: React.FC<ActivityBarProps> = ({
         <button
           onClick={onOpenSettings}
           title="Settings (Themes & Preferences)"
-          className="w-full h-10 flex items-center justify-center text-zinc-500 hover:text-zinc-200 transition-colors cursor-pointer"
+          className="w-full h-10 flex items-center justify-center text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition-colors cursor-pointer"
         >
           <Settings className="w-5 h-5 stroke-[1.6]" />
         </button>

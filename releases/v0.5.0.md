@@ -1,6 +1,6 @@
-# Termlet v0.1.0 🚀
+# Termlet v0.5.0 🚀
 
-Termlet **v0.1.0** is the inaugural milestone release of Termlet — a modern, blazing-fast cross-platform SSH terminal, SFTP browser, and remote code editor built with Go, Wails v2, and React.
+Termlet **v0.5.0** is a major milestone release of Termlet — a modern, blazing-fast cross-platform SSH terminal, SFTP browser, and remote code editor built with Go, Wails v2, and React.
 
 ---
 

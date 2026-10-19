@@ -23,15 +23,15 @@ type Session struct {
 
 // SessionSummary provides a view of an active session suitable for UI presentation.
 type SessionSummary struct {
-	ID             string     `json:"id"`
-	ProfileID      string     `json:"profile_id"`
-	ProfileName    string     `json:"profile_name"`
-	Host           string     `json:"host"`
-	Port           int        `json:"port"`
-	Username       string     `json:"username"`
-	ConnectedAt    int64      `json:"connected_at"`
-	StartDirectory string     `json:"start_directory"`
-	IsAlive        bool       `json:"is_alive"`
+	ID             string `json:"id"`
+	ProfileID      string `json:"profile_id"`
+	ProfileName    string `json:"profile_name"`
+	Host           string `json:"host"`
+	Port           int    `json:"port"`
+	Username       string `json:"username"`
+	ConnectedAt    int64  `json:"connected_at"`
+	StartDirectory string `json:"start_directory"`
+	IsAlive        bool   `json:"is_alive"`
 }
 
 // NewSession creates a new initialized Session.

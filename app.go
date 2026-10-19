@@ -31,10 +31,10 @@ type App struct {
 
 // ConnectResponse wraps the outcome of a Connect request.
 type ConnectResponse struct {
-	Success       bool                       `json:"success"`
+	Success       bool                        `json:"success"`
 	Session       *connections.SessionSummary `json:"session,omitempty"`
-	HostKeyPrompt *models.HostKeyPrompt      `json:"host_key_prompt,omitempty"`
-	Error         string                     `json:"error,omitempty"`
+	HostKeyPrompt *models.HostKeyPrompt       `json:"host_key_prompt,omitempty"`
+	Error         string                      `json:"error,omitempty"`
 }
 
 // NewApp creates a new App application struct.

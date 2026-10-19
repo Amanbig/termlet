@@ -91,7 +91,7 @@ type githubRelease struct {
 }
 
 var (
-	progressMu sync.RWMutex
+	progressMu  sync.RWMutex
 	curProgress = DownloadProgress{
 		Status: "idle",
 	}

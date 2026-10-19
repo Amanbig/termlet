@@ -12,9 +12,9 @@ import (
 
 // ConflictError indicates that a file was modified remotely since it was loaded.
 type ConflictError struct {
-	Path           string `json:"path"`
-	ExpectedModTime int64 `json:"expected_mod_time"`
-	ActualModTime   int64 `json:"actual_mod_time"`
+	Path            string `json:"path"`
+	ExpectedModTime int64  `json:"expected_mod_time"`
+	ActualModTime   int64  `json:"actual_mod_time"`
 }
 
 func (e *ConflictError) Error() string {
@@ -52,7 +52,7 @@ func (c *Client) SaveFile(filePath string, content string, checkModTime int64) (
 
 		if checkModTime > 0 && stat.ModTime().Unix() > checkModTime {
 			return nil, &ConflictError{
-				Path:           filePath,
+				Path:            filePath,
 				ExpectedModTime: checkModTime,
 				ActualModTime:   stat.ModTime().Unix(),
 			}

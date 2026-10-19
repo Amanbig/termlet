@@ -462,4 +462,3 @@ func (m *Manager) GetTunnel(tunnelID string) (*TunnelInfo, bool) {
 	info := f.getInfo()
 	return &info, true
 }
-

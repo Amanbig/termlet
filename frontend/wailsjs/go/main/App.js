@@ -46,6 +46,10 @@ export function GetProfileSecret(arg1) {
   return window['go']['main']['App']['GetProfileSecret'](arg1);
 }
 
+export function GetReleaseNotes() {
+  return window['go']['main']['App']['GetReleaseNotes']();
+}
+
 export function GetUpdateProgress() {
   return window['go']['main']['App']['GetUpdateProgress']();
 }

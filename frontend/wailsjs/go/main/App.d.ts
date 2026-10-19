@@ -28,6 +28,8 @@ export function GetAppVersion():Promise<string>;
 
 export function GetProfileSecret(arg1:string):Promise<string>;
 
+export function GetReleaseNotes():Promise<string>;
+
 export function GetUpdateProgress():Promise<updater.DownloadProgress>;
 
 export function ListActiveSessions():Promise<Array<connections.SessionSummary>>;

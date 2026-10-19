@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	_ "embed"
 	"encoding/base64"
 	"fmt"
 	"path"
@@ -13,6 +14,9 @@ import (
 	"termlet/internal/updater"
 	"termlet/internal/version"
 )
+
+//go:embed RELEASE_NOTES.md
+var embeddedReleaseNotes string
 
 // App is the main application bridge between Wails frontend and Go backend.
 type App struct {
@@ -351,4 +355,9 @@ func (a *App) RestartApp() error {
 		return fmt.Errorf("updater service is not initialized")
 	}
 	return a.updater.RestartApp()
+}
+
+// GetReleaseNotes returns the embedded markdown release notes for the active version.
+func (a *App) GetReleaseNotes() string {
+	return embeddedReleaseNotes
 }

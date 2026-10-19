@@ -16,6 +16,11 @@ Termlet **v0.5.1** is a major update bringing seamless in-app automatic update i
     - **Windows**: launches downloaded NSIS setup installer `.exe` or updates portable `.zip` in-place.
     - **Standalone / Portable**: extracts binary in-memory and applies the replacement in-place using `selfupdate` (or `pkexec` if destination directory requires root permission).
   - **Seamless App Restart**: integrated `RestartApp()` allows 1-click restarting directly into the newly updated version.
+  - **VS Code Style Post-Update Release Notes Tab**:
+    - Automatically opens a dedicated rendered Release Notes tab upon first launch after an update, showing the changelog and highlights.
+    - Tracked via `localStorage` to ensure it is displayed **only once** per version update.
+    - Seamlessly integrated as an editor tab (`termlet://release-notes`) alongside file and settings tabs.
+    - Can be reopened at any time from the Settings view via the **"Release Notes"** button.
   - **Settings Integration**: direct "Check for Updates" and "Install Update" triggers right inside the Settings view and bottom status bar.
 
 #### 🪟 Windows Native Icon & Taskbar Integration

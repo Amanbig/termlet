@@ -17,6 +17,7 @@ import { EditorTabs } from './components/EditorTabs';
 import { CodeEditor } from './components/CodeEditor';
 import { ConnectDialog } from './components/ConnectDialog';
 import { SettingsView } from './components/SettingsView';
+import { ReleaseNotesView } from './components/ReleaseNotesView';
 import { UpdateModal } from './components/UpdateModal';
 import { WelcomeScreen } from './components/WelcomeScreen';
 import { TitleBar } from './components/TitleBar';
@@ -33,6 +34,7 @@ import {
 } from './components/ui/dropdown-menu';
 
 const SETTINGS_TAB_PATH = 'termlet://settings';
+const RELEASE_NOTES_TAB_PATH = 'termlet://release-notes';
 
 export function App() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -44,6 +46,7 @@ export function App() {
   const [connectDialogOpen, setConnectDialogOpen] = useState(false);
   const [editingProfile, setEditingProfile] = useState<Profile | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isReleaseNotesOpen, setIsReleaseNotesOpen] = useState(false);
 
   const [updateModalOpen, setUpdateModalOpen] = useState(false);
   const [updateInfo, setUpdateInfo] = useState<updater.UpdateInfo | null>(null);
@@ -56,7 +59,23 @@ export function App() {
   useEffect(() => {
     GetAppVersion()
       .then((v) => {
-        if (v) setAppVersion(v);
+        if (v) {
+          setAppVersion(v);
+          const cleanCurrent = v.replace(/^v/, '');
+          const lastSeen = localStorage.getItem('termlet_last_seen_version');
+          if (lastSeen) {
+            const cleanLastSeen = lastSeen.replace(/^v/, '');
+            // If the version has updated, open the Release Notes tab once (like VS Code!)
+            if (cleanCurrent !== cleanLastSeen) {
+              setIsReleaseNotesOpen(true);
+              setActiveFilePath(RELEASE_NOTES_TAB_PATH);
+              localStorage.setItem('termlet_last_seen_version', cleanCurrent);
+            }
+          } else {
+            // First install: store current version so subsequent updates trigger the tab
+            localStorage.setItem('termlet_last_seen_version', cleanCurrent);
+          }
+        }
       })
       .catch(() => {});
   }, []);
@@ -226,13 +245,36 @@ export function App() {
   const handleCloseSettingsTab = () => {
     setIsSettingsOpen(false);
     if (activeFilePath === SETTINGS_TAB_PATH) {
-      const nextFile = openFiles.length > 0 ? openFiles[openFiles.length - 1] : null;
-      setActiveFilePath(nextFile ? nextFile.path : null);
+      if (isReleaseNotesOpen) {
+        setActiveFilePath(RELEASE_NOTES_TAB_PATH);
+      } else {
+        const nextFile = openFiles.length > 0 ? openFiles[openFiles.length - 1] : null;
+        setActiveFilePath(nextFile ? nextFile.path : null);
+      }
+    }
+  };
+
+  const handleOpenReleaseNotesTab = () => {
+    setIsReleaseNotesOpen(true);
+    setActiveFilePath(RELEASE_NOTES_TAB_PATH);
+  };
+
+  const handleCloseReleaseNotesTab = () => {
+    setIsReleaseNotesOpen(false);
+    if (activeFilePath === RELEASE_NOTES_TAB_PATH) {
+      if (isSettingsOpen) {
+        setActiveFilePath(SETTINGS_TAB_PATH);
+      } else {
+        const nextFile = openFiles.length > 0 ? openFiles[openFiles.length - 1] : null;
+        setActiveFilePath(nextFile ? nextFile.path : null);
+      }
     }
   };
 
   const isSettingsActive = isSettingsOpen && activeFilePath === SETTINGS_TAB_PATH;
-  const showWelcome = !currentSessionId && openFiles.length === 0 && !isSettingsOpen;
+  const isReleaseNotesActive = isReleaseNotesOpen && activeFilePath === RELEASE_NOTES_TAB_PATH;
+  const showWelcome =
+    !currentSessionId && openFiles.length === 0 && !isSettingsOpen && !isReleaseNotesOpen;
 
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 font-sans antialiased">
@@ -331,15 +373,24 @@ export function App() {
                 onCloseAll={closeAllFiles}
                 onSelectSettings={() => setActiveFilePath(SETTINGS_TAB_PATH)}
                 onCloseSettings={handleCloseSettingsTab}
+                isReleaseNotesOpen={isReleaseNotesOpen}
+                onSelectReleaseNotes={handleOpenReleaseNotesTab}
+                onCloseReleaseNotes={handleCloseReleaseNotesTab}
               />
 
-              {isSettingsActive ? (
+              {isReleaseNotesActive ? (
+                <ReleaseNotesView
+                  version={appVersion}
+                  onClose={handleCloseReleaseNotesTab}
+                />
+              ) : isSettingsActive ? (
                 <SettingsView
                   settings={settings}
                   onUpdateSettings={updateSettings}
                   onResetSettings={resetSettings}
                   onClose={handleCloseSettingsTab}
                   onOpenUpdateModal={() => setUpdateModalOpen(true)}
+                  onOpenReleaseNotes={handleOpenReleaseNotesTab}
                 />
               ) : (
                 <CodeEditor

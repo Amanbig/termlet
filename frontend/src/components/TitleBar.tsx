@@ -74,7 +74,10 @@ export const TitleBar: React.FC<TitleBarProps> = ({
   };
 
   const getActiveTitle = () => {
-    if (isSettingsOpen) {
+    if (activeFilePath === 'termlet://release-notes') {
+      return 'Release Notes — Termlet';
+    }
+    if (activeFilePath === 'termlet://settings' || isSettingsOpen) {
       return 'Settings — Termlet';
     }
     if (activeFilePath) {

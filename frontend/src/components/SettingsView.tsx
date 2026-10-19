@@ -20,6 +20,7 @@ import {
   Download,
   Minus,
   Plus,
+  Sparkles,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { CheckForUpdates, GetAppVersion } from '../../wailsjs/go/main/App';
@@ -33,6 +34,7 @@ interface SettingsViewProps {
   onResetSettings: () => void;
   onClose: () => void;
   onOpenUpdateModal?: () => void;
+  onOpenReleaseNotes?: () => void;
 }
 
 const THEME_OPTIONS: { id: EditorTheme; label: string; previewBg: string; previewFg: string }[] = [
@@ -51,6 +53,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   onResetSettings,
   onClose,
   onOpenUpdateModal,
+  onOpenReleaseNotes,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [appVersion, setAppVersion] = useState('0.5.1');
@@ -512,16 +515,29 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     </div>
                   </div>
 
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleCheckUpdates}
-                    disabled={isCheckingUpdates}
-                    className="h-8 text-xs flex items-center gap-1.5 cursor-pointer self-start sm:self-auto border-zinc-300 dark:border-zinc-700"
-                  >
-                    <RefreshCw className={`w-3.5 h-3.5 ${isCheckingUpdates ? 'animate-spin text-blue-500' : ''}`} />
-                    <span>{isCheckingUpdates ? 'Checking for Updates...' : 'Check for Updates'}</span>
-                  </Button>
+                  <div className="flex items-center gap-2 self-start sm:self-auto">
+                    {onOpenReleaseNotes && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={onOpenReleaseNotes}
+                        className="h-8 text-xs flex items-center gap-1.5 cursor-pointer border-zinc-300 dark:border-zinc-700 hover:text-blue-600 dark:hover:text-blue-400"
+                      >
+                        <Sparkles className="w-3.5 h-3.5 text-blue-500" />
+                        <span>Release Notes</span>
+                      </Button>
+                    )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleCheckUpdates}
+                      disabled={isCheckingUpdates}
+                      className="h-8 text-xs flex items-center gap-1.5 cursor-pointer border-zinc-300 dark:border-zinc-700"
+                    >
+                      <RefreshCw className={`w-3.5 h-3.5 ${isCheckingUpdates ? 'animate-spin text-blue-500' : ''}`} />
+                      <span>{isCheckingUpdates ? 'Checking for Updates...' : 'Check for Updates'}</span>
+                    </Button>
+                  </div>
                 </div>
 
                 {/* Update Status Feedback */}

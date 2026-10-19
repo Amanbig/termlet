@@ -1,6 +1,6 @@
 import React from 'react';
 import { OpenFile } from '../types/remote';
-import { X, FileCode, MoreHorizontal, Settings } from 'lucide-react';
+import { X, FileCode, MoreHorizontal, Settings, Sparkles } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,6 +17,9 @@ interface EditorTabsProps {
   onCloseAll: () => void;
   onSelectSettings: () => void;
   onCloseSettings: () => void;
+  isReleaseNotesOpen?: boolean;
+  onSelectReleaseNotes?: () => void;
+  onCloseReleaseNotes?: () => void;
 }
 
 export const EditorTabs: React.FC<EditorTabsProps> = ({
@@ -28,14 +31,43 @@ export const EditorTabs: React.FC<EditorTabsProps> = ({
   onCloseAll,
   onSelectSettings,
   onCloseSettings,
+  isReleaseNotesOpen = false,
+  onSelectReleaseNotes,
+  onCloseReleaseNotes,
 }) => {
-  if (files.length === 0 && !isSettingsOpen) {
+  if (files.length === 0 && !isSettingsOpen && !isReleaseNotesOpen) {
     return null;
   }
 
   return (
     <div className="flex items-center bg-zinc-100 dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800/80 overflow-x-auto no-scrollbar select-none">
       <div className="flex items-center flex-1 min-w-0">
+        {/* Release Notes Tab if Open (like VS Code Release Notes) */}
+        {isReleaseNotesOpen && (
+          <div
+            onClick={onSelectReleaseNotes}
+            className={`group flex items-center gap-2 px-3 py-2 text-xs border-r border-zinc-200 dark:border-zinc-800/80 cursor-pointer transition-colors max-w-[210px] shrink-0 ${
+              activeFilePath === 'termlet://release-notes'
+                ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 font-medium border-t-2 border-t-blue-500'
+                : 'bg-zinc-200/50 dark:bg-zinc-950/80 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-900/60 hover:text-zinc-900 dark:hover:text-zinc-200 border-t-2 border-t-transparent'
+            }`}
+          >
+            <Sparkles className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+            <span className="truncate flex-1">Release Notes</span>
+
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onCloseReleaseNotes?.();
+              }}
+              title="Close Release Notes"
+              className="p-0.5 rounded-sm hover:bg-zinc-200 dark:hover:bg-zinc-700/80 text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 cursor-pointer"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          </div>
+        )}
+
         {/* Settings Tab if Open (like VS Code) */}
         {isSettingsOpen && (
           <div

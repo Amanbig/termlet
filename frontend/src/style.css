@@ -146,3 +146,197 @@
     appearance: textfield !important;
   }
 }
+
+/* ==========================================================================
+   Release Notes Markdown Styling (VS Code Release Notes Tab)
+   ========================================================================== */
+
+.release-notes-markdown {
+  word-break: break-word;
+  overflow-wrap: break-word;
+  line-height: 1.7;
+  font-size: 0.8125rem;
+}
+
+.release-notes-markdown h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.release-notes-markdown h1:first-child {
+  margin-top: 0;
+}
+
+.release-notes-markdown h2 {
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin-top: 1.5rem;
+  margin-bottom: 0.6rem;
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.release-notes-markdown h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #3b82f6;
+  margin-top: 1.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.release-notes-markdown h4,
+.release-notes-markdown h5,
+.release-notes-markdown h6 {
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-top: 1rem;
+  margin-bottom: 0.35rem;
+}
+
+.release-notes-markdown p {
+  margin: 0.75rem 0;
+  color: inherit;
+}
+
+.release-notes-markdown a {
+  color: #2563eb;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  font-weight: 500;
+  transition: color 0.15s ease;
+}
+
+.dark .release-notes-markdown a {
+  color: #60a5fa;
+}
+
+.release-notes-markdown a:hover {
+  color: #1d4ed8;
+}
+
+.dark .release-notes-markdown a:hover {
+  color: #93c5fd;
+}
+
+.release-notes-markdown ul {
+  list-style-type: disc;
+  padding-left: 1.25rem;
+  margin: 0.75rem 0;
+}
+
+.release-notes-markdown ol {
+  list-style-type: decimal;
+  padding-left: 1.25rem;
+  margin: 0.75rem 0;
+}
+
+.release-notes-markdown li {
+  margin: 0.3rem 0;
+}
+
+.release-notes-markdown code:not(pre code) {
+  background-color: rgba(228, 228, 231, 0.6);
+  color: #18181b;
+  border: 1px solid rgba(212, 212, 216, 0.8);
+  padding: 0.15rem 0.35rem;
+  border-radius: 0.375rem;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+}
+
+.dark .release-notes-markdown code:not(pre code) {
+  background-color: rgba(39, 39, 42, 0.7);
+  color: #93c5fd;
+  border-color: rgba(63, 63, 70, 0.8);
+}
+
+.release-notes-markdown kbd {
+  background-color: rgba(244, 244, 245, 0.9);
+  color: #27272a;
+  border: 1px solid #d4d4d8;
+  border-bottom-width: 2px;
+  padding: 0.1rem 0.35rem;
+  border-radius: 0.25rem;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.dark .release-notes-markdown kbd {
+  background-color: rgba(24, 24, 27, 0.9);
+  color: #e4e4e7;
+  border-color: #3f3f46;
+}
+
+.release-notes-markdown pre {
+  background-color: #f4f4f5;
+  border: 1px solid #e4e4e7;
+  border-radius: 0.75rem;
+  padding: 0.85rem 1.15rem;
+  margin: 1rem 0;
+  overflow-x: auto;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  line-height: 1.6;
+}
+
+.dark .release-notes-markdown pre {
+  background-color: #09090b;
+  border-color: #27272a;
+  color: #f4f4f5;
+}
+
+.release-notes-markdown pre code {
+  background: transparent;
+  padding: 0;
+  border: none;
+  color: inherit;
+}
+
+.release-notes-markdown blockquote {
+  border-left: 3px solid #3b82f6;
+  padding-left: 1rem;
+  margin: 1rem 0;
+  color: #71717a;
+  font-style: italic;
+}
+
+.dark .release-notes-markdown blockquote {
+  color: #a1a1aa;
+}
+
+.release-notes-markdown hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 1.5rem 0;
+}
+
+.release-notes-markdown table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+  font-size: 0.75rem;
+  display: block;
+  overflow-x: auto;
+}
+
+.release-notes-markdown th {
+  background-color: rgba(244, 244, 245, 0.8);
+  border: 1px solid var(--border);
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  font-weight: 600;
+}
+
+.dark .release-notes-markdown th {
+  background-color: rgba(24, 24, 27, 0.8);
+}
+
+.release-notes-markdown td {
+  border: 1px solid var(--border);
+  padding: 0.5rem 0.75rem;
+}

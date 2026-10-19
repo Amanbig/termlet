@@ -107,13 +107,14 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
     }
   }, []);
 
-  // Compute editor extensions including selected theme & wrap options
+  // Selected theme extension
+  const selectedTheme = useMemo(() => {
+    return THEME_MAP[settings.editorTheme] || vscodeDark;
+  }, [settings.editorTheme]);
+
+  // Compute editor extensions including wrap options
   const editorExtensions = useMemo(() => {
     const exts: Extension[] = [...langExtension];
-
-    // Theme extension
-    const selectedTheme = THEME_MAP[settings.editorTheme] || vscodeDark;
-    exts.push(selectedTheme);
 
     // Word wrap
     if (settings.wordWrap) {
@@ -121,7 +122,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
     }
 
     return exts;
-  }, [langExtension, settings.editorTheme, settings.wordWrap]);
+  }, [langExtension, settings.wordWrap]);
 
   if (!file) {
     return (
@@ -160,9 +161,10 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
         style={{ fontSize: `${settings.fontSize}px` }}
       >
         <CodeMirror
+          key={`${file.path}-${settings.editorTheme}`}
           value={file.content}
           height="100%"
-          theme={settings.editorTheme === 'githubLight' ? 'light' : 'dark'}
+          theme={selectedTheme}
           extensions={editorExtensions}
           onChange={onChange}
           onUpdate={handleCursorChange}

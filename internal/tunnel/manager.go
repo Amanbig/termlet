@@ -169,36 +169,42 @@ func (m *Manager) handleConnection(f *forwarder, localConn net.Conn) {
 	f.mu.Unlock()
 
 	if sshCl == nil {
+		f.mu.Lock()
+		f.info.ErrorMsg = "SSH client is disconnected"
+		f.mu.Unlock()
 		return
 	}
 
 	remoteConn, err := sshCl.Dial("tcp", remoteTarget)
 	if err != nil {
+		f.mu.Lock()
+		f.info.ErrorMsg = fmt.Sprintf("Failed to reach %s on server: %v", remoteTarget, err)
+		f.mu.Unlock()
 		return
 	}
 	defer remoteConn.Close()
 
-	// Bidirectional data streaming
-	var wg sync.WaitGroup
-	wg.Add(2)
+	// Clear previous dial error upon successful connection
+	f.mu.Lock()
+	if f.info.ErrorMsg != "" && strings.HasPrefix(f.info.ErrorMsg, "Failed to reach") {
+		f.info.ErrorMsg = ""
+	}
+	f.mu.Unlock()
+
+	// Bidirectional data streaming with immediate teardown on EOF/error
+	var once sync.Once
+	closeBoth := func() {
+		_ = localConn.Close()
+		_ = remoteConn.Close()
+	}
 
 	go func() {
-		defer wg.Done()
 		_, _ = io.Copy(remoteConn, localConn)
-		if tc, ok := remoteConn.(interface{ CloseWrite() error }); ok {
-			_ = tc.CloseWrite()
-		}
+		once.Do(closeBoth)
 	}()
 
-	go func() {
-		defer wg.Done()
-		_, _ = io.Copy(localConn, remoteConn)
-		if tc, ok := localConn.(interface{ CloseWrite() error }); ok {
-			_ = tc.CloseWrite()
-		}
-	}()
-
-	wg.Wait()
+	_, _ = io.Copy(localConn, remoteConn)
+	once.Do(closeBoth)
 }
 
 // StopForwarding closes the listener and sets the tunnel to stopped.
@@ -225,6 +231,7 @@ func (m *Manager) StopForwarding(tunnelID string) error {
 		_ = f.listener.Close()
 	}
 
+	atomic.StoreInt64(&f.activeConns, 0)
 	f.info.Status = StatusStopped
 	f.info.ErrorMsg = ""
 	return nil

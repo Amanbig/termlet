@@ -209,6 +209,33 @@ export function formatErrorMessage(err: unknown, context?: string): FormattedErr
     };
   }
 
+  // 14. Port In Use / Local Bind Conflict
+  if (
+    lower.includes('address already in use') ||
+    lower.includes('already active in termlet') ||
+    lower.includes('bind local port')
+  ) {
+    return {
+      title: 'Local Port Conflict',
+      message: 'The requested local port is already bound by another program or active tunnel.',
+      hint: 'Choose a different local port (e.g. 8081, 3001, 8000) or close the application occupying that port.',
+      raw,
+    };
+  }
+
+  // 15. Port Forward Remote Dial Failure
+  if (
+    lower.includes('failed to reach') ||
+    lower.includes('connection refused')
+  ) {
+    return {
+      title: 'Remote Service Unreachable',
+      message: 'The remote server refused or timed out the connection on the requested port.',
+      hint: 'Verify that the internal service (e.g. Traefik, Docker container, PostgreSQL) is running on the remote host and listening on that port.',
+      raw,
+    };
+  }
+
   // Default fallback with optional context prefix
   const title = context ? `${context} Failed` : 'Operation Failed';
   return {

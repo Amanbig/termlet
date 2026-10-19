@@ -27,6 +27,7 @@ import {
 } from '../../wailsjs/go/main/App';
 import { BrowserOpenURL } from '../../wailsjs/runtime/runtime';
 import { toast } from 'sonner';
+import { formatErrorMessage } from '../utils/errors';
 
 interface PortForwardViewProps {
   sessionId: string | null;
@@ -138,9 +139,9 @@ export const PortForwardView: React.FC<PortForwardViewProps> = ({
       setRemoteHost('127.0.0.1');
       await fetchTunnels();
     } catch (err: any) {
-      const msg = err?.message || String(err);
-      setFormError(msg);
-      toast.error('Failed to start port forward', { description: msg });
+      const formatted = formatErrorMessage(err, 'Port Forward');
+      setFormError(`${formatted.message}${formatted.hint ? ` — ${formatted.hint}` : ''}`);
+      toast.error(formatted.title, { description: formatted.message });
     } finally {
       setIsSubmitting(false);
     }
@@ -153,7 +154,8 @@ export const PortForwardView: React.FC<PortForwardViewProps> = ({
       toast.info(`Stopped port forward on localhost:${port}`);
       await fetchTunnels();
     } catch (err: any) {
-      toast.error(`Failed to stop tunnel: ${err?.message || err}`);
+      const formatted = formatErrorMessage(err, 'Stop Tunnel');
+      toast.error(formatted.title, { description: formatted.message });
     }
   };
 
@@ -168,7 +170,8 @@ export const PortForwardView: React.FC<PortForwardViewProps> = ({
       toast.success(`Resumed port forward on localhost:${port}`);
       await fetchTunnels();
     } catch (err: any) {
-      toast.error(`Failed to resume tunnel: ${err?.message || err}`);
+      const formatted = formatErrorMessage(err, 'Resume Tunnel');
+      toast.error(formatted.title, { description: formatted.message });
     }
   };
 
@@ -182,7 +185,8 @@ export const PortForwardView: React.FC<PortForwardViewProps> = ({
       toast.success(`Deleted port forward on localhost:${port}`);
       await fetchTunnels();
     } catch (err: any) {
-      toast.error(`Failed to delete tunnel: ${err?.message || err}`);
+      const formatted = formatErrorMessage(err, 'Delete Tunnel');
+      toast.error(formatted.title, { description: formatted.message });
     }
   };
 
@@ -469,6 +473,15 @@ export const PortForwardView: React.FC<PortForwardViewProps> = ({
 
                   <div className="flex items-center gap-1.5 shrink-0">
                     <span
+                      title={
+                        isActive
+                          ? t.connections > 0
+                            ? `${t.connections} active TCP connection${t.connections === 1 ? '' : 's'}`
+                            : 'Listening for connections'
+                          : isError
+                          ? t.errorMsg || 'Tunnel error'
+                          : 'Tunnel stopped'
+                      }
                       className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${
                         isActive
                           ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/60'
@@ -477,8 +490,13 @@ export const PortForwardView: React.FC<PortForwardViewProps> = ({
                           : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700'
                       }`}
                     >
-                      {isActive ? 'Active' : isError ? 'Error' : 'Stopped'}
-                      {isActive && t.connections > 0 && ` (${t.connections})`}
+                      {isActive
+                        ? t.connections > 0
+                          ? `Active • ${t.connections} ${t.connections === 1 ? 'conn' : 'conns'}`
+                          : 'Active'
+                        : isError
+                        ? 'Error'
+                        : 'Stopped'}
                     </span>
                   </div>
                 </div>
@@ -495,9 +513,10 @@ export const PortForwardView: React.FC<PortForwardViewProps> = ({
                 </div>
 
                 {t.errorMsg && (
-                  <p className="text-[10px] text-rose-600 dark:text-rose-400 leading-tight">
-                    {t.errorMsg}
-                  </p>
+                  <div className="p-2 rounded bg-rose-50/80 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 text-rose-600 dark:text-rose-400 text-[10px] flex items-start gap-1.5 leading-tight">
+                    <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                    <span>{t.errorMsg}</span>
+                  </div>
                 )}
 
                 {/* Card Actions Footer */}

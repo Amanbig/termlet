@@ -37,6 +37,14 @@ Built with **Go (Wails v2)** + **React 19** + **TypeScript** + **Tailwind CSS v4
 - **Fast Session Switching**: Switch between active servers and terminal tabs without losing working state.
 - **Configurable Fonts & Steppers**: Custom font size stepper with 1-click increment/decrement, JetBrains Mono font integration, and customizable tab indentation (2, 4, 8 spaces).
 
+### 🔌 SSH Local Port Forwarding & Tunneling
+- **Direct Service Tunneling (`ssh -L`)**: Securely tunnel internal remote services (e.g., Traefik dashboards, Docker microservices, PostgreSQL, MySQL, Redis, local web dev servers) directly to any chosen `localhost` port on your machine over an encrypted SSH connection.
+- **Dedicated Port Forwarding View**: Visually manage, monitor, start, and stop active tunnels with 1-click controls from the Activity Bar or Status Bar counter.
+- **Profile-Persisted Configurations**: Configured port forwards are stored directly with connection profiles in a stopped state, ready to toggle on demand whenever you reconnect without re-entering endpoints.
+- **1-Click Web Service Launching**: Open tunneled web endpoints directly in your default browser with a single click, or copy the localhost URL to the clipboard.
+- **Service Presets**: Rapidly autofill popular ports including Traefik (`8080`), Web/HTTP (`80`), Node/Vite (`3000`), PostgreSQL (`5432`), MySQL (`3306`), and Redis (`6379`).
+- **Live Status & Collision Guard**: Visual badges for active, stopped, or error states, active connection counts, port collision prevention, and automatic tunnel teardown upon disconnect.
+
 ### 📁 Dual-Pane SFTP Remote File Browser
 - **Remote File Tree**: High-speed SFTP tree exploration with file type icons, directory expansion, and recursive folder traversal.
 - **File Management**: Create files, create directories, rename files, and delete with safety prompts.
@@ -56,6 +64,7 @@ Built with **Go (Wails v2)** + **React 19** + **TypeScript** + **Tailwind CSS v4
 - **Instant Search Settings**: Full-text filterable settings dashboard with responsive, centered search controls.
 
 ### 🛡️ Fault-Tolerant Error Handling & Crash Protection
+- **Native In-App Modal Confirmations**: Replaced native browser `window.confirm` dialogs with theme-matched, accessible in-app modal confirmations for destructive actions (deleting profiles, tunnels, files, or discarding unsaved edits).
 - **React `<ErrorBoundary>`**: Sectional boundaries isolate rendering failures in tabs, editor buffers, and trees so the desktop application never whitescreens.
 - **Instant In-View Recovery**: Offers 1-click **Reload View**, collapsible **Technical Details** stack viewer, and **Full Restart**.
 - **Actionable Error Translation (`errors.ts`)**: Replaces cryptic raw errors with human-friendly titles, explanations, and advice across 13 SSH, SFTP, networking, DNS, and file conflict categories.
@@ -81,19 +90,21 @@ Built with **Go (Wails v2)** + **React 19** + **TypeScript** + **Tailwind CSS v4
 
 ```
 termlet/
-├── app.go                      # Wails RPC backend bridge binding SSH, SFTP, Updater, and Settings
+├── app.go                      # Wails RPC backend bridge binding SSH, SFTP, Port Forwarding, Updater, and Settings
 ├── main.go                     # Wails application entrypoint & frameless window configuration
 ├── internal/
 │   ├── ssh/                    # SSH client, PTY session manager & authentication
 │   ├── sftpclient/             # SFTP remote file operations, streaming & concurrency safety
-│   ├── connections/            # Multi-session connection manager & persistence
+│   ├── portforward/            # SSH local port forwarding tunnel manager & port mapping
+│   ├── connections/            # Multi-session connection manager & profile persistence
 │   ├── updater/                # In-app update downloader, package installer & GitHub release API
 │   └── version/                # Semantic version constant (v0.6.0)
 ├── frontend/                   # React 19 + TypeScript + Tailwind CSS v4 + CodeMirror
 │   ├── src/
-│   │   ├── components/         # TitleBar, RemoteFileTree, CodeEditor, EditorTabs, ConnectDialog, SettingsView, ErrorBoundary, UpdateModal, ReleaseNotesView
+│   │   ├── components/         # TitleBar, RemoteFileTree, CodeEditor, EditorTabs, ConnectDialog, PortForwardView, SettingsView, ErrorBoundary, UpdateModal, ReleaseNotesView
+│   │   ├── context/            # ConfirmContext (in-app modal confirmation dialogs)
 │   │   ├── utils/              # Centralized error formatter (errors.ts)
-│   │   ├── types/              # TypeScript models (remote files, sessions, settings)
+│   │   ├── types/              # TypeScript models (remote files, sessions, settings, port forwards)
 │   │   ├── style.css           # Tailwind v4 theme definitions and GTK spinner suppression
 │   │   ├── App.tsx             # Main dashboard coordinator & state management
 │   │   └── main.tsx

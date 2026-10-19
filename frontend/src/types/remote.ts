@@ -7,6 +7,7 @@ export type FileContent = models.FileContent;
 export type HostKeyPrompt = models.HostKeyPrompt;
 export type ConnectResponse = main.ConnectResponse;
 export type SaveResult = sftpclient.SaveResult;
+export type ForwardedPortConfig = models.ForwardedPortConfig;
 
 export interface OpenFile {
   sessionId: string;

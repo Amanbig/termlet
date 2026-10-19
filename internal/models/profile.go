@@ -11,18 +11,28 @@ const (
 	AuthMethodAgent      AuthMethod = "agent"
 )
 
+// ForwardedPortConfig stores a configured port forward tunnel associated with a profile.
+type ForwardedPortConfig struct {
+	ID         string `json:"id"`
+	LocalPort  int    `json:"local_port"`
+	RemoteHost string `json:"remote_host"`
+	RemotePort int    `json:"remote_port"`
+	Name       string `json:"name"`
+}
+
 // Profile holds saved configuration for an SSH/SFTP connection.
 type Profile struct {
-	ID             string     `json:"id"`
-	Name           string     `json:"name"`
-	Host           string     `json:"host"`
-	Port           int        `json:"port"`
-	Username       string     `json:"username"`
-	AuthMethod     AuthMethod `json:"auth_method"`
-	KeyPath        string     `json:"key_path,omitempty"`
-	StartDirectory string     `json:"start_directory,omitempty"`
-	CreatedAt      int64      `json:"created_at"`
-	UpdatedAt      int64      `json:"updated_at"`
+	ID             string                `json:"id"`
+	Name           string                `json:"name"`
+	Host           string                `json:"host"`
+	Port           int                   `json:"port"`
+	Username       string                `json:"username"`
+	AuthMethod     AuthMethod            `json:"auth_method"`
+	KeyPath        string                `json:"key_path,omitempty"`
+	StartDirectory string                `json:"start_directory,omitempty"`
+	PortForwards   []ForwardedPortConfig `json:"port_forwards,omitempty"`
+	CreatedAt      int64                 `json:"created_at"`
+	UpdatedAt      int64                 `json:"updated_at"`
 }
 
 // Normalize ensures reasonable defaults like standard SSH port.

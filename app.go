@@ -160,6 +160,20 @@ func (a *App) Connect(profile models.Profile, password string, trustKey bool) (*
 	}
 
 	summary := session.Summary()
+
+	// Pre-populate any saved port forwards from the profile into the tunnel manager (in stopped state)
+	if a.tunnelMgr != nil {
+		p := &profile
+		if a.profileStore != nil && profile.ID != "" {
+			if storedP, err := a.profileStore.Get(profile.ID); err == nil && storedP != nil {
+				p = storedP
+			}
+		}
+		for _, pf := range p.PortForwards {
+			a.tunnelMgr.AddConfiguredTunnel(pf.ID, session.ID, pf.LocalPort, pf.RemoteHost, pf.RemotePort, pf.Name)
+		}
+	}
+
 	return &ConnectResponse{
 		Success: true,
 		Session: &summary,
@@ -344,6 +358,64 @@ func (a *App) GetReleaseNotes() string {
 
 // --- SSH Port Forwarding (Tunneling) ---
 
+// saveTunnelToProfile adds or updates a port forward config inside the session's profile.
+func (a *App) saveTunnelToProfile(profileID string, info tunnel.TunnelInfo) {
+	if profileID == "" || a.profileStore == nil {
+		return
+	}
+	p, err := a.profileStore.Get(profileID)
+	if err != nil || p == nil {
+		return
+	}
+
+	found := false
+	for i, pf := range p.PortForwards {
+		if pf.ID == info.ID || (pf.LocalPort == info.LocalPort && pf.RemotePort == info.RemotePort && pf.RemoteHost == info.RemoteHost) {
+			p.PortForwards[i].ID = info.ID
+			p.PortForwards[i].LocalPort = info.LocalPort
+			p.PortForwards[i].RemoteHost = info.RemoteHost
+			p.PortForwards[i].RemotePort = info.RemotePort
+			p.PortForwards[i].Name = info.Name
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		p.PortForwards = append(p.PortForwards, models.ForwardedPortConfig{
+			ID:         info.ID,
+			LocalPort:  info.LocalPort,
+			RemoteHost: info.RemoteHost,
+			RemotePort: info.RemotePort,
+			Name:       info.Name,
+		})
+	}
+
+	_ = a.profileStore.Save(*p)
+}
+
+// removeTunnelFromProfile removes a port forward config from the session's profile.
+func (a *App) removeTunnelFromProfile(profileID string, tunnelID string, localPort int, remoteHost string, remotePort int) {
+	if profileID == "" || a.profileStore == nil {
+		return
+	}
+	p, err := a.profileStore.Get(profileID)
+	if err != nil || p == nil {
+		return
+	}
+
+	var filtered []models.ForwardedPortConfig
+	for _, pf := range p.PortForwards {
+		if pf.ID == tunnelID || (localPort > 0 && pf.LocalPort == localPort && pf.RemotePort == remotePort && pf.RemoteHost == remoteHost) {
+			continue
+		}
+		filtered = append(filtered, pf)
+	}
+
+	p.PortForwards = filtered
+	_ = a.profileStore.Save(*p)
+}
+
 // StartPortForward establishes a local port listener on 127.0.0.1:localPort and proxies to remoteHost:remotePort via SSH.
 func (a *App) StartPortForward(sessionID string, localPort int, remoteHost string, remotePort int, name string) (*tunnel.TunnelInfo, error) {
 	if a.connMgr == nil {
@@ -357,7 +429,31 @@ func (a *App) StartPortForward(sessionID string, localPort int, remoteHost strin
 		return nil, fmt.Errorf("SSH connection is not active")
 	}
 
-	return a.tunnelMgr.StartForwarding(sessionID, sess.SSH, localPort, remoteHost, remotePort, name)
+	info, err := a.tunnelMgr.StartForwarding(sessionID, sess.SSH, localPort, remoteHost, remotePort, name)
+	if err != nil {
+		return nil, err
+	}
+
+	a.saveTunnelToProfile(sess.Profile.ID, *info)
+	return info, nil
+}
+
+// SavePortForwardConfig stores a port forward config in stopped state for a session's profile without starting it.
+func (a *App) SavePortForwardConfig(sessionID string, localPort int, remoteHost string, remotePort int, name string) (*tunnel.TunnelInfo, error) {
+	if a.connMgr == nil {
+		return nil, fmt.Errorf("connection manager not initialized")
+	}
+	sess, err := a.connMgr.GetSession(sessionID)
+	if err != nil {
+		return nil, fmt.Errorf("active session required: %w", err)
+	}
+	if a.tunnelMgr == nil {
+		return nil, fmt.Errorf("tunnel manager not initialized")
+	}
+
+	info := a.tunnelMgr.AddConfiguredTunnel("", sessionID, localPort, remoteHost, remotePort, name)
+	a.saveTunnelToProfile(sess.Profile.ID, *info)
+	return info, nil
 }
 
 // StopPortForward stops an active tunnel and releases the local port.
@@ -381,7 +477,13 @@ func (a *App) RestartPortForward(sessionID string, tunnelID string) (*tunnel.Tun
 		return nil, fmt.Errorf("SSH connection is not active")
 	}
 
-	return a.tunnelMgr.RestartForwarding(tunnelID, sess.SSH)
+	info, err := a.tunnelMgr.RestartForwarding(tunnelID, sess.SSH)
+	if err != nil {
+		return nil, err
+	}
+
+	a.saveTunnelToProfile(sess.Profile.ID, *info)
+	return info, nil
 }
 
 // DeletePortForward stops and removes a port forwarding configuration.
@@ -389,6 +491,13 @@ func (a *App) DeletePortForward(tunnelID string) error {
 	if a.tunnelMgr == nil {
 		return nil
 	}
+
+	if info, found := a.tunnelMgr.GetTunnel(tunnelID); found && a.connMgr != nil {
+		if sess, err := a.connMgr.GetSession(info.SessionID); err == nil && sess != nil {
+			a.removeTunnelFromProfile(sess.Profile.ID, tunnelID, info.LocalPort, info.RemoteHost, info.RemotePort)
+		}
+	}
+
 	return a.tunnelMgr.DeleteForwarding(tunnelID)
 }
 

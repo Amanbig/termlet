@@ -20,6 +20,7 @@ import {
 import { tunnel, connections } from '../../wailsjs/go/models';
 import {
   StartPortForward,
+  SavePortForwardConfig,
   StopPortForward,
   RestartPortForward,
   DeletePortForward,
@@ -140,6 +141,49 @@ export const PortForwardView: React.FC<PortForwardViewProps> = ({
       await fetchTunnels();
     } catch (err: any) {
       const formatted = formatErrorMessage(err, 'Port Forward');
+      setFormError(`${formatted.message}${formatted.hint ? ` — ${formatted.hint}` : ''}`);
+      toast.error(formatted.title, { description: formatted.message });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Save tunnel configuration to profile without immediately binding local port
+  const handleSaveOnly = async () => {
+    if (!sessionId) {
+      toast.error('No active SSH connection to save port forwarding.');
+      return;
+    }
+
+    const lPort = parseInt(localPort.trim(), 10);
+    const rPort = parseInt(remotePort.trim(), 10);
+    const rHost = remoteHost.trim() || '127.0.0.1';
+
+    if (isNaN(lPort) || lPort < 1 || lPort > 65535) {
+      setFormError('Local port must be a valid number between 1 and 65535.');
+      return;
+    }
+    if (isNaN(rPort) || rPort < 1 || rPort > 65535) {
+      setFormError('Remote port must be a valid number between 1 and 65535.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    setFormError(null);
+
+    try {
+      await SavePortForwardConfig(sessionId, lPort, rHost, rPort, name.trim());
+      toast.success(`Port forward saved to profile (stopped)`, {
+        description: `Turn on localhost:${lPort} anytime by clicking the Play button.`,
+      });
+      setIsFormOpen(false);
+      setName('');
+      setLocalPort('');
+      setRemotePort('');
+      setRemoteHost('127.0.0.1');
+      await fetchTunnels();
+    } catch (err: any) {
+      const formatted = formatErrorMessage(err, 'Save Port Forward');
       setFormError(`${formatted.message}${formatted.hint ? ` — ${formatted.hint}` : ''}`);
       toast.error(formatted.title, { description: formatted.message });
     } finally {
@@ -389,7 +433,7 @@ export const PortForwardView: React.FC<PortForwardViewProps> = ({
             </div>
           )}
 
-          <div className="flex items-center justify-end gap-2 pt-1">
+          <div className="flex items-center justify-between gap-2 pt-1 border-t border-zinc-200/60 dark:border-zinc-800/60">
             <button
               type="button"
               onClick={() => setIsFormOpen(false)}
@@ -397,13 +441,24 @@ export const PortForwardView: React.FC<PortForwardViewProps> = ({
             >
               Cancel
             </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="px-3 py-1 rounded bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-medium shadow-xs transition-colors cursor-pointer flex items-center gap-1"
-            >
-              {isSubmitting ? 'Starting...' : 'Start Forwarding'}
-            </button>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                disabled={isSubmitting}
+                onClick={handleSaveOnly}
+                title="Save this port forwarding to profile in stopped state without opening it now"
+                className="px-2.5 py-1 rounded bg-zinc-200/70 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700/80 disabled:opacity-50 text-zinc-700 dark:text-zinc-300 font-medium transition-colors cursor-pointer"
+              >
+                Save for Later
+              </button>
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="px-3 py-1 rounded bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-medium shadow-xs transition-colors cursor-pointer flex items-center gap-1"
+              >
+                {isSubmitting ? 'Starting...' : 'Start Forwarding'}
+              </button>
+            </div>
           </div>
         </form>
       )}
@@ -556,7 +611,7 @@ export const PortForwardView: React.FC<PortForwardViewProps> = ({
                     ) : (
                       <button
                         onClick={() => handleRestartTunnel(t.id, t.localPort)}
-                        title="Resume Port Forward"
+                        title="Turn on Port Forward"
                         className="p-1 rounded text-zinc-500 hover:text-emerald-600 dark:text-zinc-400 dark:hover:text-emerald-400 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
                       >
                         <Play className="w-3.5 h-3.5 fill-current" />

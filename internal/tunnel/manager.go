@@ -81,13 +81,19 @@ func (m *Manager) StartForwarding(sessionID string, sshClient *ssh.Client, local
 	}
 
 	m.mu.Lock()
+	var stoppedF *forwarder
 	// Check if this local port is already being forwarded by our manager
 	for _, f := range m.forwarders {
 		f.mu.Lock()
-		if f.info.LocalPort == localPort && f.info.Status == StatusActive {
-			f.mu.Unlock()
-			m.mu.Unlock()
-			return nil, fmt.Errorf("local port %d is already active in Termlet (%s)", localPort, f.info.Name)
+		if f.info.LocalPort == localPort {
+			if f.info.Status == StatusActive {
+				f.mu.Unlock()
+				m.mu.Unlock()
+				return nil, fmt.Errorf("local port %d is already active in Termlet (%s)", localPort, f.info.Name)
+			}
+			if f.info.SessionID == sessionID {
+				stoppedF = f
+			}
 		}
 		f.mu.Unlock()
 	}
@@ -100,8 +106,27 @@ func (m *Manager) StartForwarding(sessionID string, sshClient *ssh.Client, local
 		return nil, fmt.Errorf("failed to bind local port %d: %w (is another program using it?)", localPort, err)
 	}
 
-	tunnelID := uuid.New().String()
 	ctx, cancel := context.WithCancel(context.Background())
+
+	if stoppedF != nil {
+		stoppedF.mu.Lock()
+		stoppedF.listener = listener
+		stoppedF.sshClient = sshClient
+		stoppedF.ctx = ctx
+		stoppedF.cancel = cancel
+		stoppedF.info.Name = name
+		stoppedF.info.RemoteHost = remoteHost
+		stoppedF.info.RemotePort = remotePort
+		stoppedF.info.Status = StatusActive
+		stoppedF.info.ErrorMsg = ""
+		stoppedF.mu.Unlock()
+
+		go m.acceptLoop(stoppedF)
+		infoCopy := stoppedF.getInfo()
+		return &infoCopy, nil
+	}
+
+	tunnelID := uuid.New().String()
 
 	f := &forwarder{
 		info: TunnelInfo{
@@ -374,3 +399,67 @@ func (f *forwarder) getInfo() TunnelInfo {
 	info.Connections = atomic.LoadInt64(&f.activeConns)
 	return info
 }
+
+// AddConfiguredTunnel registers a saved port forward in stopped state without opening a socket.
+func (m *Manager) AddConfiguredTunnel(id string, sessionID string, localPort int, remoteHost string, remotePort int, name string) *TunnelInfo {
+	if strings.TrimSpace(id) == "" {
+		id = uuid.New().String()
+	}
+	if strings.TrimSpace(remoteHost) == "" {
+		remoteHost = "127.0.0.1"
+	}
+	if strings.TrimSpace(name) == "" {
+		name = fmt.Sprintf("Port %d ➔ %s:%d", localPort, remoteHost, remotePort)
+	}
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	// If this ID already exists, return existing info
+	if existing, found := m.forwarders[id]; found {
+		info := existing.getInfo()
+		return &info
+	}
+
+	// Also check if another forwarder has the exact same localPort and remote for this session
+	for _, existing := range m.forwarders {
+		if existing.info.SessionID == sessionID &&
+			existing.info.LocalPort == localPort &&
+			existing.info.RemotePort == remotePort &&
+			existing.info.RemoteHost == remoteHost {
+			info := existing.getInfo()
+			return &info
+		}
+	}
+
+	f := &forwarder{
+		info: TunnelInfo{
+			ID:          id,
+			SessionID:   sessionID,
+			LocalPort:   localPort,
+			RemoteHost:  remoteHost,
+			RemotePort:  remotePort,
+			Name:        name,
+			Status:      StatusStopped,
+			CreatedAt:   time.Now().Unix(),
+			Connections: 0,
+		},
+	}
+	m.forwarders[id] = f
+	infoCopy := f.info
+	return &infoCopy
+}
+
+// GetTunnel returns public metadata for a specific tunnel ID if present.
+func (m *Manager) GetTunnel(tunnelID string) (*TunnelInfo, bool) {
+	m.mu.RLock()
+	f, exists := m.forwarders[tunnelID]
+	m.mu.RUnlock()
+
+	if !exists {
+		return nil, false
+	}
+	info := f.getInfo()
+	return &info, true
+}
+

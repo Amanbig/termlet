@@ -96,6 +96,26 @@ export namespace models {
 	        this.is_binary = source["is_binary"];
 	    }
 	}
+	export class ForwardedPortConfig {
+	    id: string;
+	    local_port: number;
+	    remote_host: string;
+	    remote_port: number;
+	    name: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ForwardedPortConfig(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.local_port = source["local_port"];
+	        this.remote_host = source["remote_host"];
+	        this.remote_port = source["remote_port"];
+	        this.name = source["name"];
+	    }
+	}
 	export class HostKeyPrompt {
 	    hostname: string;
 	    address: string;
@@ -127,6 +147,7 @@ export namespace models {
 	    auth_method: string;
 	    key_path?: string;
 	    start_directory?: string;
+	    port_forwards?: ForwardedPortConfig[];
 	    created_at: number;
 	    updated_at: number;
 	
@@ -144,9 +165,28 @@ export namespace models {
 	        this.auth_method = source["auth_method"];
 	        this.key_path = source["key_path"];
 	        this.start_directory = source["start_directory"];
+	        this.port_forwards = this.convertValues(source["port_forwards"], ForwardedPortConfig);
 	        this.created_at = source["created_at"];
 	        this.updated_at = source["updated_at"];
 	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 	export class RemoteFile {
 	    name: string;

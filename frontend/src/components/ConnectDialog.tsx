@@ -97,6 +97,7 @@ export const ConnectDialog: React.FC<ConnectDialogProps> = ({
         auth_method: authMethod,
         key_path: authMethod === 'private_key' ? keyPath.trim() : '',
         start_directory: startDirectory.trim() || '.',
+        port_forwards: initialProfile?.port_forwards || [],
         created_at: initialProfile?.created_at || Date.now(),
         updated_at: Date.now(),
       } as any;

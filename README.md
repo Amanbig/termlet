@@ -1,194 +1,135 @@
 <p align="center">
-  <img src="build/appicon.png" alt="Termlet Logo" width="128" />
+  <img src="build/appicon.png" alt="Termlet logo" width="120" />
 </p>
 
-# Termlet ⚡ 🖥️
+<h1 align="center">Termlet</h1>
 
-> A blazing-fast, modern cross-platform desktop **SSH terminal**, **dual-pane SFTP remote file browser**, and **syntax-highlighted code editor** designed for developers and sysadmins.
+<p align="center">
+  A fast, cross-platform desktop <b>SSH client</b> with a built-in <b>SFTP file browser</b>,
+  <b>remote code editor</b>, and <b>port forwarding</b> manager.
+</p>
 
-Built with **Go (Wails v2)** + **React 19** + **TypeScript** + **Tailwind CSS v4** + **CodeMirror** + **Base UI / Shadcn**.
+<p align="center">
+  <a href="https://github.com/Amanbig/termlet/releases/latest"><img src="https://img.shields.io/github/v/release/Amanbig/termlet?label=release" alt="Latest release" /></a>
+  <a href="https://github.com/Amanbig/termlet/actions/workflows/ci.yml"><img src="https://github.com/Amanbig/termlet/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache_2.0-blue.svg" alt="License: Apache 2.0" /></a>
+  <a href="https://github.com/Amanbig/termlet/issues"><img src="https://img.shields.io/github/issues/Amanbig/termlet" alt="Open issues" /></a>
+  <img src="https://img.shields.io/badge/Platform-Linux%20%7C%20Windows%20%7C%20macOS-lightgrey" alt="Platforms" />
+</p>
 
----
+<p align="center">
+  <a href="#install">Install</a> ·
+  <a href="#features">Features</a> ·
+  <a href="#build-from-source">Build</a> ·
+  <a href="CONTRIBUTING.md">Contribute</a> ·
+  <a href="https://github.com/Amanbig/termlet/issues/new/choose">Report a bug</a>
+</p>
 
-[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
-[![Go Version](https://img.shields.io/badge/Go-1.24+-00ADD8?logo=go)](https://golang.org)
-[![Wails](https://img.shields.io/badge/Wails-v2-DF1A29?logo=wails)](https://wails.io)
-[![React](https://img.shields.io/badge/React-19-61DAFB?logo=react)](https://react.dev)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript)](https://www.typescriptlang.org)
-[![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20Windows%20%7C%20macOS-lightgrey)](#target-platforms)
+<!--
+  TODO: add a screenshot or short GIF here, e.g.
+  <p align="center"><img src="docs/screenshot.png" alt="Termlet screenshot" width="800" /></p>
+-->
 
----
+## Why Termlet?
 
-## ✨ Features
+Managing a remote server usually means juggling a terminal, an SFTP client, a text editor, and a pile of `ssh -L` commands. Termlet puts them in one lightweight native window: connect once, then browse files, edit them in place, and tunnel ports without leaving the app.
 
-### 🪟 Modern Frameless Window & Integrated Controls
-- **Custom Frameless Title Bar**:
-  - Replaces native OS chrome with an integrated, theme-adaptive title bar.
-  - Tactile window controls: **`—` Minimize**, **`□` Maximize / Restore**, and **`✕` Close**.
-  - **Dynamic Maximize/Restore Toggle**: Smoothly switches between single square and dual-rectangle restore icons.
-  - **Double-Click Titlebar**: Double-clicking the draggable header toggles maximize and restore.
-  - **Window Dragging**: Smooth OS window movement via designated `.wails-drag` and `.wails-no-drag` regions.
-  - **Live Connection Pill**: Displays the currently active connection (`username@host:port`) with a pulsing emerald pulsation dot and quick-disconnect dropdown right inside the title bar.
+Built with [Wails v2](https://wails.io) (Go) and React 19 + TypeScript, so it ships as a small native binary instead of an Electron bundle.
 
-### ⚡ Full-Featured SSH Terminal & Profiles
-- **Profile Manager**: Save and organize multiple remote servers with custom profile names, hostnames, ports, usernames, and authentication methods.
-- **Multiple Authentication Modes**: Supports passwords, encrypted private keys with passphrases (`id_rsa`, `id_ed25519`), and local SSH Agent forwarding (`$SSH_AUTH_SOCK`).
-- **Host Key Verification**: Interactive security modal for new and changed server host keys with SHA256 fingerprints and MITM warnings.
-- **Fast Session Switching**: Switch between active servers and terminal tabs without losing working state.
-- **Configurable Fonts & Steppers**: Custom font size stepper with 1-click increment/decrement, JetBrains Mono font integration, and customizable tab indentation (2, 4, 8 spaces).
+## Features
 
-### 🔌 SSH Local Port Forwarding & Tunneling
-- **Direct Service Tunneling (`ssh -L`)**: Securely tunnel internal remote services (e.g., Traefik dashboards, Docker microservices, PostgreSQL, MySQL, Redis, local web dev servers) directly to any chosen `localhost` port on your machine over an encrypted SSH connection.
-- **Dedicated Port Forwarding View**: Visually manage, monitor, start, and stop active tunnels with 1-click controls from the Activity Bar or Status Bar counter.
-- **Profile-Persisted Configurations**: Configured port forwards are stored directly with connection profiles in a stopped state, ready to toggle on demand whenever you reconnect without re-entering endpoints.
-- **1-Click Web Service Launching**: Open tunneled web endpoints directly in your default browser with a single click, or copy the localhost URL to the clipboard.
-- **Service Presets**: Rapidly autofill popular ports including Traefik (`8080`), Web/HTTP (`80`), Node/Vite (`3000`), PostgreSQL (`5432`), MySQL (`3306`), and Redis (`6379`).
-- **Live Status & Collision Guard**: Visual badges for active, stopped, or error states, active connection counts, port collision prevention, and automatic tunnel teardown upon disconnect.
+- **SSH terminal and profiles**: save servers, use passwords, private keys (with passphrases), or your SSH agent. Host keys are verified, with a warning when a key changes.
+- **SFTP file browser**: browse, create, rename, delete, and upload files on the remote host.
+- **Remote code editor**: CodeMirror 6 with syntax highlighting, multiple tabs, 14 themes, and <kbd>Ctrl</kbd>+<kbd>S</kbd> to save straight to the server. Binary files are detected and not opened.
+- **Local port forwarding** (`ssh -L`): create, start, and stop tunnels from a dedicated view. Forwards are saved with the profile, with one-click "open in browser" and presets for common services (HTTP, Vite, PostgreSQL, MySQL, Redis, Traefik).
+- **Auto-update**: checks GitHub Releases and installs updates in place (`.deb`, `.rpm`, Windows installer, or portable binary).
+- **Polished UI**: frameless window, light and dark themes, and readable error messages with troubleshooting hints.
 
-### 📁 Dual-Pane SFTP Remote File Browser
-- **Remote File Tree**: High-speed SFTP tree exploration with file type icons, directory expansion, and recursive folder traversal.
-- **File Management**: Create files, create directories, rename files, and delete with safety prompts.
-- **1-Click Uploads**: Upload local files directly into any remote directory via the integrated file picker.
-- **Context Menus**: Right-click or `•••` action dropdowns for quick file operations, path copying, and deletion.
+## Install
 
-### 📝 Integrated Syntax-Highlighted Remote Code Editor
-- **Multi-Tab Workspace**: Open and edit multiple remote files simultaneously alongside settings.
-- **Rich Syntax Highlighting**: Powered by **CodeMirror 6** with language detection across Python, JavaScript, TypeScript, Go, Rust, C/C++, HTML, CSS, JSON, YAML, Shell, Markdown, and more.
-- **Instant Remote Save**: Save directly to the remote server using <kbd>Ctrl + S</kbd> / <kbd>Cmd + S</kbd> with dirty state indicators (`●`).
-- **Editor Preferences**: Customizable editor themes (VS Code Dark, GitHub Dark, GitHub Light, Tokyo Night, Dracula, Nord, Monokai), line numbers toggle, and soft word wrap.
-- **Binary File Detection**: Safeguards against opening binary executables or archives into text buffers.
+Download the latest build for your platform from the [Releases page](https://github.com/Amanbig/termlet/releases/latest):
 
-### 🎨 Polished Dual-Theme System (Light & Dark Mode)
-- **High-Contrast Design**: WCAG AA compliant contrast across both Dark Mode (`zinc-950`) and Light Mode (`zinc-50`).
-- **Custom Numeric Steppers**: Handcrafted tactile font size steppers (`- [ 13 ] + px`) and sanitized numeric inputs, eliminating native WebKitGTK white spinner box artifacts on Linux.
-- **Instant Search Settings**: Full-text filterable settings dashboard with responsive, centered search controls.
+| Platform | Packages |
+| :--- | :--- |
+| **Linux (amd64)** | `.deb`, `.rpm`, `.tar.gz` |
+| **Windows (amd64)** | Installer `.exe`, portable `.zip` |
+| **macOS (Universal)** | `.dmg`, `.zip` |
 
-### 🛡️ Fault-Tolerant Error Handling & Crash Protection
-- **Native In-App Modal Confirmations**: Replaced native browser `window.confirm` dialogs with theme-matched, accessible in-app modal confirmations for destructive actions (deleting profiles, tunnels, files, or discarding unsaved edits).
-- **React `<ErrorBoundary>`**: Sectional boundaries isolate rendering failures in tabs, editor buffers, and trees so the desktop application never whitescreens.
-- **Instant In-View Recovery**: Offers 1-click **Reload View**, collapsible **Technical Details** stack viewer, and **Full Restart**.
-- **Actionable Error Translation (`errors.ts`)**: Replaces cryptic raw errors with human-friendly titles, explanations, and advice across 13 SSH, SFTP, networking, DNS, and file conflict categories.
-- **Inline Connection Error Banners**: `ConnectDialog` displays dedicated diagnostic alerts with troubleshooting hints right above dialog controls.
-- **Explorer Retry States**: Replaces deceptive "Directory is empty" messages with an explicit error screen and 1-click **Retry**.
-- **Go Backend Panic Prevention**: Strict nil pointer checks across all SFTP methods and connection sessions before lock acquisition.
+On Linux, Termlet needs GTK 3 and WebKitGTK 4.1 at runtime (installed automatically by the `.deb` and `.rpm` packages).
 
-### 🔄 In-App Automatic Updates & Release Notes
-- **Background Release Detection**: Automatic GitHub Releases checking with non-intrusive notification toasts.
-- **Native Package & In-Place Installation**:
-  - **Linux (`.deb` / `.rpm`)**: Downloads the appropriate target package and runs native package manager installation via `pkexec`.
-  - **Windows**: Launches the NSIS setup installer `.exe` or patches portable `.zip` archives.
-  - **Portable / Standalone**: Applies binary updates in-place seamlessly with automatic elevated fallback.
-- **VS Code Style Post-Update Release Notes Tab**:
-  - Automatically pops up a rendered Release Notes tab upon first launch after an update to showcase new features and improvements.
-  - Tracked via `localStorage` to display **only once** per version upgrade.
-  - Always accessible on demand via the **Release Notes** button in Settings.
-- **Windows Multi-Resolution Icon & Webview Favicons**: True multi-res `.ico` (16 to 256px) for Windows Taskbar/Explorer and crisp webview runtime favicons.
+## Build from source
 
----
+### Prerequisites
 
-## 🏗️ Architecture
+- [Go](https://go.dev/dl/) (version in [`go.mod`](go.mod))
+- [Node.js](https://nodejs.org/) 20+ and npm
+- [Wails CLI](https://wails.io/docs/gettingstarted/installation) v2.9+:
+  `go install github.com/wailsapp/wails/v2/cmd/wails@latest`
+- **Linux only**, GTK and WebKit headers:
+
+  ```bash
+  # Debian / Ubuntu / Mint
+  sudo apt-get install -y build-essential pkg-config libgtk-3-dev libwebkit2gtk-4.1-dev
+
+  # Fedora / RHEL
+  sudo dnf install -y gtk3-devel webkit2gtk4.1-devel
+  ```
+
+### Run in development
+
+```bash
+git clone https://github.com/Amanbig/termlet.git
+cd termlet
+(cd frontend && npm install)
+wails dev -tags webkit2_41      # drop "-tags webkit2_41" on Windows/macOS
+```
+
+### Production build
+
+```bash
+wails build -tags webkit2_41    # output: build/bin/termlet
+```
+
+### Tests
+
+```bash
+go test ./internal/...
+cd frontend && npx tsc --noEmit
+```
+
+## Project layout
 
 ```
 termlet/
-├── app.go                      # Wails RPC backend bridge binding SSH, SFTP, Port Forwarding, Updater, and Settings
-├── main.go                     # Wails application entrypoint & frameless window configuration
+├── app.go, main.go        # Wails entrypoint and Go ↔ frontend bindings
 ├── internal/
-│   ├── ssh/                    # SSH client, PTY session manager & authentication
-│   ├── sftpclient/             # SFTP remote file operations, streaming & concurrency safety
-│   ├── portforward/            # SSH local port forwarding tunnel manager & port mapping
-│   ├── connections/            # Multi-session connection manager & profile persistence
-│   ├── updater/                # In-app update downloader, package installer & GitHub release API
-│   └── version/                # Semantic version constant (v0.6.0)
-├── frontend/                   # React 19 + TypeScript + Tailwind CSS v4 + CodeMirror
-│   ├── src/
-│   │   ├── components/         # TitleBar, RemoteFileTree, CodeEditor, EditorTabs, ConnectDialog, PortForwardView, SettingsView, ErrorBoundary, UpdateModal, ReleaseNotesView
-│   │   ├── context/            # ConfirmContext (in-app modal confirmation dialogs)
-│   │   ├── utils/              # Centralized error formatter (errors.ts)
-│   │   ├── types/              # TypeScript models (remote files, sessions, settings, port forwards)
-│   │   ├── style.css           # Tailwind v4 theme definitions and GTK spinner suppression
-│   │   ├── App.tsx             # Main dashboard coordinator & state management
-│   │   └── main.tsx
-│   └── wailsjs/                # Auto-generated RPC bindings between Go and TypeScript
-├── build/                      # Build assets, multi-resolution application icons, and packaging specs
-│   ├── linux/                  # Linux desktop launcher and NFPM packaging configuration
-│   └── windows/                # Windows icon (16-256px multi-layer ICO) and manifest
-└── .github/workflows/          # Cross-platform CI/CD release workflow (Linux, Windows, macOS)
+│   ├── sshclient/         # SSH client, PTY sessions, authentication
+│   ├── sftpclient/        # SFTP file operations
+│   ├── tunnel/            # Local port forwarding manager
+│   ├── connections/       # Connection manager and sessions
+│   ├── storage/           # Profile and settings persistence
+│   ├── models/            # Shared data types
+│   ├── updater/           # GitHub release check and installer
+│   └── version/           # Version constant
+├── frontend/              # React + TypeScript + Tailwind CSS v4 UI
+├── build/                 # Icons and packaging (Linux, Windows, macOS)
+└── .github/               # CI, release workflow, issue/PR templates
 ```
 
----
+## Contributing
 
-## 🚀 Getting Started
+Contributions of all sizes are welcome: bug reports, feature ideas, docs, and code.
 
-### Prerequisites
-- **Go**: `1.24+`
-- **Node.js**: `20+` & `npm`
-- **Wails CLI**: `v2.9+` (`go install github.com/wailsapp/wails/v2/cmd/wails@latest`)
+1. Read [CONTRIBUTING.md](CONTRIBUTING.md) for the dev setup and PR process.
+2. Look for issues labeled [`good first issue`](https://github.com/Amanbig/termlet/labels/good%20first%20issue) or [`help wanted`](https://github.com/Amanbig/termlet/labels/help%20wanted).
+3. Please follow our [Code of Conduct](CODE_OF_CONDUCT.md).
 
-#### Linux Build Dependencies
-On Debian, Ubuntu, Linux Mint, or Pop!_OS:
-```bash
-sudo apt-get update
-sudo apt-get install -y build-essential pkg-config libgtk-3-dev libwebkit2gtk-4.1-dev
-```
+Found a security problem? Don't open a public issue; see [SECURITY.md](SECURITY.md).
 
-On Fedora, RHEL, or CentOS:
-```bash
-sudo dnf install -y gtk3-devel webkit2gtk4.1-devel
-```
+## Changelog
 
----
+See [RELEASE_NOTES.md](RELEASE_NOTES.md) for the current release and [releases/](releases/) for the full history.
 
-### Installation & Development
+## License
 
-1. **Clone the repository**:
-   ```bash
-   git clone https://github.com/Amanbig/termlet.git
-   cd termlet
-   ```
-
-2. **Install frontend dependencies**:
-   ```bash
-   cd frontend
-   npm install
-   cd ..
-   ```
-
-3. **Run in Live Development Mode**:
-   ```bash
-   wails dev -tags webkit2_41
-   ```
-   *(On non-Linux systems or older WebKit, you can run `wails dev`)*
-
----
-
-## 📦 Production Build
-
-To compile a standalone production binary for your operating system:
-
-```bash
-wails build -tags webkit2_41
-```
-
-The compiled desktop binary will be placed inside `build/bin/termlet`.
-
-### Target Platforms
-
-| Platform | Formats Generated |
-| :--- | :--- |
-| **Linux (amd64)** | Native binary, `.deb` (Debian/Ubuntu), `.rpm` (Fedora/RHEL), `.tar.gz` |
-| **Windows (amd64)** | Standalone `.exe`, `.zip` archive |
-| **macOS (Universal)** | Universal binary (Apple Silicon + Intel), `.dmg`, `.zip` |
-
----
-
-## 📋 Release History & Notes
-
-For detailed changelogs and highlights of each release, see:
-- [RELEASE_NOTES.md](RELEASE_NOTES.md) — Active release highlights
-- [releases/](releases/) — Historical version archive index
-
----
-
-## 📄 License
-
-This project is licensed under the **Apache 2.0 License** — see the [LICENSE](LICENSE) file for details.
+Licensed under the [Apache License 2.0](LICENSE).

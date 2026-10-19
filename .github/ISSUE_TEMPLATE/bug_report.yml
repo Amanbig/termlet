@@ -1,0 +1,84 @@
+name: Bug report
+description: Something in Termlet isn't working as expected
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! Please search [existing issues](https://github.com/Amanbig/termlet/issues) first.
+        **Never paste passwords, private keys, or sensitive hostnames.** For security problems, see our [security policy](https://github.com/Amanbig/termlet/security/policy).
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: A clear description of the bug, and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Connect to a server using ...
+        2. Open the Ports view
+        3. Click ...
+        4. See error
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - SSH terminal / connection
+        - Profiles / authentication
+        - SFTP file browser
+        - Code editor
+        - Port forwarding
+        - Auto-update
+        - UI / themes
+        - Packaging / install
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Termlet version
+      description: Shown in Settings, or on the Releases page.
+      placeholder: "0.6.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - Linux
+        - Windows
+        - macOS
+    validations:
+      required: true
+  - type: input
+    id: os-version
+    attributes:
+      label: OS version / distro
+      placeholder: "Ubuntu 24.04, Windows 11 23H2, macOS 14.5"
+  - type: dropdown
+    id: install-method
+    attributes:
+      label: How did you install it?
+      options:
+        - .deb
+        - .rpm
+        - .tar.gz / portable
+        - Windows installer
+        - Windows zip
+        - macOS dmg / zip
+        - Built from source
+  - type: textarea
+    id: logs
+    attributes:
+      label: Error message, logs, or screenshots
+      description: Paste the error text from the app or terminal, or drag in a screenshot.
+      render: shell

@@ -23,7 +23,8 @@ import { TitleBar } from './components/TitleBar';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { useRemoteFiles } from './hooks/useRemoteFiles';
 import { useSettings } from './hooks/useSettings';
-import { Toaster, toast } from 'sonner';
+import { Toaster } from './components/ui/sonner';
+import { toast } from 'sonner';
 import { Power, Sparkles, X } from 'lucide-react';
 import {
   DropdownMenu,
@@ -541,7 +542,7 @@ export function App() {
       )}
 
       {/* Notifications */}
-      <Toaster position="bottom-right" richColors />
+      <Toaster theme={settings.uiTheme} position="bottom-right" closeButton richColors />
     </div>
   );
 }

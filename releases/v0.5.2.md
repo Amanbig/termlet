@@ -40,6 +40,15 @@ Termlet **v0.5.2** brings comprehensive, production-grade error handling across 
 - **Quick Access from Anywhere**:
   - Clicking "Update in Settings" from the floating notification toast or clicking the version button in the status bar opens Settings directly to the update card.
 
+#### 🎨 Theme-Aware, High-Contrast Toast Notifications
+- **Dynamic Light/Dark Mode Palette**:
+  - Toasts are now fully synchronized with Termlet's UI theme (`settings.uiTheme`), dynamically shifting between a rich dark backdrop (`dark:bg-zinc-900/95`) and crisp light background (`bg-white/95`).
+- **Tactile Semantic Color Tinting**:
+  - Success, error, warning, and info notifications adopt matching pastel status tints and high-contrast borders (emerald, rose, amber, and blue).
+  - Integrated Lucide SVG icons (`CheckCircle2`, `AlertCircle`, `AlertTriangle`, `Info`, `Loader2`).
+- **Integrated Close Buttons & Accessible Text**:
+  - Every notification card includes an accessible dismiss button, clean typography, and high-contrast hint/description text.
+
 ---
 
 ### 📦 Artifacts Included

@@ -1,7 +1,7 @@
 import React from 'react';
-import { Files, Server, Plus, HardDrive, Settings } from 'lucide-react';
+import { Files, Server, Plus, HardDrive, Settings, Radio } from 'lucide-react';
 
-export type ActivityView = 'explorer' | 'connections';
+export type ActivityView = 'explorer' | 'connections' | 'ports';
 
 interface ActivityBarProps {
   activeView: ActivityView;
@@ -9,6 +9,7 @@ interface ActivityBarProps {
   onNewConnection: () => void;
   onOpenSettings: () => void;
   hasActiveSession: boolean;
+  activePortsCount?: number;
 }
 
 export const ActivityBar: React.FC<ActivityBarProps> = ({
@@ -17,6 +18,7 @@ export const ActivityBar: React.FC<ActivityBarProps> = ({
   onNewConnection,
   onOpenSettings,
   hasActiveSession,
+  activePortsCount = 0,
 }) => {
   return (
     <div className="w-12 bg-zinc-100 dark:bg-zinc-950 border-r border-zinc-200 dark:border-zinc-800/80 flex flex-col justify-between items-center py-2 select-none shrink-0 z-20">
@@ -57,6 +59,27 @@ export const ActivityBar: React.FC<ActivityBarProps> = ({
             <span className="absolute left-0 top-1.5 bottom-1.5 w-0.5 bg-blue-500 rounded-r" />
           )}
           <Server className="w-5 h-5 stroke-[1.6]" />
+        </button>
+
+        {/* Port Forwarding / Tunnels Button */}
+        <button
+          onClick={() => onSelectView('ports')}
+          title="Port Forwarding & Tunnels"
+          className={`relative w-full h-10 flex items-center justify-center transition-colors cursor-pointer ${
+            activeView === 'ports'
+              ? 'text-zinc-900 dark:text-zinc-100'
+              : 'text-zinc-400 hover:text-zinc-800 dark:text-zinc-500 dark:hover:text-zinc-200'
+          }`}
+        >
+          {activeView === 'ports' && (
+            <span className="absolute left-0 top-1.5 bottom-1.5 w-0.5 bg-blue-500 rounded-r" />
+          )}
+          <Radio className="w-5 h-5 stroke-[1.6]" />
+          {activePortsCount > 0 && (
+            <span className="absolute top-1.5 right-1.5 w-3.5 h-3.5 bg-blue-600 text-white text-[9px] font-bold rounded-full flex items-center justify-center shadow-xs">
+              {activePortsCount > 9 ? '9+' : activePortsCount}
+            </span>
+          )}
         </button>
       </div>
 

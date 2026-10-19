@@ -74,7 +74,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   isCheckingUpdates: propIsChecking,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [appVersion, setAppVersion] = useState('0.5.3');
+  const [appVersion, setAppVersion] = useState('0.6.0');
   const [localCheckingUpdates, setLocalCheckingUpdates] = useState(false);
   const [localUpdateInfo, setLocalUpdateInfo] = useState<updater.UpdateInfo | null>(null);
   const [hasCheckedUpdates, setHasCheckedUpdates] = useState(false);

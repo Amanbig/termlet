@@ -22,6 +22,10 @@ export function CreateRemoteFile(arg1, arg2) {
   return window['go']['main']['App']['CreateRemoteFile'](arg1, arg2);
 }
 
+export function DeletePortForward(arg1) {
+  return window['go']['main']['App']['DeletePortForward'](arg1);
+}
+
 export function DeleteProfile(arg1) {
   return window['go']['main']['App']['DeleteProfile'](arg1);
 }
@@ -58,6 +62,10 @@ export function ListActiveSessions() {
   return window['go']['main']['App']['ListActiveSessions']();
 }
 
+export function ListPortForwards(arg1) {
+  return window['go']['main']['App']['ListPortForwards'](arg1);
+}
+
 export function ListProfiles() {
   return window['go']['main']['App']['ListProfiles']();
 }
@@ -78,12 +86,24 @@ export function RestartApp() {
   return window['go']['main']['App']['RestartApp']();
 }
 
+export function RestartPortForward(arg1, arg2) {
+  return window['go']['main']['App']['RestartPortForward'](arg1, arg2);
+}
+
 export function SaveProfile(arg1, arg2) {
   return window['go']['main']['App']['SaveProfile'](arg1, arg2);
 }
 
 export function SaveRemoteFile(arg1, arg2, arg3, arg4) {
   return window['go']['main']['App']['SaveRemoteFile'](arg1, arg2, arg3, arg4);
+}
+
+export function StartPortForward(arg1, arg2, arg3, arg4, arg5) {
+  return window['go']['main']['App']['StartPortForward'](arg1, arg2, arg3, arg4, arg5);
+}
+
+export function StopPortForward(arg1) {
+  return window['go']['main']['App']['StopPortForward'](arg1);
 }
 
 export function UploadFileContent(arg1, arg2, arg3, arg4) {

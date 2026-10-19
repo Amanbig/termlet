@@ -4,6 +4,7 @@ import {updater} from '../models';
 import {models} from '../models';
 import {main} from '../models';
 import {connections} from '../models';
+import {tunnel} from '../models';
 import {sftpclient} from '../models';
 
 export function CheckForAppUpdate():Promise<updater.UpdateInfo>;
@@ -15,6 +16,8 @@ export function Connect(arg1:models.Profile,arg2:string,arg3:boolean):Promise<ma
 export function CreateRemoteDirectory(arg1:string,arg2:string):Promise<void>;
 
 export function CreateRemoteFile(arg1:string,arg2:string):Promise<void>;
+
+export function DeletePortForward(arg1:string):Promise<void>;
 
 export function DeleteProfile(arg1:string):Promise<void>;
 
@@ -34,6 +37,8 @@ export function GetUpdateProgress():Promise<updater.DownloadProgress>;
 
 export function ListActiveSessions():Promise<Array<connections.SessionSummary>>;
 
+export function ListPortForwards(arg1:string):Promise<Array<tunnel.TunnelInfo>>;
+
 export function ListProfiles():Promise<Array<models.Profile>>;
 
 export function ListRemoteFiles(arg1:string,arg2:string):Promise<Array<models.RemoteFile>>;
@@ -44,8 +49,14 @@ export function RenameRemotePath(arg1:string,arg2:string,arg3:string):Promise<vo
 
 export function RestartApp():Promise<void>;
 
+export function RestartPortForward(arg1:string,arg2:string):Promise<tunnel.TunnelInfo>;
+
 export function SaveProfile(arg1:models.Profile,arg2:string):Promise<void>;
 
 export function SaveRemoteFile(arg1:string,arg2:string,arg3:string,arg4:number):Promise<sftpclient.SaveResult>;
+
+export function StartPortForward(arg1:string,arg2:number,arg3:string,arg4:number,arg5:string):Promise<tunnel.TunnelInfo>;
+
+export function StopPortForward(arg1:string):Promise<void>;
 
 export function UploadFileContent(arg1:string,arg2:string,arg3:string,arg4:string):Promise<void>;

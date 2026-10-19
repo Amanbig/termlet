@@ -194,6 +194,41 @@ export namespace sftpclient {
 
 }
 
+export namespace tunnel {
+	
+	export class TunnelInfo {
+	    id: string;
+	    sessionId: string;
+	    localPort: number;
+	    remoteHost: string;
+	    remotePort: number;
+	    name: string;
+	    status: string;
+	    errorMsg?: string;
+	    createdAt: number;
+	    connections: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new TunnelInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.sessionId = source["sessionId"];
+	        this.localPort = source["localPort"];
+	        this.remoteHost = source["remoteHost"];
+	        this.remotePort = source["remotePort"];
+	        this.name = source["name"];
+	        this.status = source["status"];
+	        this.errorMsg = source["errorMsg"];
+	        this.createdAt = source["createdAt"];
+	        this.connections = source["connections"];
+	    }
+	}
+
+}
+
 export namespace updater {
 	
 	export class AssetOption {

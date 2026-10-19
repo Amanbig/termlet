@@ -18,6 +18,7 @@ import { CodeEditor } from './components/CodeEditor';
 import { ConnectDialog } from './components/ConnectDialog';
 import { SettingsView } from './components/SettingsView';
 import { ReleaseNotesView } from './components/ReleaseNotesView';
+import { PortForwardView } from './components/PortForwardView';
 import { WelcomeScreen } from './components/WelcomeScreen';
 import { TitleBar } from './components/TitleBar';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -25,7 +26,7 @@ import { useRemoteFiles } from './hooks/useRemoteFiles';
 import { useSettings } from './hooks/useSettings';
 import { Toaster } from './components/ui/sonner';
 import { toast } from 'sonner';
-import { Power, Sparkles, X } from 'lucide-react';
+import { Power, Sparkles, X, Radio } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -52,7 +53,8 @@ export function App() {
   const [updateInfo, setUpdateInfo] = useState<updater.UpdateInfo | null>(null);
   const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
   const [showUpdateToast, setShowUpdateToast] = useState(false);
-  const [appVersion, setAppVersion] = useState('0.5.3');
+  const [appVersion, setAppVersion] = useState('0.6.0');
+  const [activePortsCount, setActivePortsCount] = useState<number>(0);
 
   const { settings, updateSettings, resetSettings } = useSettings();
 
@@ -87,7 +89,7 @@ export function App() {
       if (res) {
         setUpdateInfo(res);
         if (res.currentVersion || res.current_version) {
-          setAppVersion(res.currentVersion || res.current_version || '0.5.3');
+          setAppVersion(res.currentVersion || res.current_version || '0.6.0');
         }
         if (res.available) {
           setShowUpdateToast(true);
@@ -299,11 +301,12 @@ export function App() {
           }}
           onOpenSettings={handleOpenSettingsTab}
           hasActiveSession={!!currentSessionId}
+          activePortsCount={activePortsCount}
         />
 
-        {/* 2. Primary Side Panel (Collapsible: Explorer or Connections) */}
+        {/* 2. Primary Side Panel (Collapsible: Explorer, Connections, or Ports) */}
         {sidebarOpen && (
-          <div className="w-64 h-full flex flex-col shrink-0 overflow-hidden bg-zinc-50 dark:bg-zinc-950/70 border-r border-zinc-200 dark:border-zinc-800/80">
+          <div className={`${activeActivityView === 'ports' ? 'w-72 sm:w-80' : 'w-64'} h-full flex flex-col shrink-0 overflow-hidden bg-zinc-50 dark:bg-zinc-950/70 border-r border-zinc-200 dark:border-zinc-800/80 transition-all duration-150`}>
             <ErrorBoundary fallbackTitle="Failed to load side panel">
               {activeActivityView === 'explorer' ? (
                 <RemoteFileTree
@@ -314,6 +317,16 @@ export function App() {
                   activeFilePath={activeFilePath}
                   onDisconnect={handleDisconnect}
                   onOpenProfiles={() => setActiveActivityView('connections')}
+                />
+              ) : activeActivityView === 'ports' ? (
+                <PortForwardView
+                  sessionId={currentSessionId}
+                  activeSession={currentSession}
+                  onOpenConnectDialog={() => {
+                    setEditingProfile(null);
+                    setConnectDialogOpen(true);
+                  }}
+                  onTunnelsChange={setActivePortsCount}
                 />
               ) : (
                 <ConnectionSidebar
@@ -465,6 +478,28 @@ export function App() {
             <span className="text-[10px] text-zinc-500 font-mono hidden sm:inline">
               {currentSession.username}@{currentSession.host}:{currentSession.port}
             </span>
+          )}
+
+          {currentSession && (
+            <button
+              onClick={() => {
+                setActiveActivityView('ports');
+                setSidebarOpen(true);
+              }}
+              title="Click to view Port Forwarding & Tunnels"
+              className={`flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] cursor-pointer transition-colors ${
+                activePortsCount > 0
+                  ? 'bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 font-medium border border-blue-200 dark:border-blue-900/60'
+                  : 'hover:bg-zinc-200/60 dark:hover:bg-zinc-800 text-zinc-500 dark:text-zinc-400'
+              }`}
+            >
+              <Radio className={`w-3 h-3 ${activePortsCount > 0 ? 'text-blue-500 animate-pulse' : 'text-zinc-400'}`} />
+              <span>
+                {activePortsCount > 0
+                  ? `${activePortsCount} Port${activePortsCount === 1 ? '' : 's'} Forwarded`
+                  : 'Ports'}
+              </span>
+            </button>
           )}
         </div>
 

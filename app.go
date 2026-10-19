@@ -11,6 +11,7 @@ import (
 	"termlet/internal/models"
 	"termlet/internal/sftpclient"
 	"termlet/internal/storage"
+	"termlet/internal/tunnel"
 	"termlet/internal/updater"
 	"termlet/internal/version"
 )
@@ -25,6 +26,7 @@ type App struct {
 	profileStore *storage.ProfileStorage
 	secretStore  *storage.SecretStorage
 	updater      *updater.Updater
+	tunnelMgr    *tunnel.Manager
 }
 
 // ConnectResponse wraps the outcome of a Connect request.
@@ -50,12 +52,14 @@ func NewApp() *App {
 	}
 
 	upd := updater.NewUpdater()
+	tunnelMgr := tunnel.NewManager()
 
 	return &App{
 		profileStore: profileStore,
 		secretStore:  secretStore,
 		connMgr:      connMgr,
 		updater:      upd,
+		tunnelMgr:    tunnelMgr,
 	}
 }
 
@@ -67,6 +71,9 @@ func (a *App) startup(ctx context.Context) {
 
 // shutdown is called during application termination.
 func (a *App) shutdown(ctx context.Context) {
+	if a.tunnelMgr != nil {
+		a.tunnelMgr.CloseAll()
+	}
 	if a.connMgr != nil {
 		a.connMgr.CloseAll()
 	}
@@ -161,6 +168,9 @@ func (a *App) Connect(profile models.Profile, password string, trustKey bool) (*
 
 // Disconnect terminates an active session.
 func (a *App) Disconnect(sessionID string) error {
+	if a.tunnelMgr != nil {
+		a.tunnelMgr.CloseSessionTunnels(sessionID)
+	}
 	if a.connMgr == nil {
 		return nil
 	}
@@ -330,4 +340,62 @@ func (a *App) RestartApp() error {
 // GetReleaseNotes returns the embedded markdown release notes for the active version.
 func (a *App) GetReleaseNotes() string {
 	return embeddedReleaseNotes
+}
+
+// --- SSH Port Forwarding (Tunneling) ---
+
+// StartPortForward establishes a local port listener on 127.0.0.1:localPort and proxies to remoteHost:remotePort via SSH.
+func (a *App) StartPortForward(sessionID string, localPort int, remoteHost string, remotePort int, name string) (*tunnel.TunnelInfo, error) {
+	if a.connMgr == nil {
+		return nil, fmt.Errorf("connection manager not initialized")
+	}
+	sess, err := a.connMgr.GetSession(sessionID)
+	if err != nil {
+		return nil, fmt.Errorf("active session required for port forwarding: %w", err)
+	}
+	if sess.SSH == nil {
+		return nil, fmt.Errorf("SSH connection is not active")
+	}
+
+	return a.tunnelMgr.StartForwarding(sessionID, sess.SSH, localPort, remoteHost, remotePort, name)
+}
+
+// StopPortForward stops an active tunnel and releases the local port.
+func (a *App) StopPortForward(tunnelID string) error {
+	if a.tunnelMgr == nil {
+		return fmt.Errorf("tunnel manager not initialized")
+	}
+	return a.tunnelMgr.StopForwarding(tunnelID)
+}
+
+// RestartPortForward resumes a stopped tunnel using an active session's SSH connection.
+func (a *App) RestartPortForward(sessionID string, tunnelID string) (*tunnel.TunnelInfo, error) {
+	if a.connMgr == nil {
+		return nil, fmt.Errorf("connection manager not initialized")
+	}
+	sess, err := a.connMgr.GetSession(sessionID)
+	if err != nil {
+		return nil, fmt.Errorf("active session required to resume port forwarding: %w", err)
+	}
+	if sess.SSH == nil {
+		return nil, fmt.Errorf("SSH connection is not active")
+	}
+
+	return a.tunnelMgr.RestartForwarding(tunnelID, sess.SSH)
+}
+
+// DeletePortForward stops and removes a port forwarding configuration.
+func (a *App) DeletePortForward(tunnelID string) error {
+	if a.tunnelMgr == nil {
+		return nil
+	}
+	return a.tunnelMgr.DeleteForwarding(tunnelID)
+}
+
+// ListPortForwards retrieves all port forwards for a session (or all if sessionID is empty).
+func (a *App) ListPortForwards(sessionID string) ([]*tunnel.TunnelInfo, error) {
+	if a.tunnelMgr == nil {
+		return []*tunnel.TunnelInfo{}, nil
+	}
+	return a.tunnelMgr.ListTunnels(sessionID), nil
 }

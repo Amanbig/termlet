@@ -1,54 +1,36 @@
-# Termlet v0.5.3 🚀
+# Termlet v0.6.0 🚀
 
-Termlet **v0.5.3** delivers an expanded, high-fidelity editor theme ecosystem with 14 syntax themes, instant live theme switching without restarting, an ergonomic tab bar with smooth horizontal scrolling, navigation chevrons, and smart bulk closing, alongside theme-synchronized toast notifications, error boundaries, and our streamlined automatic updater.
+Termlet **v0.6.0** introduces native **SSH Local Port Forwarding & Tunneling**, allowing you to effortlessly map internal remote server services (like Traefik dashboard, Docker webhooks, internal Postgres/MySQL/Redis, Next.js dev servers, or internal microservices) directly to `localhost` on your machine.
 
 ---
 
 ### ✨ What's New & Highlights
 
-#### 📑 Tab Bar Scrollbar, Smooth Mouse Wheel Navigation & Bulk Actions
-- **Visible, Sleek Horizontal Scrollbar**:
-  - Replaced hidden overflow with a dedicated, low-profile custom scrollbar (`.editor-tabs-scrollbar`) that automatically indicates tab bar overflow and allows direct dragging.
-- **Mouse Wheel Horizontal Scrolling**:
-  - Users can now scroll their vertical mouse wheel up or down anywhere over the tab bar to smoothly navigate left and right through open tabs.
-- **Navigation Chevrons (`<` and `>`)**:
-  - Pinned left and right scroll step buttons appear automatically whenever open tabs overflow the screen, enabling 1-click smooth scrolling.
-- **Smart Auto-Scroll to Active Tab**:
-  - Selecting or opening any file from the remote explorer or editor immediately auto-scrolls that tab into view.
-- **Enhanced Tab Actions Menu**:
-  - Added **"Close Other Tabs"** and **"Close Saved Tabs"** actions alongside **"Close All Tabs"** with safety confirmation prompts for unsaved changes.
+#### 🔌 SSH Local Port Forwarding & Tunneling
+- **Direct Service Tunneling (`ssh -L`)**:
+  - Securely route remote server ports (e.g., `127.0.0.1:8080`, `127.0.0.1:5432`) to any chosen local port on your machine over an encrypted SSH connection.
+- **Dedicated Port Forwarding View**:
+  - Accessible directly from the new **Ports** tab on the left Activity Bar or the bottom Status Bar.
+- **1-Click Browser Launch**:
+  - Launch tunneled web services (e.g. Traefik, Vite, React, Swagger) directly in your default browser with a single click.
+- **One-Click URL Copying**:
+  - Copy `http://localhost:<port>` to the clipboard with visual confirmation.
+- **Quick Presets**:
+  - Built-in shortcuts for Traefik Dashboard (`8080`), Web / HTTP (`8080 -> 80`), Node/Vite (`3000`), PostgreSQL (`5432`), MySQL (`3306`), and Redis (`6379`).
+- **Live Status & Concurrency Tracking**:
+  - Real-time indicator badges showing active, stopped, or error states, along with active connection counts.
+  - Safe port conflict detection and automatic tunnel teardown when disconnecting.
+- **Status Bar Integration**:
+  - Added a live `🔌 X Ports Forwarded` counter in the status bar for quick glance and 1-click access.
 
-#### 🎨 Expanded Editor Theme Ecosystem (14 Themes) & Live Switching
-- **7 New Curated Themes Added**:
-  - **Atom One Dark**: Classic dark aesthetic with rich token contrasts.
-  - **Sublime Text**: High-contrast, iconic Sublime color scheme.
-  - **Material Dark**: Sleek, modern Material palette.
-  - **Solarized Dark & Solarized Light**: Precision-calibrated color relationships designed to reduce eye strain.
-  - **Xcode Dark & Xcode Light**: Native Apple IDE syntax coloring for dark and light environments.
-- **Instant Live Theme Switching**:
-  - Swapping themes in Settings immediately updates all open editor tabs on the fly with zero application restart required.
-- **Visual Preview Badges in Settings**:
-  - Live color preview circles displaying background and accent token colors for each theme directly inside the Settings picker.
-  - Full persistence across app sessions and workspace reloads.
+#### 📑 Tab Bar Scrollbar & Navigation (from v0.5.3)
+- Smooth horizontal mouse-wheel scrolling over open tabs.
+- Dedicated `.editor-tabs-scrollbar` with step chevrons and auto-scroll to active tab.
+- Bulk tab actions: *"Close Other Tabs"* and *"Close Saved Tabs"*.
 
-#### 🔔 Polished Toast Notifications & Clean UI Headers
-- **Ergonomic Top-Right Dismiss Placement**:
-  - Fixed Sonner's default behavior where the close (`x`) button hovered awkwardly outside the card on the top-left edge.
-  - The close button is now neatly embedded in the **top-right inside corner** of the toast card with comfortable padding (`pr-8`) preventing any overlap with long notification text.
-- **Theme-Synchronized Styling**:
-  - Integrated hover states (`bg-zinc-200/50` in light mode, `bg-white/10` in dark mode) and subtle border styling.
-  - Semantic status colors (emerald success, rose error, amber warning, sky info) dynamically adapt to Termlet's UI theme mode.
-- **Streamlined Release Notes View Header**:
-  - Removed duplicate close (`x`) button in the header above the notes since the editor tab bar already provides standard tab dismiss controls.
-
-#### 🛡️ Robust Fault-Tolerant Foundation (from v0.5.2)
-- **Sectional `<ErrorBoundary>`**:
-  - Isolates errors in side panels, explorer, editor, settings, and release notes without taking down the application.
-  - Actionable crash recovery options: Reload View, Technical Stack Details, and Full Restart.
-- **Centralized Error Parsing**:
-  - Decodes Go, SSH, SFTP, and OS network errors into actionable guidance across 13 distinct categories.
-- **Streamlined In-Settings Automatic Updater**:
-  - Clean update management directly inside Settings without intrusive modals. Real-time download progress and 1-click restart to apply.
+#### 🎨 14 High-Fidelity Editor Themes & Live Switching
+- Instant live theme switching across 14 themes without restarting Termlet.
+- Polished theme-synchronized toast notifications with ergonomic top-right dismiss buttons.
 
 ---
 

@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Sparkles, ExternalLink, X, BookOpen, CheckCircle2 } from 'lucide-react';
+import { Sparkles, ExternalLink, BookOpen, CheckCircle2 } from 'lucide-react';
 import { marked } from 'marked';
 import { GetReleaseNotes } from '../../wailsjs/go/main/App';
 import { BrowserOpenURL } from '../../wailsjs/runtime/runtime';
 
 interface ReleaseNotesViewProps {
   version: string;
-  onClose: () => void;
+  onClose?: () => void;
 }
 
 export const ReleaseNotesView: React.FC<ReleaseNotesViewProps> = ({
@@ -95,13 +95,6 @@ export const ReleaseNotesView: React.FC<ReleaseNotesViewProps> = ({
             >
               <ExternalLink className="w-3.5 h-3.5" />
               <span>GitHub Release</span>
-            </button>
-            <button
-              onClick={onClose}
-              className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
-              title="Close tab"
-            >
-              <X className="w-4 h-4" />
             </button>
           </div>
         </div>

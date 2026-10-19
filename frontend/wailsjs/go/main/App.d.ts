@@ -6,6 +6,8 @@ import {main} from '../models';
 import {connections} from '../models';
 import {sftpclient} from '../models';
 
+export function CheckForAppUpdate():Promise<updater.UpdateInfo>;
+
 export function CheckForUpdates():Promise<updater.UpdateInfo>;
 
 export function Connect(arg1:models.Profile,arg2:string,arg3:boolean):Promise<main.ConnectResponse>;
@@ -20,9 +22,13 @@ export function DeleteRemotePath(arg1:string,arg2:string,arg3:boolean):Promise<v
 
 export function Disconnect(arg1:string):Promise<void>;
 
+export function DownloadAndApplyUpdate(arg1:string,arg2:string):Promise<void>;
+
 export function GetAppVersion():Promise<string>;
 
 export function GetProfileSecret(arg1:string):Promise<string>;
+
+export function GetUpdateProgress():Promise<updater.DownloadProgress>;
 
 export function ListActiveSessions():Promise<Array<connections.SessionSummary>>;
 
@@ -33,6 +39,8 @@ export function ListRemoteFiles(arg1:string,arg2:string):Promise<Array<models.Re
 export function ReadRemoteFile(arg1:string,arg2:string):Promise<models.FileContent>;
 
 export function RenameRemotePath(arg1:string,arg2:string,arg3:string):Promise<void>;
+
+export function RestartApp():Promise<void>;
 
 export function SaveProfile(arg1:models.Profile,arg2:string):Promise<void>;
 

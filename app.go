@@ -319,3 +319,36 @@ func (a *App) CheckForUpdates() (*updater.UpdateInfo, error) {
 	}
 	return a.updater.CheckForUpdate(ctx)
 }
+
+// CheckForAppUpdate is an alias for CheckForUpdates for dockit-style frontend parity.
+func (a *App) CheckForAppUpdate() (*updater.UpdateInfo, error) {
+	return a.CheckForUpdates()
+}
+
+// DownloadAndApplyUpdate starts downloading the update archive/installer, extracts it, and applies it in-place.
+func (a *App) DownloadAndApplyUpdate(downloadURL, assetFileName string) error {
+	if a.updater == nil {
+		return fmt.Errorf("updater service is not initialized")
+	}
+	ctx := a.ctx
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	return a.updater.DownloadAndInstallUpdate(ctx, downloadURL, assetFileName)
+}
+
+// GetUpdateProgress returns the current percentage and state of the update download.
+func (a *App) GetUpdateProgress() updater.DownloadProgress {
+	if a.updater == nil {
+		return updater.DownloadProgress{Status: "idle"}
+	}
+	return a.updater.GetCurrentProgress()
+}
+
+// RestartApp restarts the desktop application with the newly updated binary.
+func (a *App) RestartApp() error {
+	if a.updater == nil {
+		return fmt.Errorf("updater service is not initialized")
+	}
+	return a.updater.RestartApp()
+}

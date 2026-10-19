@@ -6,7 +6,10 @@ import {
   Disconnect,
   DeleteProfile,
   Connect,
+  CheckForUpdates,
+  GetAppVersion,
 } from '../wailsjs/go/main/App';
+import { updater } from '../wailsjs/go/models';
 import { ActivityBar, ActivityView } from './components/ActivityBar';
 import { ConnectionSidebar } from './components/ConnectionSidebar';
 import { RemoteFileTree } from './components/RemoteFileTree';
@@ -14,12 +17,13 @@ import { EditorTabs } from './components/EditorTabs';
 import { CodeEditor } from './components/CodeEditor';
 import { ConnectDialog } from './components/ConnectDialog';
 import { SettingsView } from './components/SettingsView';
+import { UpdateModal } from './components/UpdateModal';
 import { WelcomeScreen } from './components/WelcomeScreen';
 import { TitleBar } from './components/TitleBar';
 import { useRemoteFiles } from './hooks/useRemoteFiles';
 import { useSettings } from './hooks/useSettings';
 import { Toaster, toast } from 'sonner';
-import { Power } from 'lucide-react';
+import { Power, Sparkles, X } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -41,7 +45,58 @@ export function App() {
   const [editingProfile, setEditingProfile] = useState<Profile | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
+  const [updateModalOpen, setUpdateModalOpen] = useState(false);
+  const [updateInfo, setUpdateInfo] = useState<updater.UpdateInfo | null>(null);
+  const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
+  const [showUpdateToast, setShowUpdateToast] = useState(false);
+  const [appVersion, setAppVersion] = useState('0.5.1');
+
   const { settings, updateSettings, resetSettings } = useSettings();
+
+  useEffect(() => {
+    GetAppVersion()
+      .then((v) => {
+        if (v) setAppVersion(v);
+      })
+      .catch(() => {});
+  }, []);
+
+  const handleCheckForUpdates = useCallback(async (manual = false) => {
+    setIsCheckingUpdate(true);
+    try {
+      const res = await CheckForUpdates();
+      if (res) {
+        setUpdateInfo(res);
+        if (res.currentVersion || res.current_version) {
+          setAppVersion(res.currentVersion || res.current_version || '0.5.1');
+        }
+        if (res.available) {
+          if (manual) {
+            setUpdateModalOpen(true);
+          } else {
+            setShowUpdateToast(true);
+          }
+        } else if (manual) {
+          setUpdateModalOpen(true);
+        }
+      }
+    } catch (err: any) {
+      console.warn('Update check failed:', err);
+      if (manual) {
+        toast.error(`Could not check for updates: ${err?.message || err}`);
+      }
+    } finally {
+      setIsCheckingUpdate(false);
+    }
+  }, []);
+
+  // Background check for updates 3 seconds after app launch
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      handleCheckForUpdates(false);
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, [handleCheckForUpdates]);
 
   const {
     openFiles,
@@ -284,6 +339,7 @@ export function App() {
                   onUpdateSettings={updateSettings}
                   onResetSettings={resetSettings}
                   onClose={handleCloseSettingsTab}
+                  onOpenUpdateModal={() => setUpdateModalOpen(true)}
                 />
               ) : (
                 <CodeEditor
@@ -366,7 +422,16 @@ export function App() {
               Connected
             </span>
           )}
-          <span>Termlet v0.1</span>
+          <button
+            onClick={() => handleCheckForUpdates(true)}
+            className="hover:text-zinc-800 dark:hover:text-zinc-200 cursor-pointer transition-colors flex items-center gap-1"
+            title="Check for updates"
+          >
+            {updateInfo?.available && (
+              <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+            )}
+            <span>Termlet v{appVersion}</span>
+          </button>
         </div>
       </div>
 
@@ -378,6 +443,62 @@ export function App() {
         onConnected={handleConnected}
         onProfileSaved={refreshProfiles}
       />
+
+      {/* Update In-App Modal */}
+      <UpdateModal
+        isOpen={updateModalOpen}
+        onClose={() => setUpdateModalOpen(false)}
+        updateInfo={updateInfo}
+        onCheckAgain={() => handleCheckForUpdates(true)}
+        isChecking={isCheckingUpdate}
+      />
+
+      {/* Non-intrusive Update Toast Notification */}
+      {showUpdateToast && updateInfo?.available && !updateModalOpen && (
+        <div className="fixed bottom-8 right-5 z-40 max-w-sm w-full bg-white/95 dark:bg-zinc-900/95 border border-blue-500/40 rounded-xl p-4 shadow-2xl shadow-blue-500/20 backdrop-blur-md animate-in slide-in-from-bottom-5 duration-300 select-none">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/30 flex items-center justify-center text-blue-600 dark:text-blue-400 shrink-0">
+                <Sparkles className="w-4 h-4" />
+              </div>
+              <div>
+                <h4 className="text-xs font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5">
+                  Termlet Update Available
+                  <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800/60">
+                    v{String(updateInfo.latestVersion || updateInfo.latest_version).replace(/^v/, '')}
+                  </span>
+                </h4>
+                <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5 leading-snug">
+                  A newer release is ready with improvements &amp; fixes.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowUpdateToast(false)}
+              className="p-1 rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          <div className="mt-3 flex items-center justify-end gap-2">
+            <button
+              onClick={() => setShowUpdateToast(false)}
+              className="px-2.5 py-1 text-xs text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200 transition-colors cursor-pointer"
+            >
+              Dismiss
+            </button>
+            <button
+              onClick={() => {
+                setShowUpdateToast(false);
+                setUpdateModalOpen(true);
+              }}
+              className="px-3 py-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-semibold rounded-lg shadow-sm cursor-pointer transition-all"
+            >
+              Update Now
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Notifications */}
       <Toaster position="bottom-right" richColors />

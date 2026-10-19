@@ -32,6 +32,7 @@ interface SettingsViewProps {
   onUpdateSettings: (newPartial: Partial<AppSettings>) => void;
   onResetSettings: () => void;
   onClose: () => void;
+  onOpenUpdateModal?: () => void;
 }
 
 const THEME_OPTIONS: { id: EditorTheme; label: string; previewBg: string; previewFg: string }[] = [
@@ -49,6 +50,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   onUpdateSettings,
   onResetSettings,
   onClose,
+  onOpenUpdateModal,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [appVersion, setAppVersion] = useState('0.5.1');
@@ -89,7 +91,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       setUpdateInfo(info);
       setHasCheckedUpdates(true);
       if (info.available) {
-        toast.info(`Version ${info.latest_version} is available!`);
+        const ver = String(info.latestVersion || info.latest_version || '').replace(/^v/, '');
+        toast.info(`Version ${ver} is available!`);
+        if (onOpenUpdateModal) {
+          onOpenUpdateModal();
+        }
       } else {
         toast.success('Termlet is up to date!');
       }
@@ -523,20 +529,40 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   <div className="p-3.5 rounded-md bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/60 space-y-2">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-semibold text-blue-700 dark:text-blue-300">
-                        Update Available: v{updateInfo.latest_version}
+                        Update Available: v{String(updateInfo.latestVersion || updateInfo.latest_version).replace(/^v/, '')}
                       </span>
-                      <button
-                        type="button"
-                        onClick={() => handleOpenExternal(updateInfo.release_url || updateInfo.download_url)}
-                        className="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:underline font-medium cursor-pointer"
-                      >
-                        <Download className="w-3.5 h-3.5" />
-                        Download Release
-                      </button>
+                      <div className="flex items-center gap-2">
+                        {onOpenUpdateModal && (
+                          <button
+                            type="button"
+                            onClick={onOpenUpdateModal}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold cursor-pointer shadow-xs transition-colors"
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                            Install Update
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleOpenExternal(
+                              updateInfo.releaseUrl ||
+                                updateInfo.release_url ||
+                                updateInfo.downloadUrl ||
+                                updateInfo.download_url ||
+                                ''
+                            )
+                          }
+                          className="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:underline font-medium cursor-pointer"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                          Release Notes
+                        </button>
+                      </div>
                     </div>
-                    {updateInfo.release_notes && (
+                    {(updateInfo.releaseNotes || updateInfo.release_notes) && (
                       <p className="text-[11px] text-zinc-600 dark:text-zinc-300 line-clamp-3 whitespace-pre-line font-mono bg-white/60 dark:bg-black/30 p-2 rounded border border-blue-100 dark:border-blue-900/40">
-                        {updateInfo.release_notes}
+                        {updateInfo.releaseNotes || updateInfo.release_notes}
                       </p>
                     )}
                   </div>

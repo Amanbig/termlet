@@ -10,5 +10,5 @@ For the active release currently being compiled or deployed, refer to the root [
 
 | Version | Release Date / Milestone | Highlights | Release Notes |
 | :--- | :--- | :--- | :---: |
-| **v0.5.1** | *Current* | Multi-resolution Windows executable & taskbar icon (`icon.ico` 16–256px), webview favicons, full light mode theme overhaul (file tree contrast, blue active highlights, canvas & status bar sync), GTK spinner suppression | [v0.5.1.md](v0.5.1.md) |
+| **v0.5.1** | *Current* | In-app automatic update installation & management (Dockit parity: deb, rpm, zip, selfupdate, restart), Windows multi-resolution icon (`icon.ico` 16–256px), webview favicons, full light mode theme overhaul | [v0.5.1.md](v0.5.1.md) |
 | **v0.5.0** | Initial Public Release | Major milestone: Frameless modern window with integrated controls, SSH terminal tabs & profiles, dual-pane SFTP remote browser, inline code editor, dark/light theme polish with custom steppers, GitHub auto-updater, multi-platform CI/CD packages (Deb, Rpm, Tar.gz, Windows Zip, macOS DMG) | [v0.5.0.md](v0.5.0.md) |

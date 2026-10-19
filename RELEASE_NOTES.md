@@ -1,10 +1,22 @@
 # Termlet v0.5.1 🚀
 
-Termlet **v0.5.1** is a targeted polish and stability release focusing on native Windows icon integration, webview favicon fidelity, comprehensive light-mode theme contrast enhancements, and UI control cleanup across platforms.
+Termlet **v0.5.1** is a major update bringing seamless in-app automatic update installation (matching Dockit's update architecture), native Windows icon integration, webview favicon fidelity, comprehensive light-mode theme contrast enhancements, and UI control cleanup across platforms.
 
 ---
 
 ### ✨ What's New & Highlights
+
+#### 🔄 Automatic In-App Update Installation & Management (Dockit Parity)
+- **One-Click In-App Updating**:
+  - Added background update detection shortly after startup that alerts users with a non-intrusive floating toast when a newer version is released.
+  - Interactive **`<UpdateModal>`**: displays installed version vs new version badges, target package detection tag, release notes, and real-time download progress (percentage and downloaded MB).
+  - **Native Package & In-Place Installation**:
+    - **Linux (`.deb`)**: automatically downloads `.deb` package and invokes `pkexec dpkg -i` (with fallback to `apt-get install -f -y` or desktop package manager), prompting for desktop authorization seamlessly.
+    - **Linux (`.rpm`)**: automatically downloads `.rpm` package and installs via `pkexec rpm -Uvh --replacepkgs`.
+    - **Windows**: launches downloaded NSIS setup installer `.exe` or updates portable `.zip` in-place.
+    - **Standalone / Portable**: extracts binary in-memory and applies the replacement in-place using `selfupdate` (or `pkexec` if destination directory requires root permission).
+  - **Seamless App Restart**: integrated `RestartApp()` allows 1-click restarting directly into the newly updated version.
+  - **Settings Integration**: direct "Check for Updates" and "Install Update" triggers right inside the Settings view and bottom status bar.
 
 #### 🪟 Windows Native Icon & Taskbar Integration
 - **Multi-Resolution Windows Executable Icon**:
@@ -44,6 +56,7 @@ Termlet **v0.5.1** is a targeted polish and stability release focusing on native
   - `termlet-linux-amd64.tar.gz` (Portable Linux archive)
 - **Windows**:
   - `termlet-windows-amd64.zip` (Portable 64-bit Windows archive)
+  - `termlet-windows-amd64-installer.exe` (NSIS setup wizard installer)
 - **macOS**:
   - `termlet-darwin-universal.dmg` (Apple Silicon & Intel Universal DMG)
   - `termlet-darwin-universal.zip` (Portable macOS bundle)

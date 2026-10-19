@@ -165,6 +165,28 @@ export function useRemoteFiles() {
     setActiveFilePath(null);
   }, [openFiles]);
 
+  const closeOtherFiles = useCallback((keepPath: string) => {
+    const dirtyOthers = openFiles.filter((f) => f.path !== keepPath && f.isDirty);
+    if (dirtyOthers.length > 0) {
+      const confirmClose = window.confirm(
+        `You have ${dirtyOthers.length} unsaved file(s) that will be closed. Discard changes?`
+      );
+      if (!confirmClose) return;
+    }
+    setOpenFiles((prev) => prev.filter((f) => f.path === keepPath));
+    setActiveFilePath(keepPath);
+  }, [openFiles]);
+
+  const closeSavedFiles = useCallback(() => {
+    setOpenFiles((prev) => {
+      const remaining = prev.filter((f) => f.isDirty);
+      if (activeFilePath && !remaining.some((f) => f.path === activeFilePath)) {
+        setActiveFilePath(remaining[remaining.length - 1]?.path || null);
+      }
+      return remaining;
+    });
+  }, [activeFilePath]);
+
   return {
     openFiles,
     activeFile,
@@ -177,5 +199,7 @@ export function useRemoteFiles() {
     saveFileByPath,
     closeFile,
     closeAllFiles,
+    closeOtherFiles,
+    closeSavedFiles,
   };
 }

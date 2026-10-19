@@ -1,10 +1,22 @@
 # Termlet v0.5.3 🚀
 
-Termlet **v0.5.3** delivers an expanded, high-fidelity editor theme ecosystem with 14 syntax themes, polished theme-synchronized toast notifications with ergonomic top-right dismiss controls, alongside our production-grade error boundaries and streamlined automatic updater.
+Termlet **v0.5.3** delivers an expanded, high-fidelity editor theme ecosystem with 14 syntax themes, an ergonomic tab bar with smooth horizontal scrolling, navigation chevrons, and smart bulk closing, alongside theme-synchronized toast notifications, error boundaries, and our streamlined automatic updater.
 
 ---
 
 ### ✨ What's New & Highlights
+
+#### 📑 Tab Bar Scrollbar, Smooth Mouse Wheel Navigation & Bulk Actions
+- **Visible, Sleek Horizontal Scrollbar**:
+  - Replaced hidden overflow with a dedicated, low-profile custom scrollbar (`.editor-tabs-scrollbar`) that automatically indicates tab bar overflow and allows direct dragging.
+- **Mouse Wheel Horizontal Scrolling**:
+  - Users can now scroll their vertical mouse wheel up or down anywhere over the tab bar to smoothly navigate left and right through open tabs.
+- **Navigation Chevrons (`<` and `>`)**:
+  - Pinned left and right scroll step buttons appear automatically whenever open tabs overflow the screen, enabling 1-click smooth scrolling.
+- **Smart Auto-Scroll to Active Tab**:
+  - Selecting or opening any file from the remote explorer or editor immediately auto-scrolls that tab into view.
+- **Enhanced Tab Actions Menu**:
+  - Added **"Close Other Tabs"** and **"Close Saved Tabs"** actions alongside **"Close All Tabs"** with safety confirmation prompts for unsaved changes.
 
 #### 🎨 Expanded Editor Theme Ecosystem (14 Themes)
 - **7 New Curated Themes Added**:

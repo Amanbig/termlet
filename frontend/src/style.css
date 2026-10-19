@@ -370,3 +370,41 @@
 .dark [data-sonner-toast] [data-close-button]:hover {
   background: rgba(255, 255, 255, 0.12) !important;
 }
+
+/* Editor Tabs Scrollbar - Sleek, visible horizontal scrollbar */
+.editor-tabs-scrollbar {
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(161, 161, 170, 0.4) transparent;
+}
+
+.editor-tabs-scrollbar::-webkit-scrollbar {
+  height: 4px;
+}
+
+.editor-tabs-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.editor-tabs-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(161, 161, 170, 0.35);
+  border-radius: 9999px;
+  transition: background-color 0.2s ease;
+}
+
+.editor-tabs-scrollbar:hover::-webkit-scrollbar-thumb {
+  background: rgba(161, 161, 170, 0.6);
+}
+
+.dark .editor-tabs-scrollbar {
+  scrollbar-color: rgba(113, 113, 122, 0.45) transparent;
+}
+
+.dark .editor-tabs-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(113, 113, 122, 0.4);
+}
+
+.dark .editor-tabs-scrollbar:hover::-webkit-scrollbar-thumb {
+  background: rgba(161, 161, 170, 0.65);
+}

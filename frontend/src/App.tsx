@@ -119,6 +119,8 @@ export function App() {
     saveCurrentFile,
     closeFile,
     closeAllFiles,
+    closeOtherFiles,
+    closeSavedFiles,
   } = useRemoteFiles();
 
   const currentSession = activeSessions.find((s) => s.id === currentSessionId) || null;
@@ -365,6 +367,8 @@ export function App() {
                   onSelect={(path) => setActiveFilePath(path)}
                   onClose={(path) => closeFile(path)}
                   onCloseAll={closeAllFiles}
+                  onCloseOthers={(path) => closeOtherFiles(path)}
+                  onCloseSaved={closeSavedFiles}
                   onSelectSettings={() => setActiveFilePath(SETTINGS_TAB_PATH)}
                   onCloseSettings={handleCloseSettingsTab}
                   isReleaseNotesOpen={isReleaseNotesOpen}

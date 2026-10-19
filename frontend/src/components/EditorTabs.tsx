@@ -128,19 +128,19 @@ export const EditorTabs: React.FC<EditorTabsProps> = ({
   const activeFile = files.find((f) => f.path === activeFilePath);
 
   return (
-    <div className="flex items-center w-full bg-zinc-100 dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800/80 select-none overflow-hidden relative">
+    <div className="flex items-center w-full h-[35px] bg-zinc-100 dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800/80 select-none overflow-hidden relative">
       {/* Scrollable Tabs Track */}
       <div
         ref={scrollContainerRef}
         onWheel={handleWheel}
-        className="editor-tabs-scrollbar flex items-center flex-1 min-w-0 overflow-x-auto scroll-smooth"
+        className="editor-tabs-scrollbar flex items-stretch h-full flex-1 min-w-0 overflow-x-auto scroll-smooth"
       >
         {/* Release Notes Tab if Open (like VS Code Release Notes) */}
         {isReleaseNotesOpen && (
           <div
             data-tab-path="termlet://release-notes"
             onClick={onSelectReleaseNotes}
-            className={`group flex items-center gap-2 px-3 py-2 text-xs border-r border-zinc-200 dark:border-zinc-800/80 cursor-pointer transition-colors max-w-[210px] shrink-0 ${
+            className={`group flex items-center gap-2 px-3 h-full text-xs border-r border-zinc-200 dark:border-zinc-800/80 cursor-pointer transition-colors max-w-[210px] shrink-0 ${
               isReleaseNotesActive
                 ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 font-medium border-t-2 border-t-blue-500'
                 : 'bg-zinc-200/50 dark:bg-zinc-950/80 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-900/60 hover:text-zinc-900 dark:hover:text-zinc-200 border-t-2 border-t-transparent'
@@ -167,7 +167,7 @@ export const EditorTabs: React.FC<EditorTabsProps> = ({
           <div
             data-tab-path="termlet://settings"
             onClick={onSelectSettings}
-            className={`group flex items-center gap-2 px-3 py-2 text-xs border-r border-zinc-200 dark:border-zinc-800/80 cursor-pointer transition-colors max-w-[200px] shrink-0 ${
+            className={`group flex items-center gap-2 px-3 h-full text-xs border-r border-zinc-200 dark:border-zinc-800/80 cursor-pointer transition-colors max-w-[200px] shrink-0 ${
               isSettingsActive
                 ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 font-medium border-t-2 border-t-blue-500'
                 : 'bg-zinc-200/50 dark:bg-zinc-950/80 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-900/60 hover:text-zinc-900 dark:hover:text-zinc-200 border-t-2 border-t-transparent'
@@ -197,7 +197,7 @@ export const EditorTabs: React.FC<EditorTabsProps> = ({
               key={file.path}
               data-tab-path={file.path}
               onClick={() => onSelect(file.path)}
-              className={`group flex items-center gap-2 px-3 py-2 text-xs border-r border-zinc-200 dark:border-zinc-800/80 cursor-pointer transition-colors max-w-[200px] shrink-0 ${
+              className={`group flex items-center gap-2 px-3 h-full text-xs border-r border-zinc-200 dark:border-zinc-800/80 cursor-pointer transition-colors max-w-[200px] shrink-0 ${
                 isActive
                   ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 font-medium border-t-2 border-t-blue-500'
                   : 'bg-zinc-200/50 dark:bg-zinc-950/80 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-900/60 hover:text-zinc-900 dark:hover:text-zinc-200 border-t-2 border-t-transparent'
@@ -240,7 +240,7 @@ export const EditorTabs: React.FC<EditorTabsProps> = ({
       </div>
 
       {/* Pinned Tab Bar Actions (Scroll Chevrons + Dropdown Menu) */}
-      <div className="flex items-center px-1.5 shrink-0 bg-zinc-100 dark:bg-zinc-950 border-l border-zinc-200 dark:border-zinc-800/80 z-10 gap-0.5">
+      <div className="flex items-center h-full px-1.5 shrink-0 bg-zinc-100 dark:bg-zinc-950 border-l border-zinc-200 dark:border-zinc-800/80 z-10 gap-0.5">
         {hasOverflow && (
           <div className="flex items-center gap-0.5 pr-1 border-r border-zinc-200 dark:border-zinc-800">
             <button

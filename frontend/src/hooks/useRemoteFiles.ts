@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { OpenFile, RemoteFile } from '../types/remote';
 import { ReadRemoteFile, SaveRemoteFile } from '../../wailsjs/go/main/App';
+import { formatErrorMessage } from '../utils/errors';
 import { toast } from 'sonner';
 
 export function useRemoteFiles() {
@@ -41,7 +42,10 @@ export function useRemoteFiles() {
         setOpenFiles((prev) => [...prev, newOpenFile]);
         setActiveFilePath(remoteFile.path);
       } catch (err: any) {
-        toast.error(`Failed to open file: ${err?.message || err}`);
+        const formatted = formatErrorMessage(err, 'Open File');
+        toast.error(`${formatted.title}: ${formatted.message}`, {
+          description: formatted.hint,
+        });
       }
     },
     [openFiles]
@@ -95,16 +99,20 @@ export function useRemoteFiles() {
         toast.success(`Saved ${fileToSave.name}`);
         return true;
       } catch (err: any) {
-        const msg = String(err?.message || err);
-        if (msg.includes('modified on remote server')) {
+        const formatted = formatErrorMessage(err, 'Save File');
+        const raw = formatted.raw || '';
+        if (raw.toLowerCase().includes('modified on remote server')) {
           toast.error(`Conflict: File has been modified on the remote server!`, {
+            description: formatted.hint,
             action: {
               label: 'Overwrite anyway',
               onClick: () => saveFileByPath(filePath, true),
             },
           });
         } else {
-          toast.error(`Save failed: ${msg}`);
+          toast.error(`${formatted.title}: ${formatted.message}`, {
+            description: formatted.hint,
+          });
         }
         return false;
       } finally {

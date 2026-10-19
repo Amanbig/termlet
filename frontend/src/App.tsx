@@ -21,6 +21,7 @@ import { ReleaseNotesView } from './components/ReleaseNotesView';
 import { UpdateModal } from './components/UpdateModal';
 import { WelcomeScreen } from './components/WelcomeScreen';
 import { TitleBar } from './components/TitleBar';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { useRemoteFiles } from './hooks/useRemoteFiles';
 import { useSettings } from './hooks/useSettings';
 import { Toaster, toast } from 'sonner';
@@ -311,25 +312,50 @@ export function App() {
         {/* 2. Primary Side Panel (Collapsible: Explorer or Connections) */}
         {sidebarOpen && (
           <div className="w-64 h-full flex flex-col shrink-0 overflow-hidden bg-zinc-50 dark:bg-zinc-950/70 border-r border-zinc-200 dark:border-zinc-800/80">
-            {activeActivityView === 'explorer' ? (
-              <RemoteFileTree
-                sessionId={currentSessionId}
-                sessionSummary={currentSession}
-                startDirectory={currentSession?.start_directory || '.'}
-                onOpenFile={handleOpenFile}
-                activeFilePath={activeFilePath}
-                onDisconnect={handleDisconnect}
-                onOpenProfiles={() => setActiveActivityView('connections')}
-              />
-            ) : (
-              <ConnectionSidebar
+            <ErrorBoundary fallbackTitle="Failed to load side panel">
+              {activeActivityView === 'explorer' ? (
+                <RemoteFileTree
+                  sessionId={currentSessionId}
+                  sessionSummary={currentSession}
+                  startDirectory={currentSession?.start_directory || '.'}
+                  onOpenFile={handleOpenFile}
+                  activeFilePath={activeFilePath}
+                  onDisconnect={handleDisconnect}
+                  onOpenProfiles={() => setActiveActivityView('connections')}
+                />
+              ) : (
+                <ConnectionSidebar
+                  profiles={profiles}
+                  activeSessions={activeSessions}
+                  currentSessionId={currentSessionId}
+                  onSelectSession={(sid) => {
+                    setCurrentSessionId(sid);
+                    setActiveActivityView('explorer');
+                  }}
+                  onNewConnection={() => {
+                    setEditingProfile(null);
+                    setConnectDialogOpen(true);
+                  }}
+                  onEditProfile={(profile) => {
+                    setEditingProfile(profile);
+                    setConnectDialogOpen(true);
+                  }}
+                  onDeleteProfile={handleDeleteProfile}
+                  onConnectProfile={handleConnectProfile}
+                  onDisconnectSession={handleDisconnect}
+                />
+              )}
+            </ErrorBoundary>
+          </div>
+        )}
+
+        {/* 3. Main Center Area: Welcome Screen, Settings Tab, or Code Workspace */}
+        <div className="flex-1 flex flex-col h-full min-w-0 bg-zinc-50 dark:bg-zinc-950 overflow-hidden">
+          <ErrorBoundary fallbackTitle="An unexpected view error occurred">
+            {showWelcome ? (
+              <WelcomeScreen
                 profiles={profiles}
-                activeSessions={activeSessions}
-                currentSessionId={currentSessionId}
-                onSelectSession={(sid) => {
-                  setCurrentSessionId(sid);
-                  setActiveActivityView('explorer');
-                }}
+                onOpenProfile={handleConnectProfile}
                 onNewConnection={() => {
                   setEditingProfile(null);
                   setConnectDialogOpen(true);
@@ -339,74 +365,55 @@ export function App() {
                   setConnectDialogOpen(true);
                 }}
                 onDeleteProfile={handleDeleteProfile}
-                onConnectProfile={handleConnectProfile}
-                onDisconnectSession={handleDisconnect}
               />
+            ) : (
+              <div className="flex-1 flex flex-col h-full overflow-hidden">
+                <EditorTabs
+                  files={openFiles}
+                  activeFilePath={activeFilePath}
+                  isSettingsOpen={isSettingsOpen}
+                  onSelect={(path) => setActiveFilePath(path)}
+                  onClose={(path) => closeFile(path)}
+                  onCloseAll={closeAllFiles}
+                  onSelectSettings={() => setActiveFilePath(SETTINGS_TAB_PATH)}
+                  onCloseSettings={handleCloseSettingsTab}
+                  isReleaseNotesOpen={isReleaseNotesOpen}
+                  onSelectReleaseNotes={handleOpenReleaseNotesTab}
+                  onCloseReleaseNotes={handleCloseReleaseNotesTab}
+                />
+
+                <ErrorBoundary fallbackTitle="Failed to render editor content">
+                  {isReleaseNotesActive ? (
+                    <ReleaseNotesView
+                      version={appVersion}
+                      onClose={handleCloseReleaseNotesTab}
+                    />
+                  ) : isSettingsActive ? (
+                    <SettingsView
+                      settings={settings}
+                      onUpdateSettings={updateSettings}
+                      onResetSettings={resetSettings}
+                      onClose={handleCloseSettingsTab}
+                      onOpenUpdateModal={() => setUpdateModalOpen(true)}
+                      onOpenReleaseNotes={handleOpenReleaseNotesTab}
+                    />
+                  ) : (
+                    <CodeEditor
+                      file={activeFile}
+                      onChange={(newContent) => {
+                        if (activeFilePath) {
+                          updateFileContent(activeFilePath, newContent);
+                        }
+                      }}
+                      onSave={saveCurrentFile}
+                      isSaving={isSaving}
+                      settings={settings}
+                    />
+                  )}
+                </ErrorBoundary>
+              </div>
             )}
-          </div>
-        )}
-
-        {/* 3. Main Center Area: Welcome Screen, Settings Tab, or Code Workspace */}
-        <div className="flex-1 flex flex-col h-full min-w-0 bg-zinc-50 dark:bg-zinc-950 overflow-hidden">
-          {showWelcome ? (
-            <WelcomeScreen
-              profiles={profiles}
-              onOpenProfile={handleConnectProfile}
-              onNewConnection={() => {
-                setEditingProfile(null);
-                setConnectDialogOpen(true);
-              }}
-              onEditProfile={(profile) => {
-                setEditingProfile(profile);
-                setConnectDialogOpen(true);
-              }}
-              onDeleteProfile={handleDeleteProfile}
-            />
-          ) : (
-            <div className="flex-1 flex flex-col h-full overflow-hidden">
-              <EditorTabs
-                files={openFiles}
-                activeFilePath={activeFilePath}
-                isSettingsOpen={isSettingsOpen}
-                onSelect={(path) => setActiveFilePath(path)}
-                onClose={(path) => closeFile(path)}
-                onCloseAll={closeAllFiles}
-                onSelectSettings={() => setActiveFilePath(SETTINGS_TAB_PATH)}
-                onCloseSettings={handleCloseSettingsTab}
-                isReleaseNotesOpen={isReleaseNotesOpen}
-                onSelectReleaseNotes={handleOpenReleaseNotesTab}
-                onCloseReleaseNotes={handleCloseReleaseNotesTab}
-              />
-
-              {isReleaseNotesActive ? (
-                <ReleaseNotesView
-                  version={appVersion}
-                  onClose={handleCloseReleaseNotesTab}
-                />
-              ) : isSettingsActive ? (
-                <SettingsView
-                  settings={settings}
-                  onUpdateSettings={updateSettings}
-                  onResetSettings={resetSettings}
-                  onClose={handleCloseSettingsTab}
-                  onOpenUpdateModal={() => setUpdateModalOpen(true)}
-                  onOpenReleaseNotes={handleOpenReleaseNotesTab}
-                />
-              ) : (
-                <CodeEditor
-                  file={activeFile}
-                  onChange={(newContent) => {
-                    if (activeFilePath) {
-                      updateFileContent(activeFilePath, newContent);
-                    }
-                  }}
-                  onSave={saveCurrentFile}
-                  isSaving={isSaving}
-                  settings={settings}
-                />
-              )}
-            </div>
-          )}
+          </ErrorBoundary>
         </div>
       </div>
 

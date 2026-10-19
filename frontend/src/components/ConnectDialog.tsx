@@ -13,8 +13,9 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/tabs';
-import { ShieldAlert, Server, Key, Lock, Loader2, Check } from 'lucide-react';
+import { ShieldAlert, Server, Key, Lock, Loader2, Check, AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
 import { toast } from 'sonner';
+import { formatErrorMessage, FormattedError } from '../utils/errors';
 
 interface ConnectDialogProps {
   open: boolean;
@@ -44,8 +45,12 @@ export const ConnectDialog: React.FC<ConnectDialogProps> = ({
 
   const [isConnecting, setIsConnecting] = useState(false);
   const [hostKeyPrompt, setHostKeyPrompt] = useState<HostKeyPrompt | null>(null);
+  const [connError, setConnError] = useState<FormattedError | null>(null);
+  const [showErrorRaw, setShowErrorRaw] = useState(false);
 
   useEffect(() => {
+    setConnError(null);
+    setShowErrorRaw(false);
     if (initialProfile) {
       setName(initialProfile.name || '');
       setHost(initialProfile.host || '');
@@ -80,6 +85,7 @@ export const ConnectDialog: React.FC<ConnectDialogProps> = ({
       return;
     }
 
+    setConnError(null);
     setIsConnecting(true);
     try {
       const profileData: Profile = {
@@ -106,7 +112,9 @@ export const ConnectDialog: React.FC<ConnectDialogProps> = ({
       }
 
       if (!resp.success || !resp.session) {
-        toast.error(`Connection failed: ${resp.error || 'Unknown error'}`);
+        const formatted = formatErrorMessage(resp.error || 'Connection failed', 'SSH Connection');
+        setConnError(formatted);
+        toast.error(`${formatted.title}: ${formatted.message}`);
         setIsConnecting(false);
         return;
       }
@@ -121,7 +129,9 @@ export const ConnectDialog: React.FC<ConnectDialogProps> = ({
       onConnected(resp.session.id, profileData);
       onOpenChange(false);
     } catch (err: any) {
-      toast.error(`Connection error: ${err?.message || err}`);
+      const formatted = formatErrorMessage(err, 'SSH Connection');
+      setConnError(formatted);
+      toast.error(`${formatted.title}: ${formatted.message}`);
     } finally {
       setIsConnecting(false);
     }
@@ -273,6 +283,46 @@ export const ConnectDialog: React.FC<ConnectDialogProps> = ({
                 Save connection profile to termlet
               </Label>
             </div>
+
+            {/* Inline Error Banner */}
+            {connError && (
+              <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 dark:bg-rose-950/30 p-3 text-xs text-rose-800 dark:text-rose-200 animate-in fade-in duration-200">
+                <div className="flex items-start gap-2.5">
+                  <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
+                  <div className="flex-1 min-w-0">
+                    <h5 className="font-semibold text-rose-900 dark:text-rose-100">
+                      {connError.title}
+                    </h5>
+                    <p className="mt-0.5 text-rose-700 dark:text-rose-300 leading-relaxed">
+                      {connError.message}
+                    </p>
+                    {connError.hint && (
+                      <p className="mt-1 text-[11px] text-zinc-600 dark:text-zinc-400 bg-white/60 dark:bg-zinc-900/60 p-2 rounded border border-rose-500/20">
+                        <span className="font-semibold text-zinc-800 dark:text-zinc-200">Hint: </span>
+                        {connError.hint}
+                      </p>
+                    )}
+                    {connError.raw && (
+                      <div className="mt-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setShowErrorRaw(!showErrorRaw)}
+                          className="text-[10px] text-rose-600 dark:text-rose-400 hover:underline flex items-center gap-1 cursor-pointer"
+                        >
+                          {showErrorRaw ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                          <span>{showErrorRaw ? 'Hide technical details' : 'Show technical details'}</span>
+                        </button>
+                        {showErrorRaw && (
+                          <pre className="mt-1 p-1.5 rounded bg-black/10 dark:bg-black/40 text-[10px] font-mono text-zinc-700 dark:text-zinc-300 overflow-x-auto whitespace-pre-wrap break-all">
+                            {connError.raw}
+                          </pre>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           <DialogFooter className="gap-2 sm:gap-0">

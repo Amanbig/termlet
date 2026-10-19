@@ -14,6 +14,9 @@ const DefaultMaxFileSize = 10 * 1024 * 1024 // 10MB default editor limit
 
 // ListDirectory lists files and folders at the remote path.
 func (c *Client) ListDirectory(dirPath string) ([]models.RemoteFile, error) {
+	if c == nil || c.sftpClient == nil {
+		return nil, fmt.Errorf("sftp client is not initialized")
+	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -61,6 +64,9 @@ func (c *Client) ListDirectory(dirPath string) ([]models.RemoteFile, error) {
 
 // ReadFile reads content and metadata of a remote file.
 func (c *Client) ReadFile(filePath string, maxBytes int64) (*models.FileContent, error) {
+	if c == nil || c.sftpClient == nil {
+		return nil, fmt.Errorf("sftp client is not initialized")
+	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -112,6 +118,9 @@ func (c *Client) ReadFile(filePath string, maxBytes int64) (*models.FileContent,
 
 // CreateFile creates an empty file at the specified path.
 func (c *Client) CreateFile(filePath string) error {
+	if c == nil || c.sftpClient == nil {
+		return fmt.Errorf("sftp client is not initialized")
+	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -129,6 +138,9 @@ func (c *Client) CreateFile(filePath string) error {
 
 // CreateDirectory creates a new remote directory.
 func (c *Client) CreateDirectory(dirPath string) error {
+	if c == nil || c.sftpClient == nil {
+		return fmt.Errorf("sftp client is not initialized")
+	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -144,6 +156,9 @@ func (c *Client) CreateDirectory(dirPath string) error {
 
 // DeletePath deletes a file or directory.
 func (c *Client) DeletePath(targetPath string, isDir bool) error {
+	if c == nil || c.sftpClient == nil {
+		return fmt.Errorf("sftp client is not initialized")
+	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -167,6 +182,9 @@ func (c *Client) DeletePath(targetPath string, isDir bool) error {
 
 // Rename renames or moves a remote file/directory.
 func (c *Client) Rename(oldPath, newPath string) error {
+	if c == nil || c.sftpClient == nil {
+		return fmt.Errorf("sftp client is not initialized")
+	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -182,6 +200,9 @@ func (c *Client) Rename(oldPath, newPath string) error {
 
 // Stat retrieves metadata for a remote path.
 func (c *Client) Stat(remotePath string) (*models.RemoteFile, error) {
+	if c == nil || c.sftpClient == nil {
+		return nil, fmt.Errorf("sftp client is not initialized")
+	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
 

@@ -35,6 +35,9 @@ func NewClient(sshClient *ssh.Client) (*Client, error) {
 
 // Close gracefully terminates the SFTP session.
 func (c *Client) Close() error {
+	if c == nil {
+		return nil
+	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -52,6 +55,9 @@ func (c *Client) Close() error {
 
 // IsAlive checks if the SFTP client is still active.
 func (c *Client) IsAlive() bool {
+	if c == nil {
+		return false
+	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -65,6 +71,9 @@ func (c *Client) IsAlive() bool {
 
 // GetWorkingDirectory returns the current working directory.
 func (c *Client) GetWorkingDirectory() (string, error) {
+	if c == nil || c.sftpClient == nil {
+		return "", fmt.Errorf("sftp client is not initialized")
+	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
 

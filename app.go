@@ -177,119 +177,89 @@ func (a *App) ListActiveSessions() []connections.SessionSummary {
 
 // --- Remote Filesystem Operations ---
 
-// ListRemoteFiles lists entries in the specified remote directory.
-func (a *App) ListRemoteFiles(sessionID string, remotePath string) ([]models.RemoteFile, error) {
+// getSFTPClient safely retrieves the SFTP client for a session with nil guards.
+func (a *App) getSFTPClient(sessionID string) (*sftpclient.Client, error) {
+	if a.connMgr == nil {
+		return nil, fmt.Errorf("connection manager is not initialized")
+	}
+	if strings.TrimSpace(sessionID) == "" {
+		return nil, fmt.Errorf("session ID is required")
+	}
+
 	sess, err := a.connMgr.GetSession(sessionID)
 	if err != nil {
 		return nil, err
 	}
 
-	sftpCl, err := sess.GetSFTP()
+	return sess.GetSFTP()
+}
+
+// ListRemoteFiles lists entries in the specified remote directory.
+func (a *App) ListRemoteFiles(sessionID string, remotePath string) ([]models.RemoteFile, error) {
+	sftpCl, err := a.getSFTPClient(sessionID)
 	if err != nil {
 		return nil, err
 	}
-
 	return sftpCl.ListDirectory(remotePath)
 }
 
 // ReadRemoteFile retrieves the contents and metadata of a file.
 func (a *App) ReadRemoteFile(sessionID string, filePath string) (*models.FileContent, error) {
-	sess, err := a.connMgr.GetSession(sessionID)
+	sftpCl, err := a.getSFTPClient(sessionID)
 	if err != nil {
 		return nil, err
 	}
-
-	sftpCl, err := sess.GetSFTP()
-	if err != nil {
-		return nil, err
-	}
-
 	return sftpCl.ReadFile(filePath, 0)
 }
 
 // SaveRemoteFile safely saves edited content to the remote server.
 func (a *App) SaveRemoteFile(sessionID string, filePath string, content string, checkModTime int64) (*sftpclient.SaveResult, error) {
-	sess, err := a.connMgr.GetSession(sessionID)
+	sftpCl, err := a.getSFTPClient(sessionID)
 	if err != nil {
 		return nil, err
 	}
-
-	sftpCl, err := sess.GetSFTP()
-	if err != nil {
-		return nil, err
-	}
-
 	return sftpCl.SaveFile(filePath, content, checkModTime)
 }
 
 // CreateRemoteFile creates a new empty file on the remote server.
 func (a *App) CreateRemoteFile(sessionID string, filePath string) error {
-	sess, err := a.connMgr.GetSession(sessionID)
+	sftpCl, err := a.getSFTPClient(sessionID)
 	if err != nil {
 		return err
 	}
-
-	sftpCl, err := sess.GetSFTP()
-	if err != nil {
-		return err
-	}
-
 	return sftpCl.CreateFile(filePath)
 }
 
 // CreateRemoteDirectory creates a new directory on the remote server.
 func (a *App) CreateRemoteDirectory(sessionID string, dirPath string) error {
-	sess, err := a.connMgr.GetSession(sessionID)
+	sftpCl, err := a.getSFTPClient(sessionID)
 	if err != nil {
 		return err
 	}
-
-	sftpCl, err := sess.GetSFTP()
-	if err != nil {
-		return err
-	}
-
 	return sftpCl.CreateDirectory(dirPath)
 }
 
 // DeleteRemotePath deletes a remote file or folder.
 func (a *App) DeleteRemotePath(sessionID string, targetPath string, isDir bool) error {
-	sess, err := a.connMgr.GetSession(sessionID)
+	sftpCl, err := a.getSFTPClient(sessionID)
 	if err != nil {
 		return err
 	}
-
-	sftpCl, err := sess.GetSFTP()
-	if err != nil {
-		return err
-	}
-
 	return sftpCl.DeletePath(targetPath, isDir)
 }
 
 // RenameRemotePath renames or moves a remote file or folder.
 func (a *App) RenameRemotePath(sessionID string, oldPath string, newPath string) error {
-	sess, err := a.connMgr.GetSession(sessionID)
+	sftpCl, err := a.getSFTPClient(sessionID)
 	if err != nil {
 		return err
 	}
-
-	sftpCl, err := sess.GetSFTP()
-	if err != nil {
-		return err
-	}
-
 	return sftpCl.Rename(oldPath, newPath)
 }
 
 // UploadFileContent writes base64-encoded file data into a remote directory.
 func (a *App) UploadFileContent(sessionID string, remoteDir string, fileName string, base64Content string) error {
-	sess, err := a.connMgr.GetSession(sessionID)
-	if err != nil {
-		return err
-	}
-
-	sftpCl, err := sess.GetSFTP()
+	sftpCl, err := a.getSFTPClient(sessionID)
 	if err != nil {
 		return err
 	}

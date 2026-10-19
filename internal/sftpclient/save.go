@@ -31,6 +31,9 @@ type SaveResult struct {
 // SaveFile safely saves content to a remote file.
 // If checkModTime > 0, it validates that the remote file hasn't changed since checkModTime.
 func (c *Client) SaveFile(filePath string, content string, checkModTime int64) (*SaveResult, error) {
+	if c == nil || c.sftpClient == nil {
+		return nil, fmt.Errorf("sftp client is not initialized")
+	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -141,6 +144,9 @@ func (c *Client) directSave(filePath string, data []byte, mode uint32) (*SaveRes
 
 // UploadStream writes an io.Reader stream directly to destination.
 func (c *Client) UploadStream(remotePath string, r io.Reader) error {
+	if c == nil || c.sftpClient == nil {
+		return fmt.Errorf("sftp client is not initialized")
+	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -163,6 +169,9 @@ func (c *Client) UploadStream(remotePath string, r io.Reader) error {
 
 // OpenReadStream opens a file for reading stream.
 func (c *Client) OpenReadStream(remotePath string) (io.ReadCloser, *models.RemoteFile, error) {
+	if c == nil || c.sftpClient == nil {
+		return nil, nil, fmt.Errorf("sftp client is not initialized")
+	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
 

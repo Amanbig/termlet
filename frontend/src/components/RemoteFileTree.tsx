@@ -25,6 +25,7 @@ import {
   ChevronRight,
   ChevronDown,
   Loader2,
+  AlertTriangle,
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -36,6 +37,7 @@ import {
   DropdownMenuTrigger,
 } from './ui/dropdown-menu';
 import { toast } from 'sonner';
+import { formatErrorMessage, FormattedError } from '../utils/errors';
 
 import { SessionSummary } from '../types/remote';
 
@@ -61,6 +63,7 @@ export const RemoteFileTree: React.FC<RemoteFileTreeProps> = ({
   const [items, setItems] = useState<TreeItem[]>([]);
   const [currentPath, setCurrentPath] = useState<string>(startDirectory);
   const [isLoading, setIsLoading] = useState(false);
+  const [treeError, setTreeError] = useState<FormattedError | null>(null);
   const [newItemType, setNewItemType] = useState<'file' | 'folder' | null>(null);
   const [newItemName, setNewItemName] = useState('');
   const [targetParentPath, setTargetParentPath] = useState<string>('');
@@ -73,6 +76,7 @@ export const RemoteFileTree: React.FC<RemoteFileTreeProps> = ({
     async (dirPath: string) => {
       if (!sessionId) return;
       setIsLoading(true);
+      setTreeError(null);
       try {
         const files = await ListRemoteFiles(sessionId, dirPath);
         setItems(
@@ -86,7 +90,11 @@ export const RemoteFileTree: React.FC<RemoteFileTreeProps> = ({
         );
         setCurrentPath(dirPath);
       } catch (err: any) {
-        toast.error(`Failed to list files: ${err?.message || err}`);
+        const formatted = formatErrorMessage(err, 'Directory Listing');
+        setTreeError(formatted);
+        toast.error(`${formatted.title}: ${formatted.message}`, {
+          description: formatted.hint,
+        });
       } finally {
         setIsLoading(false);
       }
@@ -99,6 +107,7 @@ export const RemoteFileTree: React.FC<RemoteFileTreeProps> = ({
       fetchDirectory(startDirectory || '.');
     } else {
       setItems([]);
+      setTreeError(null);
     }
   }, [sessionId, startDirectory, fetchDirectory]);
 
@@ -139,7 +148,10 @@ export const RemoteFileTree: React.FC<RemoteFileTreeProps> = ({
         })
       );
     } catch (err: any) {
-      toast.error(`Failed to load directory: ${err?.message || err}`);
+      const formatted = formatErrorMessage(err, 'Directory');
+      toast.error(`${formatted.title}: ${formatted.message}`, {
+        description: formatted.hint,
+      });
       setItems((prev) => updateTree(prev, item.path, { isLoading: false }));
     }
   };
@@ -163,7 +175,10 @@ export const RemoteFileTree: React.FC<RemoteFileTreeProps> = ({
       }
       fetchDirectory(currentPath);
     } catch (err: any) {
-      toast.error(`Creation failed: ${err?.message || err}`);
+      const formatted = formatErrorMessage(err, 'Create File/Folder');
+      toast.error(`${formatted.title}: ${formatted.message}`, {
+        description: formatted.hint,
+      });
     } finally {
       setNewItemType(null);
       setNewItemName('');
@@ -184,7 +199,10 @@ export const RemoteFileTree: React.FC<RemoteFileTreeProps> = ({
       toast.success('Renamed successfully');
       fetchDirectory(currentPath);
     } catch (err: any) {
-      toast.error(`Rename failed: ${err?.message || err}`);
+      const formatted = formatErrorMessage(err, 'Rename');
+      toast.error(`${formatted.title}: ${formatted.message}`, {
+        description: formatted.hint,
+      });
     } finally {
       setRenamingPath(null);
       setRenameValue('');
@@ -204,7 +222,10 @@ export const RemoteFileTree: React.FC<RemoteFileTreeProps> = ({
       toast.success(`Deleted ${name}`);
       fetchDirectory(currentPath);
     } catch (err: any) {
-      toast.error(`Delete failed: ${err?.message || err}`);
+      const formatted = formatErrorMessage(err, 'Delete');
+      toast.error(`${formatted.title}: ${formatted.message}`, {
+        description: formatted.hint,
+      });
     }
   };
 
@@ -220,7 +241,10 @@ export const RemoteFileTree: React.FC<RemoteFileTreeProps> = ({
         toast.success(`Uploaded ${file.name}`);
         fetchDirectory(currentPath);
       } catch (err: any) {
-        toast.error(`Upload failed: ${err?.message || err}`);
+        const formatted = formatErrorMessage(err, 'Upload');
+        toast.error(`${formatted.title}: ${formatted.message}`, {
+          description: formatted.hint,
+        });
       }
     };
     reader.readAsDataURL(file);
@@ -536,6 +560,32 @@ export const RemoteFileTree: React.FC<RemoteFileTreeProps> = ({
           <div className="flex items-center justify-center py-8 text-zinc-500">
             <Loader2 className="w-5 h-5 animate-spin mr-2" />
             <span className="text-xs">Loading files...</span>
+          </div>
+        ) : treeError ? (
+          <div className="p-4 text-center select-none">
+            <div className="w-8 h-8 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-500 mx-auto flex items-center justify-center mb-2">
+              <AlertTriangle className="w-4 h-4" />
+            </div>
+            <h4 className="text-xs font-semibold text-rose-600 dark:text-rose-400">
+              {treeError.title}
+            </h4>
+            <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-1 leading-snug">
+              {treeError.message}
+            </p>
+            {treeError.hint && (
+              <p className="text-[10px] text-zinc-400 dark:text-zinc-500 mt-1.5 italic">
+                {treeError.hint}
+              </p>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => fetchDirectory(currentPath)}
+              className="mt-3 text-xs h-7 gap-1.5 cursor-pointer"
+            >
+              <RefreshCw className="w-3 h-3" />
+              <span>Retry</span>
+            </Button>
           </div>
         ) : items.length === 0 ? (
           <div className="text-center py-8 text-xs text-zinc-500">Directory is empty</div>

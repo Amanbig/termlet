@@ -1,44 +1,39 @@
-# Termlet v0.5.0 🚀
+# Termlet v0.5.1 🚀
 
-Termlet **v0.5.0** is a major milestone release of Termlet — a modern, blazing-fast cross-platform SSH terminal, SFTP browser, and remote code editor built with Go, Wails v2, and React.
+Termlet **v0.5.1** is a targeted polish and stability release focusing on native Windows icon integration, webview favicon fidelity, comprehensive light-mode theme contrast enhancements, and UI control cleanup across platforms.
 
 ---
 
 ### ✨ What's New & Highlights
 
-#### 🪟 Modern Frameless Window & Integrated Controls
-- **Custom Frameless Title Bar**:
-  - Replaced native OS window decorations with an integrated, sleek title bar matching the active application theme.
-  - Modern window controls: **`—` Minimize**, **`□` Maximize / Restore**, and **`✕` Close**.
-  - **Dynamic Maximize/Restore Toggle**: Smoothly switches between single square and dual-rectangle restore icons.
-  - **Double-Click Header**: Double-clicking anywhere on the draggable titlebar toggles maximize and restore.
-  - **Smooth Window Dragging**: Designated drag region (`.wails-drag` and `.wails-no-drag`) allows effortless window movement across Linux, Windows, and macOS.
-  - **Active Session Pill**: Displays the currently connected remote server with a pulsing green indicator and quick-disconnect dropdown right inside the title bar.
+#### 🪟 Windows Native Icon & Taskbar Integration
+- **Multi-Resolution Windows Executable Icon**:
+  - Generated and embedded a true multi-resolution icon (`build/windows/icon.ico`) with standard 16x16, 32x32, 48x48, 64x64, 128x128, and 256x256 RGBA layers.
+  - Fixes icon display across Windows Taskbar, Alt-Tab task switcher, File Explorer detail/tile views, and the window title bar.
+  - Resolved missing custom icon issue in NSIS installer setup wizard and Start Menu application shortcuts.
+- **Master App Icon Standardization**:
+  - Re-rendered `build/appicon.png` into a crisp 512x512 RGBA squircle asset with smooth antialiased corners for cross-platform packaging.
 
-#### ⚡ Full-Featured SSH Terminal & Profile Manager
-- **SSH Connection Profiles**: Save and organize multiple remote servers with custom labels, hostnames, ports, usernames, and authentication methods (password or private key).
-- **Fast Session Switching**: Switch between active servers and terminal tabs effortlessly without losing state.
-- **Configurable Terminal**: Built-in font size stepper with 1-click increment/decrement, custom font families (JetBrains Mono), and configurable tab indentations.
+#### 🌐 Webview & Browser Favicon Assets
+- **Webview Favicon Support**:
+  - Added `frontend/public/favicon.png` (512x512) and `frontend/public/favicon.ico` (multi-res 16/32/48).
+  - Explicitly linked `<link rel="icon" type="image/png" href="/favicon.png" />` in `frontend/index.html` to eliminate blank or default webview icons during runtime.
+  - Added clean `<title>Termlet</title>` branding in the webview document head.
 
-#### 📁 Dual-Pane Remote SFTP Browser & Inline Code Editor
-- **Remote File Tree**: Fast SFTP tree exploration with file type icons, directory expansion, and breadcrumbs.
-- **Integrated Code Editor**: Open, view, and edit remote files directly on your server with syntax highlighting and instant remote save (<kbd>Ctrl + S</kbd> / <kbd>Cmd + S</kbd>).
-- **Safety Confirmations**: Optional confirmation dialogs before deleting remote files or directories to prevent accidental data loss.
+#### 🎨 Complete Light Mode UI & Contrast Polish
+- **Remote File Tree Readability**:
+  - Enhanced text color contrast in light mode: unselected tree items now use high-contrast dark text (`text-zinc-800` / `hover:text-zinc-950`) instead of low-contrast muted zinc.
+  - Polished active item highlight: replaced low-contrast white highlight with a crisp, subtle blue badge (`bg-blue-100 text-blue-900` in light mode, `bg-blue-900/30 text-blue-200` in dark mode).
+  - Ensured toolbar button icons (`Refresh`, `Collapse All`) adopt high-contrast foreground states in both themes.
+- **Code Editor Canvas & Status Bar**:
+  - Fixed empty editor background: eliminated the jarring dark canvas in light mode when no files are open, seamlessly adopting a clean `bg-zinc-50` backdrop with dark zinc prompt text.
+  - Seamless Status Bar: synchronized the bottom status bar background (`bg-zinc-100/90 text-zinc-700`) and border color to match the light theme workspace.
+- **SSH Connection Dialog**:
+  - Overhauled modal styling: resolved harsh dark panels in light mode by applying appropriate light theme containers (`bg-white/95 text-zinc-800 border-zinc-200`).
 
-#### 🎨 Polished Light & Dark Theme System
-- **Unified Workspace Aesthetics**: Clean dark mode (`#09090b` / `zinc-950`) and light mode (`zinc-50`) with seamless status bar alignment.
-- **Custom Numeric Controls**: Handcrafted tactile font size steppers and sanitized port inputs eliminating native WebKitGTK white spinner box artifacts on Linux.
-- **Searchable Settings View**: Filter preferences instantly through a centered search bar across appearance, editor, and SSH settings.
-
-#### 🔄 In-App Updater & Release Detection
-- **GitHub Release Integration**: Automatically checks for new Termlet releases directly from GitHub.
-- **In-App Notification**: Instant notification toast with version diff and direct download links when an update is available.
-
-#### 📦 Multi-Platform Native Packaging
-- **Linux Packages**: Automated `.deb`, `.rpm`, and portable `.tar.gz` packages generated with NFPM, including desktop launcher (`termlet.desktop`) and high-resolution icons.
-- **Windows Binaries**: Standalone Windows executables (`termlet-windows-amd64.zip`).
-- **macOS Universal Builds**: Native Apple Silicon & Intel universal binaries and DMG images.
-- **Open-Source License**: Released under the permissive **Apache 2.0 License**.
+#### 🎛️ Linux WebKitGTK Spinner Elimination
+- **Numeric Stepper Polish**:
+  - Fully suppressed native WebKitGTK number spin boxes in connection dialog port inputs and settings panels, providing clean, tactile, custom stepper buttons across all platforms.
 
 ---
 

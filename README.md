@@ -72,7 +72,7 @@ termlet/
 │   ├── sftp/                   # SFTP remote file operations & directory traversal
 │   ├── config/                 # Profile storage & application settings
 │   ├── updater/                # GitHub release detection & update checker
-│   └── version/                # Semantic version constant (v0.5.0)
+│   └── version/                # Semantic version constant (v0.5.1)
 ├── frontend/                   # React 19 + TypeScript + Tailwind CSS v4 + CodeMirror
 │   ├── src/
 │   │   ├── components/         # TitleBar, RemoteFileTree, CodeEditor, EditorTabs, ConnectDialog, SettingsView, WelcomeScreen

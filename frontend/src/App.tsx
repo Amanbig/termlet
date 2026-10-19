@@ -18,7 +18,6 @@ import { CodeEditor } from './components/CodeEditor';
 import { ConnectDialog } from './components/ConnectDialog';
 import { SettingsView } from './components/SettingsView';
 import { ReleaseNotesView } from './components/ReleaseNotesView';
-import { UpdateModal } from './components/UpdateModal';
 import { WelcomeScreen } from './components/WelcomeScreen';
 import { TitleBar } from './components/TitleBar';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -49,7 +48,6 @@ export function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isReleaseNotesOpen, setIsReleaseNotesOpen] = useState(false);
 
-  const [updateModalOpen, setUpdateModalOpen] = useState(false);
   const [updateInfo, setUpdateInfo] = useState<updater.UpdateInfo | null>(null);
   const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
   const [showUpdateToast, setShowUpdateToast] = useState(false);
@@ -81,7 +79,7 @@ export function App() {
       .catch(() => {});
   }, []);
 
-  const handleCheckForUpdates = useCallback(async (manual = false) => {
+  const handleCheckForUpdates = useCallback(async () => {
     setIsCheckingUpdate(true);
     try {
       const res = await CheckForUpdates();
@@ -91,20 +89,11 @@ export function App() {
           setAppVersion(res.currentVersion || res.current_version || '0.5.2');
         }
         if (res.available) {
-          if (manual) {
-            setUpdateModalOpen(true);
-          } else {
-            setShowUpdateToast(true);
-          }
-        } else if (manual) {
-          setUpdateModalOpen(true);
+          setShowUpdateToast(true);
         }
       }
     } catch (err: any) {
       console.warn('Update check failed:', err);
-      if (manual) {
-        toast.error(`Could not check for updates: ${err?.message || err}`);
-      }
     } finally {
       setIsCheckingUpdate(false);
     }
@@ -113,7 +102,7 @@ export function App() {
   // Background check for updates 3 seconds after app launch
   useEffect(() => {
     const timer = setTimeout(() => {
-      handleCheckForUpdates(false);
+      handleCheckForUpdates();
     }, 3000);
     return () => clearTimeout(timer);
   }, [handleCheckForUpdates]);
@@ -394,8 +383,10 @@ export function App() {
                       onUpdateSettings={updateSettings}
                       onResetSettings={resetSettings}
                       onClose={handleCloseSettingsTab}
-                      onOpenUpdateModal={() => setUpdateModalOpen(true)}
                       onOpenReleaseNotes={handleOpenReleaseNotesTab}
+                      updateInfo={updateInfo}
+                      onUpdateInfoChange={setUpdateInfo}
+                      isCheckingUpdates={isCheckingUpdate}
                     />
                   ) : (
                     <CodeEditor
@@ -481,9 +472,9 @@ export function App() {
             </span>
           )}
           <button
-            onClick={() => handleCheckForUpdates(true)}
+            onClick={handleOpenSettingsTab}
             className="hover:text-zinc-800 dark:hover:text-zinc-200 cursor-pointer transition-colors flex items-center gap-1"
-            title="Check for updates"
+            title="Open Settings & Updates"
           >
             {updateInfo?.available && (
               <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
@@ -502,17 +493,8 @@ export function App() {
         onProfileSaved={refreshProfiles}
       />
 
-      {/* Update In-App Modal */}
-      <UpdateModal
-        isOpen={updateModalOpen}
-        onClose={() => setUpdateModalOpen(false)}
-        updateInfo={updateInfo}
-        onCheckAgain={() => handleCheckForUpdates(true)}
-        isChecking={isCheckingUpdate}
-      />
-
       {/* Non-intrusive Update Toast Notification */}
-      {showUpdateToast && updateInfo?.available && !updateModalOpen && (
+      {showUpdateToast && updateInfo?.available && (
         <div className="fixed bottom-8 right-5 z-40 max-w-sm w-full bg-white/95 dark:bg-zinc-900/95 border border-blue-500/40 rounded-xl p-4 shadow-2xl shadow-blue-500/20 backdrop-blur-md animate-in slide-in-from-bottom-5 duration-300 select-none">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-2.5">
@@ -548,11 +530,11 @@ export function App() {
             <button
               onClick={() => {
                 setShowUpdateToast(false);
-                setUpdateModalOpen(true);
+                handleOpenSettingsTab();
               }}
               className="px-3 py-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-semibold rounded-lg shadow-sm cursor-pointer transition-all"
             >
-              Update Now
+              Update in Settings
             </button>
           </div>
         </div>

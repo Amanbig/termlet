@@ -13,7 +13,7 @@
   "info": {
     "companyName": "Termlet",
     "productName": "Termlet",
-    "productVersion": "0.5.1",
+    "productVersion": "0.5.2",
     "copyright": "Copyright 2026",
     "comments": "Modern cross-platform SSH terminal & SFTP client"
   }

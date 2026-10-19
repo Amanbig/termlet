@@ -1,12 +1,44 @@
-# Termlet v0.5.1 🚀
+# Termlet v0.5.2 🚀
 
-Termlet **v0.5.1** is a major update bringing seamless in-app automatic update installation (matching Dockit's update architecture), native Windows icon integration, webview favicon fidelity, comprehensive light-mode theme contrast enhancements, and UI control cleanup across platforms.
+Termlet **v0.5.2** brings comprehensive, production-grade error handling across the entire stack, eliminating white-screen crashes, introducing actionable diagnostic hints, and bolstering backend fault tolerance alongside our automatic updater and UI refinements.
 
 ---
 
 ### ✨ What's New & Highlights
 
-#### 🔄 Automatic In-App Update Installation & Management (Dockit Parity)
+#### 🛡️ Robust Error Handling & Crash Protection
+- **React Sectional `<ErrorBoundary>`**:
+  - Integrated error boundaries around all major workspace zones (Side panels, Explorer, Editor, Settings, and Release Notes).
+  - Component crashes or syntax errors in editors no longer cause white-screen failures.
+  - Includes user-facing recovery controls: **Reload View**, collapsible **Technical Details** stack viewer, and **Full Restart**.
+- **Centralized Error Parsing & Actionable Hints (`formatErrorMessage`)**:
+  - Automatically translates cryptic Go, SSH, SFTP, and OS errors into structured `{ title, message, hint, raw }` objects across 13 categories:
+    - **Authentication Failures**: Clear advice on username, password, or key passphrases.
+    - **Connection Refused**: Guides users to check `sshd` status, listening ports, and firewall rules.
+    - **DNS / Host Resolution**: Pinpoints DNS lookups and typos.
+    - **Connection Timeouts & Network Unreachability**: Actionable hints on server reachability and VPN routing.
+    - **Host Key Verification & Security Warnings**: Explicit guidance on untrusted or changed host keys.
+    - **SFTP Permissions & Missing Files**: Clear Linux file permission (`chmod`/`chown`) hints.
+    - **Concurrent File Modification**: Interactive conflict warnings with "Overwrite anyway" options.
+    - **Buffer Limits**: Guards on files exceeding editor size limits.
+    - **Disconnected Sessions**: Contextual prompts to reconnect.
+- **Inline Connection Error Banners**:
+  - Replaced fleeting toasts in `ConnectDialog` with persistent inline error alerts above action buttons, complete with troubleshooting hints and a toggleable raw technical details view.
+- **Remote Explorer Failure Recovery**:
+  - Replaced misleading "Directory is empty" states during SFTP failures with an explicit error screen and an inline **Retry** action.
+- **Go Backend Panic Prevention & Nil Safety**:
+  - Added centralized `getSFTPClient` in `app.go` with strict nil checks and session validation.
+  - Added receiver and client nil guards across `sftpclient.Client` methods before mutex acquisitions.
+
+---
+
+# Termlet v0.5.1 🚀
+
+Termlet **v0.5.1** brought seamless in-app automatic update installation (matching Dockit's update architecture), native Windows icon integration, webview favicon fidelity, comprehensive light-mode theme contrast enhancements, and UI control cleanup across platforms.
+
+---
+
+### 🔄 Automatic In-App Update Installation & Management (Dockit Parity)
 - **One-Click In-App Updating**:
   - Added background update detection shortly after startup that alerts users with a non-intrusive floating toast when a newer version is released.
   - Interactive **`<UpdateModal>`**: displays installed version vs new version badges, target package detection tag, release notes, and real-time download progress (percentage and downloaded MB).
@@ -23,7 +55,7 @@ Termlet **v0.5.1** is a major update bringing seamless in-app automatic update i
     - Can be reopened at any time from the Settings view via the **"Release Notes"** button.
   - **Settings Integration**: direct "Check for Updates" and "Install Update" triggers right inside the Settings view and bottom status bar.
 
-#### 🪟 Windows Native Icon & Taskbar Integration
+### 🪟 Windows Native Icon & Taskbar Integration
 - **Multi-Resolution Windows Executable Icon**:
   - Generated and embedded a true multi-resolution icon (`build/windows/icon.ico`) with standard 16x16, 32x32, 48x48, 64x64, 128x128, and 256x256 RGBA layers.
   - Fixes icon display across Windows Taskbar, Alt-Tab task switcher, File Explorer detail/tile views, and the window title bar.
@@ -31,13 +63,13 @@ Termlet **v0.5.1** is a major update bringing seamless in-app automatic update i
 - **Master App Icon Standardization**:
   - Re-rendered `build/appicon.png` into a crisp 512x512 RGBA squircle asset with smooth antialiased corners for cross-platform packaging.
 
-#### 🌐 Webview & Browser Favicon Assets
+### 🌐 Webview & Browser Favicon Assets
 - **Webview Favicon Support**:
   - Added `frontend/public/favicon.png` (512x512) and `frontend/public/favicon.ico` (multi-res 16/32/48).
   - Explicitly linked `<link rel="icon" type="image/png" href="/favicon.png" />` in `frontend/index.html` to eliminate blank or default webview icons during runtime.
   - Added clean `<title>Termlet</title>` branding in the webview document head.
 
-#### 🎨 Complete Light Mode UI & Contrast Polish
+### 🎨 Complete Light Mode UI & Contrast Polish
 - **Remote File Tree Readability**:
   - Enhanced text color contrast in light mode: unselected tree items now use high-contrast dark text (`text-zinc-800` / `hover:text-zinc-950`) instead of low-contrast muted zinc.
   - Polished active item highlight: replaced low-contrast white highlight with a crisp, subtle blue badge (`bg-blue-100 text-blue-900` in light mode, `bg-blue-900/30 text-blue-200` in dark mode).
@@ -48,7 +80,7 @@ Termlet **v0.5.1** is a major update bringing seamless in-app automatic update i
 - **SSH Connection Dialog**:
   - Overhauled modal styling: resolved harsh dark panels in light mode by applying appropriate light theme containers (`bg-white/95 text-zinc-800 border-zinc-200`).
 
-#### 🎛️ Linux WebKitGTK Spinner Elimination
+### 🎛️ Linux WebKitGTK Spinner Elimination
 - **Numeric Stepper Polish**:
   - Fully suppressed native WebKitGTK number spin boxes in connection dialog port inputs and settings panels, providing clean, tactile, custom stepper buttons across all platforms.
 

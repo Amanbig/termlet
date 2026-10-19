@@ -55,9 +55,25 @@ Built with **Go (Wails v2)** + **React 19** + **TypeScript** + **Tailwind CSS v4
 - **Custom Numeric Steppers**: Handcrafted tactile font size steppers (`- [ 13 ] + px`) and sanitized numeric inputs, eliminating native WebKitGTK white spinner box artifacts on Linux.
 - **Instant Search Settings**: Full-text filterable settings dashboard with responsive, centered search controls.
 
-### 🔄 In-App Self-Updates & Release Management
+### 🛡️ Fault-Tolerant Error Handling & Crash Protection
+- **React `<ErrorBoundary>`**: Sectional boundaries isolate rendering failures in tabs, editor buffers, and trees so the desktop application never whitescreens.
+- **Instant In-View Recovery**: Offers 1-click **Reload View**, collapsible **Technical Details** stack viewer, and **Full Restart**.
+- **Actionable Error Translation (`errors.ts`)**: Replaces cryptic raw errors with human-friendly titles, explanations, and advice across 13 SSH, SFTP, networking, DNS, and file conflict categories.
+- **Inline Connection Error Banners**: `ConnectDialog` displays dedicated diagnostic alerts with troubleshooting hints right above dialog controls.
+- **Explorer Retry States**: Replaces deceptive "Directory is empty" messages with an explicit error screen and 1-click **Retry**.
+- **Go Backend Panic Prevention**: Strict nil pointer checks across all SFTP methods and connection sessions before lock acquisition.
+
+### 🔄 In-App Automatic Updates & Release Notes
 - **Background Release Detection**: Automatic GitHub Releases checking with non-intrusive notification toasts.
-- **In-App Version Check**: Query current version and check for newer releases with 1 click directly in Settings.
+- **Native Package & In-Place Installation**:
+  - **Linux (`.deb` / `.rpm`)**: Downloads the appropriate target package and runs native package manager installation via `pkexec`.
+  - **Windows**: Launches the NSIS setup installer `.exe` or patches portable `.zip` archives.
+  - **Portable / Standalone**: Applies binary updates in-place seamlessly with automatic elevated fallback.
+- **VS Code Style Post-Update Release Notes Tab**:
+  - Automatically pops up a rendered Release Notes tab upon first launch after an update to showcase new features and improvements.
+  - Tracked via `localStorage` to display **only once** per version upgrade.
+  - Always accessible on demand via the **Release Notes** button in Settings.
+- **Windows Multi-Resolution Icon & Webview Favicons**: True multi-res `.ico` (16 to 256px) for Windows Taskbar/Explorer and crisp webview runtime favicons.
 
 ---
 
@@ -65,25 +81,26 @@ Built with **Go (Wails v2)** + **React 19** + **TypeScript** + **Tailwind CSS v4
 
 ```
 termlet/
-├── app.go                      # Wails RPC backend bridge binding SSH, SFTP, and Settings
+├── app.go                      # Wails RPC backend bridge binding SSH, SFTP, Updater, and Settings
 ├── main.go                     # Wails application entrypoint & frameless window configuration
 ├── internal/
 │   ├── ssh/                    # SSH client, PTY session manager & authentication
-│   ├── sftp/                   # SFTP remote file operations & directory traversal
-│   ├── config/                 # Profile storage & application settings
-│   ├── updater/                # GitHub release detection & update checker
-│   └── version/                # Semantic version constant (v0.5.1)
+│   ├── sftpclient/             # SFTP remote file operations, streaming & concurrency safety
+│   ├── connections/            # Multi-session connection manager & persistence
+│   ├── updater/                # In-app update downloader, package installer & GitHub release API
+│   └── version/                # Semantic version constant (v0.5.2)
 ├── frontend/                   # React 19 + TypeScript + Tailwind CSS v4 + CodeMirror
 │   ├── src/
-│   │   ├── components/         # TitleBar, RemoteFileTree, CodeEditor, EditorTabs, ConnectDialog, SettingsView, WelcomeScreen
+│   │   ├── components/         # TitleBar, RemoteFileTree, CodeEditor, EditorTabs, ConnectDialog, SettingsView, ErrorBoundary, UpdateModal, ReleaseNotesView
+│   │   ├── utils/              # Centralized error formatter (errors.ts)
 │   │   ├── types/              # TypeScript models (remote files, sessions, settings)
 │   │   ├── style.css           # Tailwind v4 theme definitions and GTK spinner suppression
 │   │   ├── App.tsx             # Main dashboard coordinator & state management
 │   │   └── main.tsx
 │   └── wailsjs/                # Auto-generated RPC bindings between Go and TypeScript
-├── build/                      # Build assets, application icons, and packaging specs
+├── build/                      # Build assets, multi-resolution application icons, and packaging specs
 │   ├── linux/                  # Linux desktop launcher and NFPM packaging configuration
-│   └── windows/                # Windows icon and manifest
+│   └── windows/                # Windows icon (16-256px multi-layer ICO) and manifest
 └── .github/workflows/          # Cross-platform CI/CD release workflow (Linux, Windows, macOS)
 ```
 

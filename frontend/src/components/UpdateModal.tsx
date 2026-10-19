@@ -237,7 +237,7 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
               Installed
             </span>
             <span className="text-sm font-mono font-bold text-zinc-800 dark:text-zinc-200 mt-0.5">
-              v{String(updateInfo?.currentVersion || updateInfo?.current_version || '0.5.1').replace(/^v/, '')}
+              v{String(updateInfo?.currentVersion || updateInfo?.current_version || '0.5.2').replace(/^v/, '')}
             </span>
           </div>
           <div className="flex flex-col">
@@ -255,7 +255,7 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
                 updateInfo?.latestVersion ||
                   updateInfo?.latest_version ||
                   updateInfo?.currentVersion ||
-                  '0.5.1'
+                  '0.5.2'
               ).replace(/^v/, '')}
             </span>
           </div>

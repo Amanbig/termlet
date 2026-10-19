@@ -3,8 +3,10 @@ import { OpenFile, RemoteFile } from '../types/remote';
 import { ReadRemoteFile, SaveRemoteFile } from '../../wailsjs/go/main/App';
 import { formatErrorMessage } from '../utils/errors';
 import { toast } from 'sonner';
+import { useConfirm } from '../context/ConfirmContext';
 
 export function useRemoteFiles() {
+  const confirm = useConfirm();
   const [openFiles, setOpenFiles] = useState<OpenFile[]>([]);
   const [activeFilePath, setActiveFilePath] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -128,15 +130,18 @@ export function useRemoteFiles() {
   }, [activeFilePath, saveFileByPath]);
 
   const closeFile = useCallback(
-    (filePath: string, force = false): boolean => {
+    async (filePath: string, force = false): Promise<boolean> => {
       const fileToClose = openFiles.find((f) => f.path === filePath);
       if (!fileToClose) return true;
 
       if (fileToClose.isDirty && !force) {
-        const confirmClose = window.confirm(
-          `"${fileToClose.name}" has unsaved changes. Discard changes and close?`
-        );
-        if (!confirmClose) return false;
+        const confirmed = await confirm({
+          title: 'Unsaved Changes',
+          description: `"${fileToClose.name}" has unsaved changes. Discard changes and close?`,
+          confirmText: 'Discard & Close',
+          variant: 'destructive',
+        });
+        if (!confirmed) return false;
       }
 
       setOpenFiles((prev) => {
@@ -150,32 +155,41 @@ export function useRemoteFiles() {
 
       return true;
     },
-    [openFiles, activeFilePath]
+    [openFiles, activeFilePath, confirm]
   );
 
-  const closeAllFiles = useCallback(() => {
+  const closeAllFiles = useCallback(async () => {
     const dirtyFiles = openFiles.filter((f) => f.isDirty);
     if (dirtyFiles.length > 0) {
-      const confirmClose = window.confirm(
-        `You have ${dirtyFiles.length} unsaved file(s). Discard all changes and close?`
-      );
-      if (!confirmClose) return;
+      const confirmed = await confirm({
+        title: 'Unsaved Changes',
+        description: `You have ${dirtyFiles.length} unsaved file(s). Discard all changes and close?`,
+        confirmText: 'Discard All & Close',
+        variant: 'destructive',
+      });
+      if (!confirmed) return;
     }
     setOpenFiles([]);
     setActiveFilePath(null);
-  }, [openFiles]);
+  }, [openFiles, confirm]);
 
-  const closeOtherFiles = useCallback((keepPath: string) => {
-    const dirtyOthers = openFiles.filter((f) => f.path !== keepPath && f.isDirty);
-    if (dirtyOthers.length > 0) {
-      const confirmClose = window.confirm(
-        `You have ${dirtyOthers.length} unsaved file(s) that will be closed. Discard changes?`
-      );
-      if (!confirmClose) return;
-    }
-    setOpenFiles((prev) => prev.filter((f) => f.path === keepPath));
-    setActiveFilePath(keepPath);
-  }, [openFiles]);
+  const closeOtherFiles = useCallback(
+    async (keepPath: string) => {
+      const dirtyOthers = openFiles.filter((f) => f.path !== keepPath && f.isDirty);
+      if (dirtyOthers.length > 0) {
+        const confirmed = await confirm({
+          title: 'Unsaved Changes',
+          description: `You have ${dirtyOthers.length} unsaved file(s) that will be closed. Discard changes?`,
+          confirmText: 'Discard & Close',
+          variant: 'destructive',
+        });
+        if (!confirmed) return;
+      }
+      setOpenFiles((prev) => prev.filter((f) => f.path === keepPath));
+      setActiveFilePath(keepPath);
+    },
+    [openFiles, confirm]
+  );
 
   const closeSavedFiles = useCallback(() => {
     setOpenFiles((prev) => {

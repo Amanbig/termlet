@@ -38,6 +38,7 @@ import {
 } from './ui/dropdown-menu';
 import { toast } from 'sonner';
 import { formatErrorMessage, FormattedError } from '../utils/errors';
+import { useConfirm } from '../context/ConfirmContext';
 
 import { SessionSummary } from '../types/remote';
 
@@ -60,6 +61,7 @@ export const RemoteFileTree: React.FC<RemoteFileTreeProps> = ({
   onDisconnect,
   onOpenProfiles,
 }) => {
+  const confirm = useConfirm();
   const [items, setItems] = useState<TreeItem[]>([]);
   const [currentPath, setCurrentPath] = useState<string>(startDirectory);
   const [isLoading, setIsLoading] = useState(false);
@@ -212,10 +214,13 @@ export const RemoteFileTree: React.FC<RemoteFileTreeProps> = ({
   const handleDelete = async (targetPath: string, isDir: boolean, name: string) => {
     if (!sessionId) return;
 
-    const confirmDelete = window.confirm(
-      `Are you sure you want to delete ${isDir ? 'folder' : 'file'} "${name}"?`
-    );
-    if (!confirmDelete) return;
+    const confirmed = await confirm({
+      title: `Delete ${isDir ? 'Folder' : 'File'}`,
+      description: `Are you sure you want to delete ${isDir ? 'folder' : 'file'} "${name}"? This action cannot be undone.`,
+      confirmText: 'Delete',
+      variant: 'destructive',
+    });
+    if (!confirmed) return;
 
     try {
       await DeleteRemotePath(sessionId, targetPath, isDir);

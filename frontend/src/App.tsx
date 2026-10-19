@@ -24,6 +24,7 @@ import { TitleBar } from './components/TitleBar';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { useRemoteFiles } from './hooks/useRemoteFiles';
 import { useSettings } from './hooks/useSettings';
+import { useConfirm } from './context/ConfirmContext';
 import { Toaster } from './components/ui/sonner';
 import { toast } from 'sonner';
 import { Power, Sparkles, X, Radio } from 'lucide-react';
@@ -39,6 +40,7 @@ const SETTINGS_TAB_PATH = 'termlet://settings';
 const RELEASE_NOTES_TAB_PATH = 'termlet://release-notes';
 
 export function App() {
+  const confirm = useConfirm();
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [activeSessions, setActiveSessions] = useState<SessionSummary[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
@@ -207,8 +209,13 @@ export function App() {
   };
 
   const handleDeleteProfile = async (id: string) => {
-    const confirmDelete = window.confirm('Are you sure you want to delete this connection profile?');
-    if (!confirmDelete) return;
+    const ok = await confirm({
+      title: 'Delete Connection Profile',
+      description: 'Are you sure you want to delete this connection profile? Saved host details and credentials will be removed.',
+      confirmText: 'Delete',
+      variant: 'destructive',
+    });
+    if (!ok) return;
 
     try {
       await DeleteProfile(id);

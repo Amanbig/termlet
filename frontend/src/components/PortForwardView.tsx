@@ -29,6 +29,7 @@ import {
 import { BrowserOpenURL } from '../../wailsjs/runtime/runtime';
 import { toast } from 'sonner';
 import { formatErrorMessage } from '../utils/errors';
+import { useConfirm } from '../context/ConfirmContext';
 
 interface PortForwardViewProps {
   sessionId: string | null;
@@ -52,6 +53,7 @@ export const PortForwardView: React.FC<PortForwardViewProps> = ({
   onOpenConnectDialog,
   onTunnelsChange,
 }) => {
+  const confirm = useConfirm();
   const [tunnels, setTunnels] = useState<tunnel.TunnelInfo[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -221,12 +223,17 @@ export const PortForwardView: React.FC<PortForwardViewProps> = ({
 
   // Delete tunnel
   const handleDeleteTunnel = async (tunnelId: string, port: number) => {
-    const confirm = window.confirm(`Remove port forward on localhost:${port}?`);
-    if (!confirm) return;
+    const ok = await confirm({
+      title: 'Remove Port Forward',
+      description: `Are you sure you want to remove the port forward on localhost:${port}? This will also remove it from your saved profile.`,
+      confirmText: 'Remove',
+      variant: 'destructive',
+    });
+    if (!ok) return;
 
     try {
       await DeletePortForward(tunnelId);
-      toast.success(`Deleted port forward on localhost:${port}`);
+      toast.success(`Removed port forward on localhost:${port}`);
       await fetchTunnels();
     } catch (err: any) {
       const formatted = formatErrorMessage(err, 'Delete Tunnel');

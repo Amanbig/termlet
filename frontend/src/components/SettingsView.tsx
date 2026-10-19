@@ -33,6 +33,7 @@ import {
 } from '../../wailsjs/go/main/App';
 import { BrowserOpenURL } from '../../wailsjs/runtime/runtime';
 import { updater } from '../../wailsjs/go/models';
+import { useConfirm } from '../context/ConfirmContext';
 import logoImg from '../assets/images/logo.png';
 
 interface SettingsViewProps {
@@ -73,6 +74,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   onUpdateInfoChange,
   isCheckingUpdates: propIsChecking,
 }) => {
+  const confirm = useConfirm();
   const [searchQuery, setSearchQuery] = useState('');
   const [appVersion, setAppVersion] = useState('0.6.0');
   const [localCheckingUpdates, setLocalCheckingUpdates] = useState(false);
@@ -137,8 +139,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     };
   }, [installState]);
 
-  const handleReset = () => {
-    if (window.confirm('Reset all settings to default values?')) {
+  const handleReset = async () => {
+    const ok = await confirm({
+      title: 'Reset Settings',
+      description: 'Are you sure you want to restore all settings to their default values?',
+      confirmText: 'Reset Defaults',
+      variant: 'destructive',
+    });
+    if (ok) {
       onResetSettings();
       toast.success('Settings reset to default');
     }

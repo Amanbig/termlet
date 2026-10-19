@@ -52,8 +52,15 @@ const THEME_OPTIONS: { id: EditorTheme; label: string; previewBg: string; previe
   { id: 'dracula', label: 'Dracula', previewBg: '#282a36', previewFg: '#bd93f9' },
   { id: 'nord', label: 'Nord', previewBg: '#2e3440', previewFg: '#88c0d0' },
   { id: 'monokai', label: 'Monokai', previewBg: '#272822', previewFg: '#a6e22e' },
+  { id: 'atomone', label: 'Atom One Dark', previewBg: '#272c35', previewFg: '#9d9b97' },
+  { id: 'materialDark', label: 'Material Dark', previewBg: '#2e3235', previewFg: '#bdbdbd' },
+  { id: 'sublime', label: 'Sublime', previewBg: '#303841', previewFg: '#ffffff' },
+  { id: 'solarizedDark', label: 'Solarized Dark', previewBg: '#002b36', previewFg: '#839496' },
+  { id: 'solarizedLight', label: 'Solarized Light', previewBg: '#fdf6e3', previewFg: '#657b83' },
   { id: 'githubDark', label: 'GitHub Dark', previewBg: '#0d1117', previewFg: '#58a6ff' },
   { id: 'githubLight', label: 'GitHub Light', previewBg: '#ffffff', previewFg: '#0550ae' },
+  { id: 'xcodeDark', label: 'Xcode Dark', previewBg: '#292a30', previewFg: '#cecfd0' },
+  { id: 'xcodeLight', label: 'Xcode Light', previewBg: '#ffffff', previewFg: '#3d3d3d' },
 ];
 
 export const SettingsView: React.FC<SettingsViewProps> = ({
@@ -67,7 +74,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   isCheckingUpdates: propIsChecking,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [appVersion, setAppVersion] = useState('0.5.2');
+  const [appVersion, setAppVersion] = useState('0.5.3');
   const [localCheckingUpdates, setLocalCheckingUpdates] = useState(false);
   const [localUpdateInfo, setLocalUpdateInfo] = useState<updater.UpdateInfo | null>(null);
   const [hasCheckedUpdates, setHasCheckedUpdates] = useState(false);

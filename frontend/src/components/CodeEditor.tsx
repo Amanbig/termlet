@@ -14,6 +14,11 @@ import { dracula } from '@uiw/codemirror-theme-dracula';
 import { nord } from '@uiw/codemirror-theme-nord';
 import { monokai } from '@uiw/codemirror-theme-monokai';
 import { githubDark, githubLight } from '@uiw/codemirror-theme-github';
+import { atomone } from '@uiw/codemirror-theme-atomone';
+import { solarizedDark, solarizedLight } from '@uiw/codemirror-theme-solarized';
+import { materialDark } from '@uiw/codemirror-theme-material';
+import { sublime } from '@uiw/codemirror-theme-sublime';
+import { xcodeDark, xcodeLight } from '@uiw/codemirror-theme-xcode';
 
 interface CodeEditorProps {
   file: OpenFile | null;
@@ -31,6 +36,13 @@ const THEME_MAP: Record<string, Extension> = {
   monokai,
   githubDark,
   githubLight,
+  atomone,
+  solarizedDark,
+  solarizedLight,
+  materialDark,
+  sublime,
+  xcodeDark,
+  xcodeLight,
 };
 
 export const CodeEditor: React.FC<CodeEditorProps> = ({

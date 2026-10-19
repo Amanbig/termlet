@@ -5,7 +5,14 @@ export type EditorTheme =
   | 'nord'
   | 'githubDark'
   | 'githubLight'
-  | 'monokai';
+  | 'monokai'
+  | 'atomone'
+  | 'solarizedDark'
+  | 'solarizedLight'
+  | 'materialDark'
+  | 'sublime'
+  | 'xcodeDark'
+  | 'xcodeLight';
 
 export interface AppSettings {
   editorTheme: EditorTheme;

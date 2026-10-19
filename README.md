@@ -88,7 +88,7 @@ termlet/
 │   ├── sftpclient/             # SFTP remote file operations, streaming & concurrency safety
 │   ├── connections/            # Multi-session connection manager & persistence
 │   ├── updater/                # In-app update downloader, package installer & GitHub release API
-│   └── version/                # Semantic version constant (v0.5.2)
+│   └── version/                # Semantic version constant (v0.5.3)
 ├── frontend/                   # React 19 + TypeScript + Tailwind CSS v4 + CodeMirror
 │   ├── src/
 │   │   ├── components/         # TitleBar, RemoteFileTree, CodeEditor, EditorTabs, ConnectDialog, SettingsView, ErrorBoundary, UpdateModal, ReleaseNotesView

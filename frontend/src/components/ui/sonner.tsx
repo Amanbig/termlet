@@ -37,7 +37,7 @@ export const Toaster: React.FC<ToasterProps> = ({
       toastOptions={{
         classNames: {
           toast:
-            'group toast flex items-start gap-3 w-full p-4 rounded-xl border font-sans text-xs shadow-xl backdrop-blur-md transition-all duration-200 select-none' +
+            'group toast relative flex items-start gap-3 w-full p-4 pr-8 rounded-xl border font-sans text-xs shadow-xl backdrop-blur-md transition-all duration-200 select-none' +
             ' bg-white/95 text-zinc-900 border-zinc-200 shadow-zinc-950/5' +
             ' dark:bg-zinc-900/95 dark:text-zinc-100 dark:border-zinc-800 dark:shadow-black/40',
           title: 'text-xs font-semibold leading-snug text-zinc-900 dark:text-zinc-100',

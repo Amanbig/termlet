@@ -113,10 +113,24 @@ export const TitleBar: React.FC<TitleBarProps> = ({
           <button
             type="button"
             onClick={onOpenProfiles}
-            title={`Connected to ${currentSession.host}:${currentSession.port} as ${currentSession.username}`}
-            className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-[11px] font-mono transition-colors cursor-pointer ml-1"
+            title={
+              currentSession.status === 'dropped' || !currentSession.is_alive
+                ? `Connection lost to ${currentSession.host}:${currentSession.port}. Click to inspect or reconnect.`
+                : `Connected to ${currentSession.host}:${currentSession.port} as ${currentSession.username}`
+            }
+            className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-[11px] font-mono transition-colors cursor-pointer ml-1 ${
+              currentSession.status === 'dropped' || !currentSession.is_alive
+                ? 'bg-amber-500/15 hover:bg-amber-500/25 text-amber-700 dark:text-amber-400 border-amber-500/30'
+                : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+            }`}
           >
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            <span
+              className={`w-1.5 h-1.5 rounded-full ${
+                currentSession.status === 'dropped' || !currentSession.is_alive
+                  ? 'bg-amber-500 animate-ping'
+                  : 'bg-emerald-500 animate-pulse'
+              }`}
+            />
             <span className="truncate max-w-[150px] sm:max-w-[200px]">
               {currentSession.profile_name || currentSession.host}
             </span>

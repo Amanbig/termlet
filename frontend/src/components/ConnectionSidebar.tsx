@@ -10,6 +10,7 @@ import {
   HardDrive,
   ChevronRight,
   FolderDown,
+  RotateCw,
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -30,6 +31,7 @@ interface ConnectionSidebarProps {
   onDeleteProfile: (id: string) => void;
   onConnectProfile: (profile: Profile) => void;
   onDisconnectSession: (sessionId: string) => void;
+  onReconnectSession?: (sessionId: string) => void;
   onImportSSHConfig?: () => void;
 }
 
@@ -43,6 +45,7 @@ export const ConnectionSidebar: React.FC<ConnectionSidebarProps> = ({
   onDeleteProfile,
   onConnectProfile,
   onDisconnectSession,
+  onReconnectSession,
   onImportSSHConfig,
 }) => {
   return (
@@ -87,20 +90,37 @@ export const ConnectionSidebar: React.FC<ConnectionSidebarProps> = ({
             <div className="mt-1 space-y-1">
               {activeSessions.map((session) => {
                 const isActive = session.id === currentSessionId;
+                const isDropped = session.status === 'dropped' || !session.is_alive;
                 return (
                   <div
                     key={session.id}
                     onClick={() => onSelectSession(session.id)}
                     className={`group flex items-center justify-between p-2 rounded-md cursor-pointer transition-colors text-xs border ${
                       isActive
-                        ? 'bg-blue-50 dark:bg-blue-950/40 border-blue-300 dark:border-blue-800/80 text-blue-900 dark:text-blue-100 shadow-2xs'
+                        ? isDropped
+                          ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-800/80 text-amber-950 dark:text-amber-100 shadow-2xs'
+                          : 'bg-blue-50 dark:bg-blue-950/40 border-blue-300 dark:border-blue-800/80 text-blue-900 dark:text-blue-100 shadow-2xs'
+                        : isDropped
+                        ? 'bg-amber-50/50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900/40 text-zinc-800 dark:text-zinc-300'
                         : 'bg-white dark:bg-zinc-900/40 border-zinc-200 dark:border-zinc-800/40 text-zinc-800 dark:text-zinc-300 hover:bg-zinc-100/80 dark:hover:bg-zinc-900/80'
                     }`}
                   >
                     <div className="flex items-center gap-2 min-w-0">
-                      <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                      <span
+                        className={`w-2 h-2 rounded-full shrink-0 ${
+                          isDropped ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'
+                        }`}
+                        title={isDropped ? 'Connection dropped' : 'Active'}
+                      />
                       <div className="truncate">
-                        <div className="font-medium truncate">{session.profile_name}</div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-medium truncate">{session.profile_name}</span>
+                          {isDropped && (
+                            <span className="text-[9px] uppercase tracking-wider font-semibold px-1 py-0.2 rounded bg-amber-500/20 text-amber-700 dark:text-amber-300">
+                              Dropped
+                            </span>
+                          )}
+                        </div>
                         <div className="text-[10px] text-zinc-500 truncate">
                           {session.username}@{session.host}:{session.port}
                         </div>
@@ -108,6 +128,20 @@ export const ConnectionSidebar: React.FC<ConnectionSidebarProps> = ({
                     </div>
 
                     <div className="flex items-center gap-1 shrink-0">
+                      {isDropped && onReconnectSession && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          title="Reconnect"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onReconnectSession(session.id);
+                          }}
+                          className="h-6 w-6 text-amber-600 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300 hover:bg-amber-500/10 cursor-pointer"
+                        >
+                          <RotateCw className="w-3.5 h-3.5" />
+                        </Button>
+                      )}
                       <Button
                         variant="ghost"
                         size="icon"

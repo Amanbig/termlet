@@ -6,9 +6,11 @@ import {
   Disconnect,
   DeleteProfile,
   Connect,
+  Reconnect,
   CheckForUpdates,
   GetAppVersion,
 } from '../wailsjs/go/main/App';
+import { EventsOn } from '../wailsjs/runtime/runtime';
 import { updater } from '../wailsjs/go/models';
 import { ActivityBar, ActivityView } from './components/ActivityBar';
 import { ConnectionSidebar } from './components/ConnectionSidebar';
@@ -23,6 +25,7 @@ import { WelcomeScreen } from './components/WelcomeScreen';
 import { TitleBar } from './components/TitleBar';
 import { QuickOpenModal } from './components/QuickOpenModal';
 import { ImportSSHConfigModal } from './components/ImportSSHConfigModal';
+import { ReconnectBanner, DroppedSessionInfo } from './components/ReconnectBanner';
 import { TransferDrawer } from './components/TransferDrawer';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { useRemoteFiles } from './hooks/useRemoteFiles';
@@ -62,6 +65,7 @@ export function App() {
   const [showUpdateToast, setShowUpdateToast] = useState(false);
   const [appVersion, setAppVersion] = useState('0.7.0');
   const [activePortsCount, setActivePortsCount] = useState<number>(0);
+  const [droppedSession, setDroppedSession] = useState<DroppedSessionInfo | null>(null);
   const [transferDrawerOpen, setTransferDrawerOpen] = useState(false);
   const [activeTransfersCount, setActiveTransfersCount] = useState<number>(0);
 
@@ -222,6 +226,9 @@ export function App() {
     try {
       await Disconnect(sessionId);
       toast.info('Closed remote connection');
+      if (droppedSession && droppedSession.sessionId === sessionId) {
+        setDroppedSession(null);
+      }
       refreshSessions();
       if (currentSessionId === sessionId) {
         setCurrentSessionId(null);
@@ -230,6 +237,109 @@ export function App() {
       toast.error(`Disconnect failed: ${err?.message || err}`);
     }
   };
+
+  const handleReconnectSession = useCallback(
+    async (sessionId: string) => {
+      setDroppedSession((prev) => (prev ? { ...prev, isReconnecting: true } : null));
+      try {
+        const resp = await Reconnect(sessionId);
+        if (resp.success && resp.session) {
+          toast.success(`Reconnected to ${resp.session.profile_name || resp.session.host}`);
+          setDroppedSession(null);
+          await refreshSessions();
+          return true;
+        } else {
+          const errText = resp.error || 'Failed to reconnect';
+          setDroppedSession((prev) => {
+            if (!prev) return null;
+            const nextAttempt = prev.attempt + 1;
+            const failedPermanently = nextAttempt > prev.maxAttempts;
+            const delays = [3, 5, 8, 12, 15];
+            const nextSec = delays[Math.min(nextAttempt - 1, delays.length - 1)];
+            return {
+              ...prev,
+              attempt: nextAttempt,
+              secondsRemaining: nextSec,
+              isReconnecting: false,
+              failedPermanently,
+              error: errText,
+            };
+          });
+          return false;
+        }
+      } catch (err: any) {
+        setDroppedSession((prev) => {
+          if (!prev) return null;
+          const nextAttempt = prev.attempt + 1;
+          const failedPermanently = nextAttempt > prev.maxAttempts;
+          return {
+            ...prev,
+            attempt: nextAttempt,
+            secondsRemaining: 5,
+            isReconnecting: false,
+            failedPermanently,
+            error: err?.message || String(err),
+          };
+        });
+        return false;
+      }
+    },
+    [refreshSessions]
+  );
+
+  // Auto-reconnect countdown timer
+  useEffect(() => {
+    if (!droppedSession || droppedSession.isReconnecting || droppedSession.failedPermanently) {
+      return;
+    }
+
+    const timer = setInterval(() => {
+      setDroppedSession((prev) => {
+        if (!prev || prev.isReconnecting || prev.failedPermanently) {
+          return prev;
+        }
+        if (prev.secondsRemaining <= 1) {
+          // Trigger reconnect attempt
+          handleReconnectSession(prev.sessionId);
+          return { ...prev, secondsRemaining: 0, isReconnecting: true };
+        }
+        return { ...prev, secondsRemaining: prev.secondsRemaining - 1 };
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [droppedSession, handleReconnectSession]);
+
+  // Listen for dropped connections reported by Go keep-alive
+  useEffect(() => {
+    const unsub = EventsOn('session:dropped', (data: any) => {
+      refreshSessions();
+      if (!data || !data.sessionId) return;
+
+      const matchedProfile = profiles.find((p) => p.id === data.profileId);
+      const shouldAutoReconnect = matchedProfile?.auto_reconnect ?? true;
+
+      setDroppedSession({
+        sessionId: data.sessionId,
+        profileId: data.profileId,
+        profileName: data.profileName || '',
+        host: data.host || '',
+        port: data.port || 22,
+        error: data.error || 'Connection dropped',
+        attempt: 1,
+        maxAttempts: 5,
+        secondsRemaining: 3,
+        isReconnecting: false,
+        failedPermanently: !shouldAutoReconnect,
+      });
+
+      toast.error(`Connection dropped: ${data.profileName || data.host}`);
+    });
+
+    return () => {
+      unsub();
+    };
+  }, [profiles, refreshSessions]);
 
   const handleDeleteProfile = async (id: string) => {
     const ok = await confirm({
@@ -320,6 +430,15 @@ export function App() {
         onQuickOpen={() => setQuickOpenOpen(true)}
       />
 
+      {/* Reconnect Banner if active session is dropped */}
+      {droppedSession && droppedSession.sessionId === currentSessionId && (
+        <ReconnectBanner
+          info={droppedSession}
+          onReconnectNow={() => handleReconnectSession(droppedSession.sessionId)}
+          onCancel={() => setDroppedSession(null)}
+        />
+      )}
+
       {/* Main Body Area */}
       <div className="flex-1 min-h-0 flex overflow-hidden">
         {/* 1. VS Code Style Activity Bar (Slim left strip) */}
@@ -379,6 +498,7 @@ export function App() {
                   onDeleteProfile={handleDeleteProfile}
                   onConnectProfile={handleConnectProfile}
                   onDisconnectSession={handleDisconnect}
+                  onReconnectSession={handleReconnectSession}
                   onImportSSHConfig={() => setImportSSHConfigOpen(true)}
                 />
               )}

@@ -68,6 +68,8 @@ export function ParseSSHConfig(arg1:string):Promise<Array<models.Profile>>;
 
 export function ReadRemoteFile(arg1:string,arg2:string):Promise<models.FileContent>;
 
+export function Reconnect(arg1:string):Promise<main.ConnectResponse>;
+
 export function RenameRemotePath(arg1:string,arg2:string,arg3:string):Promise<void>;
 
 export function RestartApp():Promise<void>;

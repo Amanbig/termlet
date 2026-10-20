@@ -13,6 +13,9 @@ import (
 	"github.com/google/uuid"
 )
 
+// DroppedHandler is invoked when an active connection drops unexpectedly.
+type DroppedHandler func(sessionID string, profile Profile, reason error)
+
 // Manager coordinates all active SSH and SFTP connections.
 type Manager struct {
 	mu           sync.RWMutex
@@ -20,6 +23,7 @@ type Manager struct {
 	clientMgr    *sshclient.ClientManager
 	profileStore *storage.ProfileStorage
 	secretStore  *storage.SecretStorage
+	onDropped    DroppedHandler
 }
 
 // NewManager creates an instance of Manager.
@@ -35,6 +39,28 @@ func NewManager(profileStore *storage.ProfileStorage, secretStore *storage.Secre
 		profileStore: profileStore,
 		secretStore:  secretStore,
 	}, nil
+}
+
+// SetDroppedHandler sets the listener called when a connection drops unexpectedly.
+func (m *Manager) SetDroppedHandler(handler DroppedHandler) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.onDropped = handler
+}
+
+func (m *Manager) handleDropped(sessionID string, reason error) {
+	m.mu.RLock()
+	sess, exists := m.sessions[sessionID]
+	var profile Profile
+	if exists {
+		profile = sess.Profile
+	}
+	handler := m.onDropped
+	m.mu.RUnlock()
+
+	if exists && handler != nil {
+		handler(sessionID, profile, reason)
+	}
 }
 
 // Connect establishes a connection using the provided profile and optional credentials.
@@ -78,12 +104,81 @@ func (m *Manager) Connect(ctx context.Context, profile Profile, password string,
 
 	sessionID := uuid.New().String()
 	session := NewSession(sessionID, profile, res.Client, sftpCl)
+	session.SetCachedSecret(password)
+
+	// Start KeepAlive monitoring
+	keepAliveSec := profile.KeepAliveInterval
+	if keepAliveSec <= 0 {
+		keepAliveSec = 20
+	}
+	session.StartKeepAlive(time.Duration(keepAliveSec)*time.Second, 5*time.Second, func(sid string, reason error) {
+		m.handleDropped(sid, reason)
+	})
 
 	m.mu.Lock()
 	m.sessions[sessionID] = session
 	m.mu.Unlock()
 
 	return session, nil, nil
+}
+
+// Reconnect re-establishes a dropped or existing session using cached or stored credentials.
+func (m *Manager) Reconnect(ctx context.Context, sessionID string) (*Session, *models.HostKeyPrompt, error) {
+	m.mu.RLock()
+	sess, exists := m.sessions[sessionID]
+	m.mu.RUnlock()
+
+	if !exists {
+		return nil, nil, fmt.Errorf("session not found: %s", sessionID)
+	}
+
+	sess.mu.RLock()
+	profile := sess.Profile
+	cachedSecret := sess.cachedSecret
+	sess.mu.RUnlock()
+
+	if cachedSecret == "" && profile.ID != "" && m.secretStore != nil {
+		savedSecret, _ := m.secretStore.GetSecret(profile.ID)
+		if savedSecret != "" {
+			cachedSecret = savedSecret
+		}
+	}
+
+	authMethods, err := sshclient.BuildAuthMethods(string(profile.AuthMethod), profile.KeyPath, cachedSecret, cachedSecret)
+	if err != nil {
+		return nil, nil, fmt.Errorf("authentication error: %w", err)
+	}
+
+	res, err := m.clientMgr.Connect(ctx, profile.Host, profile.Port, profile.Username, authMethods, false, 15*time.Second)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if res.HostKeyPrompt != nil {
+		return nil, res.HostKeyPrompt, nil
+	}
+
+	if res.Client == nil {
+		return nil, nil, fmt.Errorf("failed to re-establish SSH connection")
+	}
+
+	sftpCl, err := sftpclient.NewClient(res.Client)
+	if err != nil {
+		_ = res.Client.Close()
+		return nil, nil, fmt.Errorf("failed to re-initialize SFTP subsystem: %w", err)
+	}
+
+	sess.UpdateConnection(res.Client, sftpCl)
+
+	keepAliveSec := profile.KeepAliveInterval
+	if keepAliveSec <= 0 {
+		keepAliveSec = 20
+	}
+	sess.StartKeepAlive(time.Duration(keepAliveSec)*time.Second, 5*time.Second, func(sid string, reason error) {
+		m.handleDropped(sid, reason)
+	})
+
+	return sess, nil, nil
 }
 
 // GetSession retrieves an active session by its ID.

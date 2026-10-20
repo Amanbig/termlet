@@ -10,6 +10,7 @@ import (
 	"termlet/internal/connections"
 	"termlet/internal/models"
 	"termlet/internal/sftpclient"
+	"termlet/internal/sshconfig"
 	"termlet/internal/storage"
 	"termlet/internal/tunnel"
 	"termlet/internal/updater"
@@ -125,6 +126,50 @@ func (a *App) GetProfileSecret(id string) (string, error) {
 		return "", nil
 	}
 	return a.secretStore.GetSecret(id)
+}
+
+// GetDefaultSSHConfigPath returns the default location of the ~/.ssh/config file.
+func (a *App) GetDefaultSSHConfigPath() string {
+	return sshconfig.DefaultSSHConfigPath()
+}
+
+// ParseSSHConfig reads and parses host entries from an SSH config file.
+func (a *App) ParseSSHConfig(filePath string) ([]models.Profile, error) {
+	return sshconfig.ParseSSHConfig(filePath)
+}
+
+// ImportSSHConfigProfiles imports a list of parsed SSH profiles into local profile storage.
+func (a *App) ImportSSHConfigProfiles(profiles []models.Profile, overwriteExisting bool) (int, error) {
+	if a.profileStore == nil {
+		return 0, fmt.Errorf("profile storage is not initialized")
+	}
+
+	existingProfiles, err := a.profileStore.List()
+	if err != nil {
+		existingProfiles = []models.Profile{}
+	}
+
+	existingMap := make(map[string]models.Profile)
+	for _, p := range existingProfiles {
+		existingMap[strings.ToLower(p.Name)] = p
+	}
+
+	importedCount := 0
+	for _, p := range profiles {
+		key := strings.ToLower(p.Name)
+		if existing, exists := existingMap[key]; exists {
+			if !overwriteExisting {
+				continue
+			}
+			// Keep existing ID if overwriting
+			p.ID = existing.ID
+		}
+		if err := a.profileStore.Save(p); err == nil {
+			importedCount++
+		}
+	}
+
+	return importedCount, nil
 }
 
 // --- Connection Management ---

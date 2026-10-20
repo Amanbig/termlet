@@ -223,18 +223,22 @@ export function App() {
   };
 
   const handleDisconnect = async (sessionId: string) => {
+    // Immediately clear currentSessionId & dropped state so the UI is never stuck or trapped
+    if (currentSessionId === sessionId) {
+      setCurrentSessionId(null);
+    }
+    if (droppedSession && droppedSession.sessionId === sessionId) {
+      setDroppedSession(null);
+    }
+
     try {
       await Disconnect(sessionId);
       toast.info('Closed remote connection');
-      if (droppedSession && droppedSession.sessionId === sessionId) {
-        setDroppedSession(null);
-      }
-      refreshSessions();
-      if (currentSessionId === sessionId) {
-        setCurrentSessionId(null);
-      }
     } catch (err: any) {
-      toast.error(`Disconnect failed: ${err?.message || err}`);
+      console.warn('Disconnect completed with cleanup notice:', err);
+      toast.info('Closed remote connection');
+    } finally {
+      await refreshSessions();
     }
   };
 

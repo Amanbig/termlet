@@ -37,17 +37,18 @@ func (c *Client) DownloadFile(remotePath string, localPath string) error {
 
 // DownloadFileWithProgress streams a remote file with optional progress wrapping and context cancellation.
 func (c *Client) DownloadFileWithProgress(ctx context.Context, remotePath string, localPath string, wrapWriter func(io.Writer) io.Writer) error {
-	if c == nil || c.sftpClient == nil {
+	if c == nil {
 		return fmt.Errorf("sftp client is not initialized")
 	}
 	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	if c.closed {
-		return fmt.Errorf("sftp client is closed")
+	if c.closed || c.sftpClient == nil {
+		c.mu.Unlock()
+		return fmt.Errorf("sftp client is closed or not initialized")
 	}
+	sftpCl := c.sftpClient
+	c.mu.Unlock()
 
-	remoteFile, err := c.sftpClient.Open(remotePath)
+	remoteFile, err := sftpCl.Open(remotePath)
 	if err != nil {
 		return fmt.Errorf("failed to open remote file %s: %w", remotePath, err)
 	}
@@ -122,15 +123,16 @@ func (c *Client) DownloadDirectoryAsZip(remotePath string, localZipPath string) 
 
 // DownloadDirectoryAsZipWithProgress archives a remote directory with optional progress monitoring and context cancellation.
 func (c *Client) DownloadDirectoryAsZipWithProgress(ctx context.Context, remotePath string, localZipPath string, wrapWriter func(io.Writer) io.Writer) error {
-	if c == nil || c.sftpClient == nil {
+	if c == nil {
 		return fmt.Errorf("sftp client is not initialized")
 	}
 	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	if c.closed {
-		return fmt.Errorf("sftp client is closed")
+	if c.closed || c.sftpClient == nil {
+		c.mu.Unlock()
+		return fmt.Errorf("sftp client is closed or not initialized")
 	}
+	sftpCl := c.sftpClient
+	c.mu.Unlock()
 
 	// Ensure local parent directory exists
 	localDir := filepath.Dir(localZipPath)
@@ -172,7 +174,7 @@ func (c *Client) DownloadDirectoryAsZipWithProgress(ctx context.Context, remoteP
 		curr := queue[0]
 		queue = queue[1:]
 
-		entries, err := c.sftpClient.ReadDir(curr.remotePath)
+		entries, err := sftpCl.ReadDir(curr.remotePath)
 		if err != nil {
 			continue
 		}
@@ -210,7 +212,7 @@ func (c *Client) DownloadDirectoryAsZipWithProgress(ctx context.Context, remoteP
 					continue
 				}
 
-				rf, err := c.sftpClient.Open(entryRemotePath)
+				rf, err := sftpCl.Open(entryRemotePath)
 				if err != nil {
 					continue
 				}

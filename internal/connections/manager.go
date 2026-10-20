@@ -209,7 +209,18 @@ func (m *Manager) Disconnect(sessionID string) error {
 		return nil
 	}
 
-	return sess.Close()
+	// Close safely with timeout so Disconnect never blocks or hangs the application
+	done := make(chan error, 1)
+	go func() {
+		done <- sess.Close()
+	}()
+
+	select {
+	case err := <-done:
+		return err
+	case <-time.After(1500 * time.Millisecond):
+		return nil
+	}
 }
 
 // ListSessions returns summaries of all active sessions.

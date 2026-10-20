@@ -30,6 +30,7 @@ import {
   Download,
   Shield,
   Copy,
+  Power,
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -651,15 +652,28 @@ export const RemoteFileTree: React.FC<RemoteFileTreeProps> = ({
                 {treeError.hint}
               </p>
             )}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => fetchDirectory(currentPath)}
-              className="mt-3 text-xs h-7 gap-1.5 cursor-pointer"
-            >
-              <RefreshCw className="w-3 h-3" />
-              <span>Retry</span>
-            </Button>
+            <div className="flex items-center justify-center gap-2 mt-3 flex-wrap">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => fetchDirectory(currentPath)}
+                className="text-xs h-7 gap-1.5 cursor-pointer"
+              >
+                <RefreshCw className="w-3 h-3" />
+                <span>Retry</span>
+              </Button>
+              {onDisconnect && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onDisconnect(sessionId)}
+                  className="text-xs h-7 gap-1.5 text-rose-600 dark:text-rose-400 border-rose-500/30 hover:bg-rose-500/10 cursor-pointer"
+                >
+                  <Power className="w-3 h-3" />
+                  <span>Disconnect</span>
+                </Button>
+              )}
+            </div>
           </div>
         ) : items.length === 0 ? (
           <div className="text-center py-8 text-xs text-zinc-500">Directory is empty</div>

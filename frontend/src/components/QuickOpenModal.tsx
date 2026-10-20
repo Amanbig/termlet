@@ -25,6 +25,15 @@ interface QuickOpenModalProps {
   onOpenFile: (sessionId: string, file: RemoteFile) => void;
 }
 
+interface CacheEntry {
+  files: RemoteFile[];
+  timestamp: number;
+}
+
+// In-memory workspace file cache to avoid re-requesting SSH data on every open
+const sessionFileCache = new Map<string, CacheEntry>();
+const inFlightRequests = new Map<string, Promise<RemoteFile[]>>();
+
 export const QuickOpenModal: React.FC<QuickOpenModalProps> = ({
   isOpen,
   onClose,
@@ -41,30 +50,57 @@ export const QuickOpenModal: React.FC<QuickOpenModalProps> = ({
 
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
-  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const searchSeqRef = useRef<number>(0);
   const wasOpenRef = useRef<boolean>(false);
 
-  // Fetch files from server with sequence tracking to prevent race conditions
+  // Fetch and cache files from server with request deduplication
   const fetchFiles = useCallback(
-    async (searchQuery = '') => {
+    async (forceRefresh = false) => {
       if (!sessionId) {
         setErrorMessage('No active remote session');
         return;
       }
 
+      const cacheKey = `${sessionId}:${startDirectory || '.'}`;
+      const cached = sessionFileCache.get(cacheKey);
+
+      // If already cached and not a forced refresh, use instantly
+      if (cached && !forceRefresh) {
+        setFiles(cached.files);
+        setIsLoading(false);
+        setErrorMessage(null);
+        return;
+      }
+
+      // If an identical search request is already running, wait for it
+      if (inFlightRequests.has(cacheKey)) {
+        setIsLoading(true);
+        try {
+          const results = await inFlightRequests.get(cacheKey)!;
+          setFiles(results);
+        } catch (err: any) {
+          setErrorMessage(err?.message || 'Failed to index remote files');
+        } finally {
+          setIsLoading(false);
+        }
+        return;
+      }
+
       const seq = ++searchSeqRef.current;
-      setIsLoading(true);
+      if (!cached) {
+        setIsLoading(true);
+      }
       setErrorMessage(null);
 
+      const promise = SearchRemoteFiles(sessionId, startDirectory || '.', '', 800);
+      inFlightRequests.set(cacheKey, promise);
+
       try {
-        const results = await SearchRemoteFiles(sessionId, startDirectory, searchQuery, 800);
+        const results = await promise;
+        const fileList = Array.isArray(results) ? results : [];
+        sessionFileCache.set(cacheKey, { files: fileList, timestamp: Date.now() });
         if (seq === searchSeqRef.current) {
-          if (Array.isArray(results)) {
-            setFiles(results);
-          } else {
-            setFiles([]);
-          }
+          setFiles(fileList);
         }
       } catch (err: any) {
         if (seq === searchSeqRef.current) {
@@ -75,6 +111,7 @@ export const QuickOpenModal: React.FC<QuickOpenModalProps> = ({
           setErrorMessage(msg);
         }
       } finally {
+        inFlightRequests.delete(cacheKey);
         if (seq === searchSeqRef.current) {
           setIsLoading(false);
         }
@@ -83,48 +120,32 @@ export const QuickOpenModal: React.FC<QuickOpenModalProps> = ({
     [sessionId, startDirectory]
   );
 
-  // Focus input and reset query ONLY when the modal transitions from closed to open
+  // Focus input and populate files (from instant cache or fetch) when opened
   useEffect(() => {
     if (isOpen && !wasOpenRef.current) {
       setQuery('');
       setSelectedIndex(0);
       setErrorMessage(null);
 
-      // Focus input on next tick
       requestAnimationFrame(() => {
         inputRef.current?.focus();
         inputRef.current?.select();
       });
 
-      // Index files if we don't have them yet or if session changed
       if (sessionId) {
-        fetchFiles('');
+        const cacheKey = `${sessionId}:${startDirectory || '.'}`;
+        const cached = sessionFileCache.get(cacheKey);
+        if (cached) {
+          // Instantly show cached files with 0ms network latency
+          setFiles(cached.files);
+          setIsLoading(false);
+        } else {
+          fetchFiles(false);
+        }
       }
     }
     wasOpenRef.current = isOpen;
-  }, [isOpen, sessionId, fetchFiles]);
-
-  // Debounced server search when query changes (only after user stops typing)
-  useEffect(() => {
-    if (!isOpen || !sessionId) return;
-
-    if (searchTimeoutRef.current) {
-      clearTimeout(searchTimeoutRef.current);
-    }
-
-    const trimmed = query.trim();
-    if (trimmed.length >= 2) {
-      searchTimeoutRef.current = setTimeout(() => {
-        fetchFiles(trimmed);
-      }, 350);
-    }
-
-    return () => {
-      if (searchTimeoutRef.current) {
-        clearTimeout(searchTimeoutRef.current);
-      }
-    };
-  }, [query, isOpen, sessionId, fetchFiles]);
+  }, [isOpen, sessionId, startDirectory, fetchFiles]);
 
   // Combine and rank results (instant local fuzzy search across cached & open files)
   const filteredFiles = useMemo(() => {
@@ -321,7 +342,7 @@ export const QuickOpenModal: React.FC<QuickOpenModalProps> = ({
           )}
 
           <button
-            onClick={() => fetchFiles(query)}
+            onClick={() => fetchFiles(true)}
             disabled={isLoading || !sessionId}
             className="p-1.5 rounded-md text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 hover:bg-zinc-200/50 dark:hover:bg-zinc-800 disabled:opacity-40 transition-colors cursor-pointer"
             title="Refresh workspace index"
@@ -345,7 +366,7 @@ export const QuickOpenModal: React.FC<QuickOpenModalProps> = ({
               <span className="truncate">{errorMessage}</span>
             </div>
             <button
-              onClick={() => fetchFiles(query)}
+              onClick={() => fetchFiles(true)}
               className="px-2 py-0.5 rounded text-[11px] font-medium bg-rose-100 hover:bg-rose-200 dark:bg-rose-900/60 dark:hover:bg-rose-800/80 text-rose-700 dark:text-rose-200 shrink-0 cursor-pointer transition-colors"
             >
               Retry

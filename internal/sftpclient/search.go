@@ -131,6 +131,7 @@ func (c *Client) searchWithSSHExec(rootPath string, query string, maxResults int
 	select {
 	case <-ctx.Done():
 		_ = session.Signal("KILL")
+		_ = session.Close()
 		return nil, fmt.Errorf("ssh find search timed out")
 	case res := <-resChan:
 		if res.err != nil && len(res.out) == 0 {
@@ -159,14 +160,15 @@ func (c *Client) searchWithSSHExec(rootPath string, query string, maxResults int
 	}
 }
 
-// searchWithSFTPWalk provides a robust fallback when SSH exec is not supported or timed out.
+// searchWithSFTPWalk provides a robust, non-blocking fallback when SSH exec is not supported or timed out.
 func (c *Client) searchWithSFTPWalk(rootPath string, query string, maxResults int) ([]models.RemoteFile, error) {
 	c.mu.Lock()
-	defer c.mu.Unlock()
-
 	if c.closed || c.sftpClient == nil {
+		c.mu.Unlock()
 		return nil, fmt.Errorf("sftp client is closed or not initialized")
 	}
+	sftpCl := c.sftpClient
+	c.mu.Unlock()
 
 	queryLower := strings.ToLower(strings.TrimSpace(query))
 	var results []models.RemoteFile
@@ -177,9 +179,16 @@ func (c *Client) searchWithSFTPWalk(rootPath string, query string, maxResults in
 	}
 
 	queue := []dirEntry{{dirPath: rootPath, depth: 0}}
-	maxDepth := 6
+	maxDepth := 4
+	deadline := time.Now().Add(2500 * time.Millisecond)
+	visitedDirs := 0
+	const maxDirs = 40
 
 	for len(queue) > 0 {
+		if time.Now().After(deadline) || visitedDirs >= maxDirs || len(results) >= maxResults {
+			break
+		}
+
 		current := queue[0]
 		queue = queue[1:]
 
@@ -187,7 +196,8 @@ func (c *Client) searchWithSFTPWalk(rootPath string, query string, maxResults in
 			continue
 		}
 
-		entries, err := c.sftpClient.ReadDir(current.dirPath)
+		visitedDirs++
+		entries, err := sftpCl.ReadDir(current.dirPath)
 		if err != nil {
 			// Skip directories that cannot be read (permission denied, etc.)
 			continue
@@ -198,7 +208,7 @@ func (c *Client) searchWithSFTPWalk(rootPath string, query string, maxResults in
 			fullPath := path.Join(current.dirPath, entryName)
 
 			if entry.IsDir() {
-				if ignoredDirNames[entryName] || strings.HasPrefix(entryName, ".") && current.depth > 0 {
+				if ignoredDirNames[entryName] || (strings.HasPrefix(entryName, ".") && current.depth > 0) {
 					continue
 				}
 				if current.depth < maxDepth {

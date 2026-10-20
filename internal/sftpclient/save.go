@@ -144,17 +144,18 @@ func (c *Client) directSave(filePath string, data []byte, mode uint32) (*SaveRes
 
 // UploadStream writes an io.Reader stream directly to destination.
 func (c *Client) UploadStream(remotePath string, r io.Reader) error {
-	if c == nil || c.sftpClient == nil {
+	if c == nil {
 		return fmt.Errorf("sftp client is not initialized")
 	}
 	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	if c.closed {
-		return fmt.Errorf("sftp client is closed")
+	if c.closed || c.sftpClient == nil {
+		c.mu.Unlock()
+		return fmt.Errorf("sftp client is closed or not initialized")
 	}
+	sftpCl := c.sftpClient
+	c.mu.Unlock()
 
-	dest, err := c.sftpClient.OpenFile(remotePath, osOFlagsCreate())
+	dest, err := sftpCl.OpenFile(remotePath, osOFlagsCreate())
 	if err != nil {
 		return fmt.Errorf("failed to open destination file %s: %w", remotePath, err)
 	}

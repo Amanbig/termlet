@@ -7,6 +7,7 @@ import {
   DeleteRemotePath,
   RenameRemotePath,
   UploadFileContent,
+  DownloadRemotePath,
 } from '../../wailsjs/go/main/App';
 import {
   Folder,
@@ -26,6 +27,9 @@ import {
   ChevronDown,
   Loader2,
   AlertTriangle,
+  Download,
+  Shield,
+  Copy,
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -39,6 +43,7 @@ import {
 import { toast } from 'sonner';
 import { formatErrorMessage, FormattedError } from '../utils/errors';
 import { useConfirm } from '../context/ConfirmContext';
+import { ChmodModal } from './ChmodModal';
 
 import { SessionSummary } from '../types/remote';
 
@@ -71,6 +76,8 @@ export const RemoteFileTree: React.FC<RemoteFileTreeProps> = ({
   const [targetParentPath, setTargetParentPath] = useState<string>('');
   const [renamingPath, setRenamingPath] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState<string>('');
+  const [chmodTarget, setChmodTarget] = useState<TreeItem | null>(null);
+  const [menuOpenPath, setMenuOpenPath] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -234,6 +241,31 @@ export const RemoteFileTree: React.FC<RemoteFileTreeProps> = ({
     }
   };
 
+  const handleDownload = async (item: TreeItem) => {
+    if (!sessionId) return;
+    const toastId = `dl-${item.path}`;
+    try {
+      toast.loading(`Preparing download for ${item.name}...`, { id: toastId });
+      const savedPath = await DownloadRemotePath(sessionId, item.path, item.is_dir);
+      if (savedPath) {
+        toast.success(`Downloaded to ${savedPath}`, { id: toastId });
+      } else {
+        toast.dismiss(toastId);
+      }
+    } catch (err: any) {
+      const formatted = formatErrorMessage(err, 'Download');
+      toast.error(`${formatted.title}: ${formatted.message}`, {
+        id: toastId,
+        description: formatted.hint,
+      });
+    }
+  };
+
+  const handleCopyPath = (targetPath: string) => {
+    navigator.clipboard.writeText(targetPath);
+    toast.success('Path copied to clipboard');
+  };
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!sessionId || !file) return;
@@ -326,6 +358,11 @@ export const RemoteFileTree: React.FC<RemoteFileTreeProps> = ({
                 onOpenFile(sessionId!, item);
               }
             }}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setMenuOpenPath(item.path);
+            }}
             className={`group flex items-center justify-between py-1 px-2 text-xs cursor-pointer select-none rounded transition-colors ${
               isSelected
                 ? 'bg-blue-100 dark:bg-blue-600/25 text-blue-800 dark:text-blue-200 font-semibold shadow-2xs'
@@ -358,10 +395,20 @@ export const RemoteFileTree: React.FC<RemoteFileTreeProps> = ({
             </div>
 
             {/* Context Dropdown / Actions */}
-            <div className="opacity-0 group-hover:opacity-100 flex items-center shrink-0">
-              <DropdownMenu>
+            <div
+              className={`flex items-center shrink-0 ${
+                menuOpenPath === item.path ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+              }`}
+            >
+              <DropdownMenu
+                open={menuOpenPath === item.path}
+                onOpenChange={(open) => setMenuOpenPath(open ? item.path : null)}
+              >
                 <DropdownMenuTrigger
-                  onClick={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setMenuOpenPath(menuOpenPath === item.path ? null : item.path);
+                  }}
                   className="p-0.5 rounded text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-100 hover:bg-zinc-200 dark:hover:bg-zinc-700 cursor-pointer"
                 >
                   <span className="text-xs px-1">•••</span>
@@ -390,6 +437,31 @@ export const RemoteFileTree: React.FC<RemoteFileTreeProps> = ({
                       <DropdownMenuSeparator className="bg-zinc-200 dark:bg-zinc-800" />
                     </>
                   )}
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDownload(item);
+                    }}
+                  >
+                    <Download className="w-3.5 h-3.5 mr-2" /> {item.is_dir ? 'Download as ZIP...' : 'Download File...'}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setChmodTarget(item);
+                    }}
+                  >
+                    <Shield className="w-3.5 h-3.5 mr-2" /> Permissions (chmod)...
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleCopyPath(item.path);
+                    }}
+                  >
+                    <Copy className="w-3.5 h-3.5 mr-2" /> Copy Path
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator className="bg-zinc-200 dark:bg-zinc-800" />
                   <DropdownMenuItem
                     onClick={(e) => {
                       e.stopPropagation();
@@ -598,6 +670,22 @@ export const RemoteFileTree: React.FC<RemoteFileTreeProps> = ({
           renderTree(items)
         )}
       </div>
+
+      {/* Chmod Permissions Modal */}
+      {chmodTarget && (
+        <ChmodModal
+          open={!!chmodTarget}
+          onOpenChange={(open) => {
+            if (!open) setChmodTarget(null);
+          }}
+          sessionId={sessionId}
+          itemPath={chmodTarget.path}
+          itemName={chmodTarget.name}
+          isDir={chmodTarget.is_dir}
+          initialPermissions={chmodTarget.permissions}
+          onPermissionsUpdated={() => fetchDirectory(currentPath)}
+        />
+      )}
     </div>
   );
 };

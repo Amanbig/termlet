@@ -29,11 +29,15 @@ export function DownloadAndApplyUpdate(arg1:string,arg2:string):Promise<void>;
 
 export function GetAppVersion():Promise<string>;
 
+export function GetDefaultSSHConfigPath():Promise<string>;
+
 export function GetProfileSecret(arg1:string):Promise<string>;
 
 export function GetReleaseNotes():Promise<string>;
 
 export function GetUpdateProgress():Promise<updater.DownloadProgress>;
+
+export function ImportSSHConfigProfiles(arg1:Array<models.Profile>,arg2:boolean):Promise<number>;
 
 export function ListActiveSessions():Promise<Array<connections.SessionSummary>>;
 
@@ -42,6 +46,8 @@ export function ListPortForwards(arg1:string):Promise<Array<tunnel.TunnelInfo>>;
 export function ListProfiles():Promise<Array<models.Profile>>;
 
 export function ListRemoteFiles(arg1:string,arg2:string):Promise<Array<models.RemoteFile>>;
+
+export function ParseSSHConfig(arg1:string):Promise<Array<models.Profile>>;
 
 export function ReadRemoteFile(arg1:string,arg2:string):Promise<models.FileContent>;
 

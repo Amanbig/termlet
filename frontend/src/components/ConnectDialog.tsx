@@ -13,7 +13,7 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/tabs';
-import { ShieldAlert, Server, Key, Lock, Loader2, Check, AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
+import { ShieldAlert, Server, Key, Lock, Loader2, Check, AlertTriangle, ChevronDown, ChevronUp, FolderDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatErrorMessage, FormattedError } from '../utils/errors';
 
@@ -23,6 +23,7 @@ interface ConnectDialogProps {
   initialProfile?: Profile | null;
   onConnected: (sessionId: string, profile: Profile) => void;
   onProfileSaved?: () => void;
+  onImportSSHConfig?: () => void;
 }
 
 export const ConnectDialog: React.FC<ConnectDialogProps> = ({
@@ -31,6 +32,7 @@ export const ConnectDialog: React.FC<ConnectDialogProps> = ({
   initialProfile,
   onConnected,
   onProfileSaved,
+  onImportSSHConfig,
 }) => {
   const [name, setName] = useState('');
   const [host, setHost] = useState('');
@@ -150,6 +152,23 @@ export const ConnectDialog: React.FC<ConnectDialogProps> = ({
             <DialogDescription className="text-zinc-500 dark:text-zinc-400 text-xs">
               Configure remote server connection settings and credentials.
             </DialogDescription>
+            {!initialProfile && onImportSSHConfig && (
+              <div className="pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    onOpenChange(false);
+                    onImportSSHConfig();
+                  }}
+                  className="w-full text-xs h-7.5 border-dashed border-blue-400/60 dark:border-blue-600/40 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/30 cursor-pointer"
+                >
+                  <FolderDown className="w-3.5 h-3.5 mr-1.5" />
+                  Have an SSH config? Import from ~/.ssh/config
+                </Button>
+              </div>
+            )}
           </DialogHeader>
 
           <div className="space-y-4 py-2">

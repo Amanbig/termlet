@@ -21,6 +21,7 @@ import { ReleaseNotesView } from './components/ReleaseNotesView';
 import { PortForwardView } from './components/PortForwardView';
 import { WelcomeScreen } from './components/WelcomeScreen';
 import { TitleBar } from './components/TitleBar';
+import { ImportSSHConfigModal } from './components/ImportSSHConfigModal';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { useRemoteFiles } from './hooks/useRemoteFiles';
 import { useSettings } from './hooks/useSettings';
@@ -48,6 +49,7 @@ export function App() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   const [connectDialogOpen, setConnectDialogOpen] = useState(false);
+  const [importSSHConfigOpen, setImportSSHConfigOpen] = useState(false);
   const [editingProfile, setEditingProfile] = useState<Profile | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isReleaseNotesOpen, setIsReleaseNotesOpen] = useState(false);
@@ -355,6 +357,7 @@ export function App() {
                   onDeleteProfile={handleDeleteProfile}
                   onConnectProfile={handleConnectProfile}
                   onDisconnectSession={handleDisconnect}
+                  onImportSSHConfig={() => setImportSSHConfigOpen(true)}
                 />
               )}
             </ErrorBoundary>
@@ -538,6 +541,15 @@ export function App() {
         initialProfile={editingProfile}
         onConnected={handleConnected}
         onProfileSaved={refreshProfiles}
+        onImportSSHConfig={() => setImportSSHConfigOpen(true)}
+      />
+
+      {/* Import from ~/.ssh/config Modal */}
+      <ImportSSHConfigModal
+        open={importSSHConfigOpen}
+        onOpenChange={setImportSSHConfigOpen}
+        existingProfiles={profiles}
+        onProfilesImported={refreshProfiles}
       />
 
       {/* Non-intrusive Update Toast Notification */}

@@ -243,19 +243,16 @@ export const RemoteFileTree: React.FC<RemoteFileTreeProps> = ({
 
   const handleDownload = async (item: TreeItem) => {
     if (!sessionId) return;
-    const toastId = `dl-${item.path}`;
     try {
-      toast.loading(`Preparing download for ${item.name}...`, { id: toastId });
       const savedPath = await DownloadRemotePath(sessionId, item.path, item.is_dir);
       if (savedPath) {
-        toast.success(`Downloaded to ${savedPath}`, { id: toastId });
-      } else {
-        toast.dismiss(toastId);
+        toast.success(`Downloaded ${item.name}`, {
+          description: `Saved to ${savedPath}`,
+        });
       }
     } catch (err: any) {
       const formatted = formatErrorMessage(err, 'Download');
       toast.error(`${formatted.title}: ${formatted.message}`, {
-        id: toastId,
         description: formatted.hint,
       });
     }

@@ -16,6 +16,8 @@ export function CheckForUpdates() {
 
 export function CheckPortHealth(arg1) {
   return window['go']['main']['App']['CheckPortHealth'](arg1);
+export function ChmodRemotePath(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['ChmodRemotePath'](arg1, arg2, arg3, arg4);
 }
 
 export function Connect(arg1, arg2, arg3) {
@@ -48,6 +50,10 @@ export function Disconnect(arg1) {
 
 export function DownloadAndApplyUpdate(arg1, arg2) {
   return window['go']['main']['App']['DownloadAndApplyUpdate'](arg1, arg2);
+}
+
+export function DownloadRemotePath(arg1, arg2, arg3) {
+  return window['go']['main']['App']['DownloadRemotePath'](arg1, arg2, arg3);
 }
 
 export function GetAppVersion() {

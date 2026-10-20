@@ -16,6 +16,8 @@ import {
   ArrowRight,
   AlertTriangle,
   Info,
+  Activity,
+  Loader2,
 } from 'lucide-react';
 import { tunnel, connections } from '../../wailsjs/go/models';
 import {
@@ -25,6 +27,8 @@ import {
   RestartPortForward,
   DeletePortForward,
   ListPortForwards,
+  CheckAllPortsHealth,
+  CheckPortHealth,
 } from '../../wailsjs/go/main/App';
 import { BrowserOpenURL } from '../../wailsjs/runtime/runtime';
 import { toast } from 'sonner';
@@ -59,6 +63,8 @@ export const PortForwardView: React.FC<PortForwardViewProps> = ({
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [healthMap, setHealthMap] = useState<Record<string, tunnel.PortHealthStatus>>({});
+  const [isCheckingHealth, setIsCheckingHealth] = useState(false);
 
   // Form State
   const [name, setName] = useState('');
@@ -67,6 +73,29 @@ export const PortForwardView: React.FC<PortForwardViewProps> = ({
   const [remotePort, setRemotePort] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Probe health for active tunnels
+  const probeHealth = useCallback(async (listToProbe?: tunnel.TunnelInfo[]) => {
+    const list = listToProbe || tunnels;
+    const activeIds = list.filter((t) => t.status === 'active').map((t) => t.id);
+    if (activeIds.length === 0) return;
+
+    setIsCheckingHealth(true);
+    try {
+      const results = await CheckAllPortsHealth(activeIds);
+      if (Array.isArray(results)) {
+        const nextMap: Record<string, tunnel.PortHealthStatus> = {};
+        for (const res of results) {
+          nextMap[res.tunnelId] = res;
+        }
+        setHealthMap((prev) => ({ ...prev, ...nextMap }));
+      }
+    } catch (err) {
+      console.warn('Failed to probe port health:', err);
+    } finally {
+      setIsCheckingHealth(false);
+    }
+  }, [tunnels]);
 
   // Fetch tunnels
   const fetchTunnels = useCallback(async () => {
@@ -82,12 +111,13 @@ export const PortForwardView: React.FC<PortForwardViewProps> = ({
       setTunnels(safeList);
       const activeCount = safeList.filter((t) => t.status === 'active').length;
       onTunnelsChange?.(activeCount);
+      probeHealth(safeList);
     } catch (err: any) {
       console.warn('Failed to load port forwards:', err);
     } finally {
       setIsLoading(false);
     }
-  }, [sessionId, onTunnelsChange]);
+  }, [sessionId, onTunnelsChange, probeHealth]);
 
   useEffect(() => {
     fetchTunnels();
@@ -569,6 +599,51 @@ export const PortForwardView: React.FC<PortForwardViewProps> = ({
                     {t.remoteHost}:{t.remotePort}
                   </span>
                 </div>
+
+                {/* Health Status Indicator */}
+                {isActive && (
+                  <div className="flex items-center justify-between text-[10px] px-1">
+                    <span className="text-zinc-500 flex items-center gap-1">
+                      <Activity className="w-3 h-3 text-zinc-400" />
+                      Status:
+                    </span>
+                    {healthMap[t.id] ? (
+                      <span
+                        className={`font-mono px-1.5 py-0.5 rounded flex items-center gap-1.5 border text-[10px] ${
+                          healthMap[t.id].status === 'healthy'
+                            ? healthMap[t.id].protocol === 'http'
+                              ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/60'
+                              : 'bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-400 border-sky-200 dark:border-sky-800/60'
+                            : healthMap[t.id].status === 'warning'
+                            ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800/60'
+                            : 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-800/60'
+                        }`}
+                        title={healthMap[t.id].error || healthMap[t.id].statusText}
+                      >
+                        <span
+                          className={`w-1.5 h-1.5 rounded-full ${
+                            healthMap[t.id].status === 'healthy'
+                              ? 'bg-emerald-500 animate-pulse'
+                              : healthMap[t.id].status === 'warning'
+                              ? 'bg-amber-500'
+                              : 'bg-rose-500'
+                          }`}
+                        />
+                        <span>
+                          {healthMap[t.id].statusText ||
+                            (healthMap[t.id].status === 'unreachable' ? 'Unreachable' : healthMap[t.id].status)}
+                        </span>
+                        {healthMap[t.id].latencyMs > 0 && (
+                          <span className="opacity-70 text-[9px]">({healthMap[t.id].latencyMs}ms)</span>
+                        )}
+                      </span>
+                    ) : (
+                      <span className="text-zinc-400 flex items-center gap-1 text-[10px]">
+                        <Loader2 className="w-2.5 h-2.5 animate-spin" /> Checking...
+                      </span>
+                    )}
+                  </div>
+                )}
 
                 {t.errorMsg && (
                   <div className="p-2 rounded bg-rose-50/80 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 text-rose-600 dark:text-rose-400 text-[10px] flex items-start gap-1.5 leading-tight">

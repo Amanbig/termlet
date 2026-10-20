@@ -16,6 +16,8 @@ export function CheckForUpdates() {
 
 export function CheckPortHealth(arg1) {
   return window['go']['main']['App']['CheckPortHealth'](arg1);
+}
+
 export function ChmodRemotePath(arg1, arg2, arg3, arg4) {
   return window['go']['main']['App']['ChmodRemotePath'](arg1, arg2, arg3, arg4);
 }

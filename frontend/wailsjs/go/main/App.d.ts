@@ -14,6 +14,7 @@ export function CheckForAppUpdate():Promise<updater.UpdateInfo>;
 export function CheckForUpdates():Promise<updater.UpdateInfo>;
 
 export function CheckPortHealth(arg1:string):Promise<tunnel.PortHealthStatus>;
+
 export function ChmodRemotePath(arg1:string,arg2:string,arg3:number,arg4:boolean):Promise<void>;
 
 export function Connect(arg1:models.Profile,arg2:string,arg3:boolean):Promise<main.ConnectResponse>;

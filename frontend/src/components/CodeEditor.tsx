@@ -1,12 +1,14 @@
-import React, { useEffect, useState, useMemo, useCallback } from 'react';
-import CodeMirror, { Extension, ViewUpdate } from '@uiw/react-codemirror';
+import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
+import CodeMirror, { Extension, ViewUpdate, ReactCodeMirrorRef } from '@uiw/react-codemirror';
 import { languages } from '@codemirror/language-data';
 import { LanguageDescription } from '@codemirror/language';
 import { EditorView } from '@codemirror/view';
+import { search } from '@codemirror/search';
 import { OpenFile } from '../types/remote';
 import { AppSettings, DEFAULT_SETTINGS } from '../types/settings';
-import { Save, AlertCircle, FileCode, CheckCircle2 } from 'lucide-react';
+import { Save, AlertCircle, FileCode, CheckCircle2, Search } from 'lucide-react';
 import { Button } from './ui/button';
+import { EditorFindReplace } from './EditorFindReplace';
 
 import { vscodeDark } from '@uiw/codemirror-theme-vscode';
 import { tokyoNight } from '@uiw/codemirror-theme-tokyo-night';
@@ -56,6 +58,18 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
   const [langName, setLangName] = useState<string>('Plain Text');
   const [cursorPos, setCursorPos] = useState({ line: 1, col: 1 });
 
+  // Find & Replace state
+  const editorRef = useRef<ReactCodeMirrorRef>(null);
+  const [editorView, setEditorView] = useState<EditorView | null>(null);
+  const [isFindOpen, setIsFindOpen] = useState(false);
+  const [findMode, setFindMode] = useState<'find' | 'replace'>('find');
+  const [editorUpdateTrigger, setEditorUpdateTrigger] = useState(0);
+
+  // Close find bar when switching files
+  useEffect(() => {
+    setIsFindOpen(false);
+  }, [file?.path]);
+
   // Resolve language based on filename
   useEffect(() => {
     if (!file) {
@@ -81,13 +95,28 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
     }
   }, [file?.name]);
 
-  // Handle Ctrl+S / Cmd+S
+  // Handle Ctrl+S / Cmd+S (Save), Ctrl+F (Find), Ctrl+H (Replace)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
-        e.preventDefault();
-        if (file && !file.isBinary) {
-          onSave();
+      if (e.ctrlKey || e.metaKey) {
+        const key = e.key.toLowerCase();
+        if (key === 's') {
+          e.preventDefault();
+          if (file && !file.isBinary) {
+            onSave();
+          }
+        } else if (key === 'f') {
+          e.preventDefault();
+          if (file && !file.isBinary) {
+            setFindMode('find');
+            setIsFindOpen(true);
+          }
+        } else if (key === 'h') {
+          e.preventDefault();
+          if (file && !file.isBinary) {
+            setFindMode('replace');
+            setIsFindOpen(true);
+          }
         }
       }
     };
@@ -95,7 +124,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [file, onSave]);
 
-  const handleCursorChange = useCallback((update: ViewUpdate) => {
+  const handleEditorUpdate = useCallback((update: ViewUpdate) => {
     if (update.selectionSet) {
       const state = update.state;
       const head = state.selection.main.head;
@@ -105,6 +134,9 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
         col: head - line.from + 1,
       });
     }
+    if (update.selectionSet || update.docChanged) {
+      setEditorUpdateTrigger((prev) => prev + 1);
+    }
   }, []);
 
   // Selected theme extension
@@ -112,9 +144,24 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
     return THEME_MAP[settings.editorTheme] || vscodeDark;
   }, [settings.editorTheme]);
 
-  // Compute editor extensions including wrap options
+  // Compute editor extensions including wrap options and search match styling
   const editorExtensions = useMemo(() => {
-    const exts: Extension[] = [...langExtension];
+    const exts: Extension[] = [
+      ...langExtension,
+      search({ top: false }),
+      EditorView.theme({
+        '.cm-searchMatch': {
+          backgroundColor: 'rgba(234, 179, 8, 0.35)',
+          outline: '1px solid rgba(234, 179, 8, 0.6)',
+          borderRadius: '2px',
+        },
+        '.cm-searchMatch-selected': {
+          backgroundColor: 'rgba(249, 115, 22, 0.75) !important',
+          outline: '1px solid rgba(249, 115, 22, 0.95)',
+          borderRadius: '2px',
+        },
+      }),
+    ];
 
     // Word wrap
     if (settings.wordWrap) {
@@ -154,20 +201,31 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
   }
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-white dark:bg-zinc-950 overflow-hidden">
+    <div className="flex-1 flex flex-col h-full bg-white dark:bg-zinc-950 overflow-hidden relative">
+      {/* Floating Find & Replace Toolbar */}
+      <EditorFindReplace
+        view={editorView}
+        isOpen={isFindOpen}
+        onClose={() => setIsFindOpen(false)}
+        initialMode={findMode}
+        updateTrigger={editorUpdateTrigger}
+      />
+
       {/* Editor Main Canvas */}
       <div
         className="flex-1 overflow-auto relative"
         style={{ fontSize: `${settings.fontSize}px` }}
       >
         <CodeMirror
+          ref={editorRef}
           key={`${file.path}-${settings.editorTheme}`}
           value={file.content}
           height="100%"
           theme={selectedTheme}
           extensions={editorExtensions}
           onChange={onChange}
-          onUpdate={handleCursorChange}
+          onCreateEditor={(view) => setEditorView(view)}
+          onUpdate={handleEditorUpdate}
           basicSetup={{
             lineNumbers: settings.lineNumbers,
             highlightActiveLineGutter: true,
@@ -188,7 +246,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
             highlightSelectionMatches: true,
             closeBracketsKeymap: true,
             defaultKeymap: true,
-            searchKeymap: true,
+            searchKeymap: false,
             historyKeymap: true,
             foldKeymap: true,
             completionKeymap: true,
@@ -225,6 +283,20 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
           </span>
           <span className="text-zinc-300 dark:text-zinc-600">|</span>
           <span>UTF-8</span>
+          <span className="text-zinc-300 dark:text-zinc-600">|</span>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => {
+              setFindMode('find');
+              setIsFindOpen((prev) => !prev);
+            }}
+            className="h-5 px-2 text-[11px] text-zinc-700 dark:text-zinc-200 hover:text-zinc-950 dark:hover:text-zinc-100 hover:bg-zinc-200/80 dark:hover:bg-zinc-800 flex items-center gap-1 cursor-pointer"
+            title="Find & Replace (Ctrl+F / Ctrl+H)"
+          >
+            <Search className="w-3 h-3" />
+            Find
+          </Button>
           <span className="text-zinc-300 dark:text-zinc-600">|</span>
           <Button
             size="sm"

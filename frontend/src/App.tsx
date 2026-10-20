@@ -59,7 +59,7 @@ export function App() {
   const [updateInfo, setUpdateInfo] = useState<updater.UpdateInfo | null>(null);
   const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
   const [showUpdateToast, setShowUpdateToast] = useState(false);
-  const [appVersion, setAppVersion] = useState('0.6.0');
+  const [appVersion, setAppVersion] = useState('0.7.0');
   const [activePortsCount, setActivePortsCount] = useState<number>(0);
 
   const { settings, updateSettings, resetSettings } = useSettings();

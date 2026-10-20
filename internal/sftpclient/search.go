@@ -70,7 +70,7 @@ func (c *Client) SearchFiles(rootPath string, query string, maxResults int) ([]m
 	// Try fast SSH execution first if SSH client is available
 	if c.sshClient != nil {
 		results, err := c.searchWithSSHExec(rootPath, query, maxResults)
-		if err == nil && len(results) > 0 {
+		if err == nil {
 			return results, nil
 		}
 	}

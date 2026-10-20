@@ -458,7 +458,7 @@ export function App() {
         {sidebarOpen && (
           <div className={`${activeActivityView === 'ports' ? 'w-72 sm:w-80' : 'w-64'} h-full flex flex-col shrink-0 overflow-hidden bg-zinc-50 dark:bg-zinc-950/70 border-r border-zinc-200 dark:border-zinc-800/80 transition-all duration-150`}>
             <ErrorBoundary fallbackTitle="Failed to load side panel">
-              {activeActivityView === 'explorer' ? (
+              <div className={activeActivityView === 'explorer' ? 'h-full flex flex-col' : 'hidden'}>
                 <RemoteFileTree
                   sessionId={currentSessionId}
                   sessionSummary={currentSession}
@@ -468,7 +468,9 @@ export function App() {
                   onDisconnect={handleDisconnect}
                   onOpenProfiles={() => setActiveActivityView('connections')}
                 />
-              ) : activeActivityView === 'ports' ? (
+              </div>
+
+              <div className={activeActivityView === 'ports' ? 'h-full flex flex-col' : 'hidden'}>
                 <PortForwardView
                   sessionId={currentSessionId}
                   activeSession={currentSession}
@@ -478,7 +480,9 @@ export function App() {
                   }}
                   onTunnelsChange={setActivePortsCount}
                 />
-              ) : (
+              </div>
+
+              <div className={activeActivityView === 'connections' ? 'h-full flex flex-col' : 'hidden'}>
                 <ConnectionSidebar
                   profiles={profiles}
                   activeSessions={activeSessions}
@@ -501,7 +505,7 @@ export function App() {
                   onReconnectSession={handleReconnectSession}
                   onImportSSHConfig={() => setImportSSHConfigOpen(true)}
                 />
-              )}
+              </div>
             </ErrorBoundary>
           </div>
         )}

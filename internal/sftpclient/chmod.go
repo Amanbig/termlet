@@ -66,3 +66,26 @@ func (c *Client) Chmod(remotePath string, mode uint32, recursive bool) error {
 
 	return nil
 }
+
+// FormatPermissions formats a unix permission mode into a standard symbolic string (e.g. -rwxr-xr-x or drwxr-xr-x).
+func FormatPermissions(mode uint32, isDir bool) string {
+	res := make([]byte, 10)
+	if isDir {
+		res[0] = 'd'
+	} else {
+		res[0] = '-'
+	}
+
+	rwx := []byte{'r', 'w', 'x'}
+	perm := mode & 0777
+
+	for i := 0; i < 9; i++ {
+		shift := uint(8 - i)
+		if (perm>>shift)&1 == 1 {
+			res[1+i] = rwx[i%3]
+		} else {
+			res[1+i] = '-'
+		}
+	}
+	return string(res)
+}

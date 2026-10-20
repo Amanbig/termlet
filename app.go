@@ -1,17 +1,25 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	_ "embed"
 	"encoding/base64"
+	"errors"
 	"fmt"
+	"io"
+	"os"
+	"os/exec"
 	"path"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"termlet/internal/connections"
 	"termlet/internal/models"
 	"termlet/internal/sftpclient"
 	"termlet/internal/sshconfig"
 	"termlet/internal/storage"
+	"termlet/internal/transfer"
 	"termlet/internal/tunnel"
 	"termlet/internal/updater"
 	"termlet/internal/version"
@@ -30,6 +38,7 @@ type App struct {
 	secretStore  *storage.SecretStorage
 	updater      *updater.Updater
 	tunnelMgr    *tunnel.Manager
+	transferMgr  *transfer.Manager
 }
 
 // ConnectResponse wraps the outcome of a Connect request.
@@ -57,13 +66,21 @@ func NewApp() *App {
 	upd := updater.NewUpdater()
 	tunnelMgr := tunnel.NewManager()
 
-	return &App{
+	app := &App{
 		profileStore: profileStore,
 		secretStore:  secretStore,
 		connMgr:      connMgr,
 		updater:      upd,
 		tunnelMgr:    tunnelMgr,
 	}
+
+	app.transferMgr = transfer.NewManager(func(eventName string, data ...interface{}) {
+		if app.ctx != nil {
+			wailsRuntime.EventsEmit(app.ctx, eventName, data...)
+		}
+	})
+
+	return app
 }
 
 // startup is called when the app starts. The context is saved
@@ -380,16 +397,63 @@ func (a *App) DownloadRemotePath(sessionID string, remotePath string, isDir bool
 		return "", nil
 	}
 
-	if isDir {
-		if err := sftpCl.DownloadDirectoryAsZip(remotePath, localPath); err != nil {
-			return "", err
-		}
-	} else {
-		if err := sftpCl.DownloadFile(remotePath, localPath); err != nil {
-			return "", err
+	var fileSize int64 = 0
+	if !isDir {
+		if sz, szErr := sftpCl.GetFileSize(remotePath); szErr == nil {
+			fileSize = sz
 		}
 	}
 
+	var item *transfer.Item
+	var transferCtx context.Context = ctx
+	var transferCancel context.CancelFunc
+
+	if a.transferMgr != nil {
+		transferName := filepath.Base(localPath)
+		item, transferCtx, transferCancel = a.transferMgr.StartTransfer(sessionID, transferName, transfer.TypeDownload, remotePath, localPath, fileSize)
+	}
+
+	var downloadErr error
+	if isDir {
+		var wrapWriter func(io.Writer) io.Writer
+		if a.transferMgr != nil && item != nil {
+			wrapWriter = func(w io.Writer) io.Writer {
+				return a.transferMgr.WrapWriter(w, item.ID, transferCtx)
+			}
+		}
+		downloadErr = sftpCl.DownloadDirectoryAsZipWithProgress(transferCtx, remotePath, localPath, wrapWriter)
+	} else {
+		var wrapWriter func(io.Writer) io.Writer
+		if a.transferMgr != nil && item != nil {
+			wrapWriter = func(w io.Writer) io.Writer {
+				return a.transferMgr.WrapWriter(w, item.ID, transferCtx)
+			}
+		}
+		downloadErr = sftpCl.DownloadFileWithProgress(transferCtx, remotePath, localPath, wrapWriter)
+	}
+
+	if a.transferMgr != nil && item != nil {
+		if downloadErr != nil {
+			if errors.Is(downloadErr, context.Canceled) {
+				a.transferMgr.SetCancelled(item.ID)
+			} else {
+				a.transferMgr.SetFailed(item.ID, downloadErr)
+			}
+		} else {
+			if fi, fiErr := os.Stat(localPath); fiErr == nil {
+				a.transferMgr.SetCompleted(item.ID, fi.Size())
+			} else {
+				a.transferMgr.SetCompleted(item.ID, fileSize)
+			}
+		}
+		if transferCancel != nil {
+			transferCancel()
+		}
+	}
+
+	if downloadErr != nil {
+		return "", downloadErr
+	}
 	return localPath, nil
 }
 
@@ -406,8 +470,78 @@ func (a *App) UploadFileContent(sessionID string, remoteDir string, fileName str
 	}
 
 	destPath := path.Join(remoteDir, fileName)
-	reader := strings.NewReader(string(data))
-	return sftpCl.UploadStream(destPath, reader)
+	totalSize := int64(len(data))
+
+	var item *transfer.Item
+	var transferCtx context.Context = context.Background()
+	var transferCancel context.CancelFunc
+
+	if a.transferMgr != nil {
+		item, transferCtx, transferCancel = a.transferMgr.StartTransfer(sessionID, fileName, transfer.TypeUpload, fileName, destPath, totalSize)
+	}
+
+	var r io.Reader = bytes.NewReader(data)
+	if a.transferMgr != nil && item != nil {
+		r = a.transferMgr.WrapReader(r, item.ID, transferCtx)
+	}
+
+	uploadErr := sftpCl.UploadStream(destPath, r)
+
+	if a.transferMgr != nil && item != nil {
+		if uploadErr != nil {
+			if errors.Is(uploadErr, context.Canceled) {
+				a.transferMgr.SetCancelled(item.ID)
+			} else {
+				a.transferMgr.SetFailed(item.ID, uploadErr)
+			}
+		} else {
+			a.transferMgr.SetCompleted(item.ID, totalSize)
+		}
+		if transferCancel != nil {
+			transferCancel()
+		}
+	}
+
+	return uploadErr
+}
+
+// ListTransfers returns all tracked file transfers.
+func (a *App) ListTransfers() []transfer.Item {
+	if a.transferMgr == nil {
+		return []transfer.Item{}
+	}
+	return a.transferMgr.ListTransfers()
+}
+
+// CancelTransfer cancels an ongoing file transfer.
+func (a *App) CancelTransfer(transferID string) error {
+	if a.transferMgr == nil {
+		return fmt.Errorf("transfer manager not initialized")
+	}
+	return a.transferMgr.CancelTransfer(transferID)
+}
+
+// ClearFinishedTransfers clears completed, failed, and cancelled transfers from history.
+func (a *App) ClearFinishedTransfers() {
+	if a.transferMgr != nil {
+		a.transferMgr.ClearFinished()
+	}
+}
+
+// OpenLocalFile opens the parent directory or highlights the file in the OS file explorer.
+func (a *App) OpenLocalFile(localPath string) error {
+	if localPath == "" {
+		return fmt.Errorf("empty file path")
+	}
+	dir := filepath.Dir(localPath)
+	switch runtime.GOOS {
+	case "windows":
+		return exec.Command("explorer.exe", "/select,", localPath).Start()
+	case "darwin":
+		return exec.Command("open", "-R", localPath).Start()
+	default:
+		return exec.Command("xdg-open", dir).Start()
+	}
 }
 
 // GetAppVersion returns the current version string.

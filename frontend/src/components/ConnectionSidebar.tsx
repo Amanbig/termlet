@@ -9,6 +9,7 @@ import {
   Radio,
   HardDrive,
   ChevronRight,
+  FolderDown,
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -29,6 +30,7 @@ interface ConnectionSidebarProps {
   onDeleteProfile: (id: string) => void;
   onConnectProfile: (profile: Profile) => void;
   onDisconnectSession: (sessionId: string) => void;
+  onImportSSHConfig?: () => void;
 }
 
 export const ConnectionSidebar: React.FC<ConnectionSidebarProps> = ({
@@ -41,6 +43,7 @@ export const ConnectionSidebar: React.FC<ConnectionSidebarProps> = ({
   onDeleteProfile,
   onConnectProfile,
   onDisconnectSession,
+  onImportSSHConfig,
 }) => {
   return (
     <div className="w-full bg-zinc-50 dark:bg-zinc-950 border-r border-zinc-200 dark:border-zinc-800/80 flex flex-col h-full select-none">
@@ -49,15 +52,28 @@ export const ConnectionSidebar: React.FC<ConnectionSidebarProps> = ({
         <span className="font-semibold text-xs tracking-wider uppercase text-zinc-700 dark:text-zinc-300">
           Remote Explorer
         </span>
-        <Button
-          size="icon"
-          variant="ghost"
-          onClick={onNewConnection}
-          title="New Connection Profile"
-          className="h-6 w-6 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-200 dark:hover:bg-zinc-800 cursor-pointer"
-        >
-          <Plus className="w-4 h-4" />
-        </Button>
+        <div className="flex items-center gap-1">
+          {onImportSSHConfig && (
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={onImportSSHConfig}
+              title="Import from ~/.ssh/config"
+              className="h-6 w-6 text-zinc-500 dark:text-zinc-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-zinc-200 dark:hover:bg-zinc-800 cursor-pointer"
+            >
+              <FolderDown className="w-3.5 h-3.5" />
+            </Button>
+          )}
+          <Button
+            size="icon"
+            variant="ghost"
+            onClick={onNewConnection}
+            title="New Connection Profile"
+            className="h-6 w-6 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-200 dark:hover:bg-zinc-800 cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+          </Button>
+        </div>
       </div>
 
       {/* Active Sessions Section */}
@@ -119,8 +135,28 @@ export const ConnectionSidebar: React.FC<ConnectionSidebarProps> = ({
           </div>
 
           {profiles.length === 0 ? (
-            <div className="px-2 py-6 text-center text-xs text-zinc-500">
-              No saved profiles yet. Click &quot;New&quot; to connect to an SSH server.
+            <div className="px-3 py-6 text-center text-xs text-zinc-500">
+              <p className="mb-3">No saved profiles yet.</p>
+              <div className="flex flex-col gap-2 max-w-[200px] mx-auto">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={onNewConnection}
+                  className="text-xs h-7.5 cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5 mr-1.5" /> New Profile
+                </Button>
+                {onImportSSHConfig && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={onImportSSHConfig}
+                    className="text-xs h-7.5 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/30 cursor-pointer"
+                  >
+                    <FolderDown className="w-3.5 h-3.5 mr-1.5" /> Import ~/.ssh/config
+                  </Button>
+                )}
+              </div>
             </div>
           ) : (
             <div className="mt-1 space-y-1">

@@ -46,6 +46,10 @@ export function GetAppVersion() {
   return window['go']['main']['App']['GetAppVersion']();
 }
 
+export function GetDefaultSSHConfigPath() {
+  return window['go']['main']['App']['GetDefaultSSHConfigPath']();
+}
+
 export function GetProfileSecret(arg1) {
   return window['go']['main']['App']['GetProfileSecret'](arg1);
 }
@@ -56,6 +60,10 @@ export function GetReleaseNotes() {
 
 export function GetUpdateProgress() {
   return window['go']['main']['App']['GetUpdateProgress']();
+}
+
+export function ImportSSHConfigProfiles(arg1, arg2) {
+  return window['go']['main']['App']['ImportSSHConfigProfiles'](arg1, arg2);
 }
 
 export function ListActiveSessions() {
@@ -72,6 +80,10 @@ export function ListProfiles() {
 
 export function ListRemoteFiles(arg1, arg2) {
   return window['go']['main']['App']['ListRemoteFiles'](arg1, arg2);
+}
+
+export function ParseSSHConfig(arg1) {
+  return window['go']['main']['App']['ParseSSHConfig'](arg1);
 }
 
 export function ReadRemoteFile(arg1, arg2) {

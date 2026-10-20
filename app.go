@@ -15,6 +15,8 @@ import (
 	"termlet/internal/tunnel"
 	"termlet/internal/updater"
 	"termlet/internal/version"
+
+	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 //go:embed RELEASE_NOTES.md
@@ -333,6 +335,62 @@ func (a *App) RenameRemotePath(sessionID string, oldPath string, newPath string)
 		return err
 	}
 	return sftpCl.Rename(oldPath, newPath)
+}
+
+// ChmodRemotePath changes permissions of a remote file or directory.
+func (a *App) ChmodRemotePath(sessionID string, remotePath string, mode uint32, recursive bool) error {
+	sftpCl, err := a.getSFTPClient(sessionID)
+	if err != nil {
+		return err
+	}
+	return sftpCl.Chmod(remotePath, mode, recursive)
+}
+
+// DownloadRemotePath prompts the user for a local save path and downloads the file or directory (as a zip archive).
+// Returns the local file path if downloaded, or empty string if canceled by user.
+func (a *App) DownloadRemotePath(sessionID string, remotePath string, isDir bool) (string, error) {
+	sftpCl, err := a.getSFTPClient(sessionID)
+	if err != nil {
+		return "", err
+	}
+
+	baseName := path.Base(remotePath)
+	dialogTitle := fmt.Sprintf("Save %s", baseName)
+	defaultFilename := baseName
+
+	if isDir {
+		dialogTitle = fmt.Sprintf("Download Folder Archive: %s", baseName)
+		defaultFilename = baseName + ".zip"
+	}
+
+	ctx := a.ctx
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	localPath, err := wailsRuntime.SaveFileDialog(ctx, wailsRuntime.SaveDialogOptions{
+		Title:           dialogTitle,
+		DefaultFilename: defaultFilename,
+	})
+	if err != nil {
+		return "", fmt.Errorf("failed to open save dialog: %w", err)
+	}
+	if localPath == "" {
+		// User canceled
+		return "", nil
+	}
+
+	if isDir {
+		if err := sftpCl.DownloadDirectoryAsZip(remotePath, localPath); err != nil {
+			return "", err
+		}
+	} else {
+		if err := sftpCl.DownloadFile(remotePath, localPath); err != nil {
+			return "", err
+		}
+	}
+
+	return localPath, nil
 }
 
 // UploadFileContent writes base64-encoded file data into a remote directory.

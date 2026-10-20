@@ -562,3 +562,25 @@ func (a *App) ListPortForwards(sessionID string) ([]*tunnel.TunnelInfo, error) {
 	}
 	return a.tunnelMgr.ListTunnels(sessionID), nil
 }
+
+// CheckPortHealth checks the health of an individual local port forward.
+func (a *App) CheckPortHealth(tunnelID string) (*tunnel.PortHealthStatus, error) {
+	if a.tunnelMgr == nil {
+		return &tunnel.PortHealthStatus{
+			TunnelID: tunnelID,
+			Status:   "stopped",
+			Protocol: "none",
+			Error:    "tunnel manager not initialized",
+		}, nil
+	}
+	res := a.tunnelMgr.CheckHealth(tunnelID)
+	return &res, nil
+}
+
+// CheckAllPortsHealth checks the health of multiple local port forwards concurrently.
+func (a *App) CheckAllPortsHealth(tunnelIDs []string) ([]tunnel.PortHealthStatus, error) {
+	if a.tunnelMgr == nil {
+		return []tunnel.PortHealthStatus{}, nil
+	}
+	return a.tunnelMgr.CheckAllHealth(tunnelIDs), nil
+}

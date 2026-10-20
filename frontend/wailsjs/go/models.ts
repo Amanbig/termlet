@@ -236,6 +236,32 @@ export namespace sftpclient {
 
 export namespace tunnel {
 	
+	export class PortHealthStatus {
+	    tunnelId: string;
+	    localPort: number;
+	    status: string;
+	    statusCode?: number;
+	    statusText?: string;
+	    protocol: string;
+	    latencyMs: number;
+	    error?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new PortHealthStatus(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.tunnelId = source["tunnelId"];
+	        this.localPort = source["localPort"];
+	        this.status = source["status"];
+	        this.statusCode = source["statusCode"];
+	        this.statusText = source["statusText"];
+	        this.protocol = source["protocol"];
+	        this.latencyMs = source["latencyMs"];
+	        this.error = source["error"];
+	    }
+	}
 	export class TunnelInfo {
 	    id: string;
 	    sessionId: string;

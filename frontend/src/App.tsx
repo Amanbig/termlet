@@ -21,6 +21,7 @@ import { ReleaseNotesView } from './components/ReleaseNotesView';
 import { PortForwardView } from './components/PortForwardView';
 import { WelcomeScreen } from './components/WelcomeScreen';
 import { TitleBar } from './components/TitleBar';
+import { QuickOpenModal } from './components/QuickOpenModal';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { useRemoteFiles } from './hooks/useRemoteFiles';
 import { useSettings } from './hooks/useSettings';
@@ -48,6 +49,7 @@ export function App() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   const [connectDialogOpen, setConnectDialogOpen] = useState(false);
+  const [quickOpenOpen, setQuickOpenOpen] = useState(false);
   const [editingProfile, setEditingProfile] = useState<Profile | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isReleaseNotesOpen, setIsReleaseNotesOpen] = useState(false);
@@ -128,6 +130,22 @@ export function App() {
   } = useRemoteFiles();
 
   const currentSession = activeSessions.find((s) => s.id === currentSessionId) || null;
+
+  // Global Shortcut: Ctrl+P / Cmd+P for Quick Open
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'p' && !e.shiftKey) {
+        e.preventDefault();
+        if (currentSessionId) {
+          setQuickOpenOpen((prev) => !prev);
+        } else {
+          toast.info('Connect to a remote server to quick open files');
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [currentSessionId]);
 
   const refreshProfiles = useCallback(async () => {
     try {
@@ -294,6 +312,7 @@ export function App() {
           setActiveActivityView('connections');
           setSidebarOpen(true);
         }}
+        onQuickOpen={() => setQuickOpenOpen(true)}
       />
 
       {/* Main Body Area */}
@@ -538,6 +557,16 @@ export function App() {
         initialProfile={editingProfile}
         onConnected={handleConnected}
         onProfileSaved={refreshProfiles}
+      />
+
+      {/* Fast Remote File Quick Open Modal (Ctrl+P / Cmd+P) */}
+      <QuickOpenModal
+        isOpen={quickOpenOpen}
+        onClose={() => setQuickOpenOpen(false)}
+        sessionId={currentSessionId}
+        startDirectory={currentSession?.start_directory || '.'}
+        openFiles={openFiles}
+        onOpenFile={handleOpenFile}
       />
 
       {/* Non-intrusive Update Toast Notification */}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Minus, Square, X, Server, Terminal, Settings as SettingsIcon } from 'lucide-react';
+import { Minus, Square, X, Server, Terminal, Settings as SettingsIcon, Search } from 'lucide-react';
 import {
   WindowMinimise,
   WindowToggleMaximise,
@@ -16,6 +16,7 @@ interface TitleBarProps {
   onOpenSettings: () => void;
   onNewConnection: () => void;
   onOpenProfiles: () => void;
+  onQuickOpen?: () => void;
 }
 
 function RestoreIcon({ className = 'w-3 h-3' }: { className?: string }) {
@@ -34,6 +35,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({
   onOpenSettings,
   onNewConnection,
   onOpenProfiles,
+  onQuickOpen,
 }) => {
   const [isMaximised, setIsMaximised] = useState(false);
 
@@ -132,14 +134,33 @@ export const TitleBar: React.FC<TitleBarProps> = ({
         )}
       </div>
 
-      {/* Center: Window Title / Context Badge (Draggable) */}
-      <div className="flex-1 h-full flex items-center justify-center px-4 overflow-hidden pointer-events-none">
-        <div className="flex items-center gap-2 px-3 py-0.5 rounded-md bg-zinc-200/40 dark:bg-zinc-900/50 border border-zinc-200/60 dark:border-zinc-800/60 max-w-md truncate">
-          <Terminal className="w-3 h-3 text-zinc-400 shrink-0" />
-          <span className="text-[11px] text-zinc-600 dark:text-zinc-300 font-medium truncate">
-            {getActiveTitle()}
-          </span>
-        </div>
+      {/* Center: Window Title / Context Search Bar */}
+      <div className="flex-1 h-full flex items-center justify-center px-4 overflow-hidden">
+        {currentSession && onQuickOpen ? (
+          <button
+            type="button"
+            onClick={onQuickOpen}
+            title="Quick Open File (Ctrl+P / Cmd+P)"
+            className="wails-no-drag flex items-center gap-2 px-3 py-1 rounded-md bg-zinc-200/50 hover:bg-zinc-200/80 dark:bg-zinc-900/60 dark:hover:bg-zinc-800/80 border border-zinc-200/80 dark:border-zinc-800 text-zinc-600 dark:text-zinc-300 max-w-sm sm:max-w-md w-full justify-between transition-colors cursor-pointer group shadow-2xs"
+          >
+            <div className="flex items-center gap-2 truncate">
+              <Search className="w-3 h-3 text-zinc-400 group-hover:text-blue-500 transition-colors shrink-0" />
+              <span className="text-[11px] font-medium truncate text-zinc-700 dark:text-zinc-300">
+                {getActiveTitle()}
+              </span>
+            </div>
+            <kbd className="hidden sm:inline-block text-[10px] font-mono px-1.5 py-0.2 rounded bg-zinc-200 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 shrink-0">
+              Ctrl+P
+            </kbd>
+          </button>
+        ) : (
+          <div className="flex items-center gap-2 px-3 py-0.5 rounded-md bg-zinc-200/40 dark:bg-zinc-900/50 border border-zinc-200/60 dark:border-zinc-800/60 max-w-md truncate pointer-events-none">
+            <Terminal className="w-3 h-3 text-zinc-400 shrink-0" />
+            <span className="text-[11px] text-zinc-600 dark:text-zinc-300 font-medium truncate">
+              {getActiveTitle()}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Right: Window Controls */}

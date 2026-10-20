@@ -102,6 +102,10 @@ export function SaveRemoteFile(arg1, arg2, arg3, arg4) {
   return window['go']['main']['App']['SaveRemoteFile'](arg1, arg2, arg3, arg4);
 }
 
+export function SearchRemoteFiles(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['SearchRemoteFiles'](arg1, arg2, arg3, arg4);
+}
+
 export function StartPortForward(arg1, arg2, arg3, arg4, arg5) {
   return window['go']['main']['App']['StartPortForward'](arg1, arg2, arg3, arg4, arg5);
 }

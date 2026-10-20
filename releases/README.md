@@ -10,7 +10,8 @@ For the active release currently being compiled or deployed, refer to the root [
 
 | Version | Release Date / Milestone | Highlights | Release Notes |
 | :--- | :--- | :--- | :---: |
-| **v0.6.0** | *Current* | Integrated SSH Local Port Forwarding & Tunneling engine, 1-click browser launcher, live status tracking, profile-persisted port forwards, native in-app modal confirmation dialogs, and interactive Ports management view | [v0.6.0.md](v0.6.0.md) |
+| **v0.7.0** | *Current* | Fast Remote File Quick Open (Ctrl+P), 1-click OpenSSH ~/.ssh/config importer, remote file & zip directory download, interactive chmod permissions modal, port forwarding live health badges, and floating code editor find & replace toolbar (Ctrl+F/H) | [v0.7.0.md](v0.7.0.md) |
+| **v0.6.0** | Minor Release | Integrated SSH Local Port Forwarding & Tunneling engine, 1-click browser launcher, live status tracking, profile-persisted port forwards, native in-app modal confirmation dialogs, and interactive Ports management view | [v0.6.0.md](v0.6.0.md) |
 | **v0.5.3** | Minor Release | Tab bar scrollbar with smooth mouse wheel navigation, overflow chevrons, auto-scroll to active tab, bulk tab actions ("Close Others", "Close Saved"), expanded 14 editor themes, theme-synchronized toast UI | [v0.5.3.md](v0.5.3.md) |
 | **v0.5.2** | Minor Release | Comprehensive fault-tolerant error handling (`ErrorBoundary`, 13 formatted error categories, inline dialog alerts, retry recovery), backend nil safety, streamlined in-settings automatic updater & installer | [v0.5.2.md](v0.5.2.md) |
 | **v0.5.1** | Minor Release | In-app automatic update installation & management (Dockit parity: deb, rpm, zip, selfupdate, restart), Windows multi-resolution icon (`icon.ico` 16–256px), webview favicons, full light mode theme overhaul | [v0.5.1.md](v0.5.1.md) |

@@ -10,6 +10,8 @@ export namespace connections {
 	    connected_at: number;
 	    start_directory: string;
 	    is_alive: boolean;
+	    status: string;
+	    auto_reconnect: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new SessionSummary(source);
@@ -26,6 +28,8 @@ export namespace connections {
 	        this.connected_at = source["connected_at"];
 	        this.start_directory = source["start_directory"];
 	        this.is_alive = source["is_alive"];
+	        this.status = source["status"];
+	        this.auto_reconnect = source["auto_reconnect"];
 	    }
 	}
 
@@ -148,6 +152,8 @@ export namespace models {
 	    key_path?: string;
 	    start_directory?: string;
 	    port_forwards?: ForwardedPortConfig[];
+	    keepalive_interval?: number;
+	    auto_reconnect?: boolean;
 	    created_at: number;
 	    updated_at: number;
 	
@@ -166,6 +172,8 @@ export namespace models {
 	        this.key_path = source["key_path"];
 	        this.start_directory = source["start_directory"];
 	        this.port_forwards = this.convertValues(source["port_forwards"], ForwardedPortConfig);
+	        this.keepalive_interval = source["keepalive_interval"];
+	        this.auto_reconnect = source["auto_reconnect"];
 	        this.created_at = source["created_at"];
 	        this.updated_at = source["updated_at"];
 	    }

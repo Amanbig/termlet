@@ -43,6 +43,9 @@ export const ConnectDialog: React.FC<ConnectDialogProps> = ({
   const [keyPath, setKeyPath] = useState('');
   const [passphrase, setPassphrase] = useState('');
   const [startDirectory, setStartDirectory] = useState('.');
+  const [keepAliveInterval, setKeepAliveInterval] = useState(20);
+  const [autoReconnect, setAutoReconnect] = useState(true);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [saveProfileCheckbox, setSaveProfileCheckbox] = useState(true);
 
   const [isConnecting, setIsConnecting] = useState(false);
@@ -61,6 +64,8 @@ export const ConnectDialog: React.FC<ConnectDialogProps> = ({
       setAuthMethod((initialProfile.auth_method as any) || 'password');
       setKeyPath(initialProfile.key_path || '');
       setStartDirectory(initialProfile.start_directory || '.');
+      setKeepAliveInterval(initialProfile.keepalive_interval || 20);
+      setAutoReconnect(initialProfile.auto_reconnect ?? true);
       // Fetch saved secret if any
       if (initialProfile.id) {
         GetProfileSecret(initialProfile.id).then((sec) => {
@@ -77,6 +82,9 @@ export const ConnectDialog: React.FC<ConnectDialogProps> = ({
       setKeyPath('');
       setPassphrase('');
       setStartDirectory('.');
+      setKeepAliveInterval(20);
+      setAutoReconnect(true);
+      setShowAdvanced(false);
     }
     setHostKeyPrompt(null);
   }, [initialProfile, open]);
@@ -99,6 +107,8 @@ export const ConnectDialog: React.FC<ConnectDialogProps> = ({
         auth_method: authMethod,
         key_path: authMethod === 'private_key' ? keyPath.trim() : '',
         start_directory: startDirectory.trim() || '.',
+        keepalive_interval: Number(keepAliveInterval) || 20,
+        auto_reconnect: autoReconnect,
         port_forwards: initialProfile?.port_forwards || [],
         created_at: initialProfile?.created_at || Date.now(),
         updated_at: Date.now(),
@@ -288,6 +298,55 @@ export const ConnectDialog: React.FC<ConnectDialogProps> = ({
                   </p>
                 </TabsContent>
               </Tabs>
+            </div>
+
+            {/* Advanced Options (Keep-Alive & Reconnection) */}
+            <div className="pt-1">
+              <button
+                type="button"
+                onClick={() => setShowAdvanced(!showAdvanced)}
+                className="text-[11px] text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 flex items-center gap-1 cursor-pointer transition-colors"
+              >
+                {showAdvanced ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                <span>Advanced options (Keep-Alive & Reconnect)</span>
+              </button>
+
+              {showAdvanced && (
+                <div className="mt-2.5 p-3 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/40 space-y-3 animate-in fade-in duration-150">
+                  <div className="grid grid-cols-2 gap-3 items-center">
+                    <div className="space-y-1">
+                      <Label htmlFor="keepAliveInterval" className="text-[11px] text-zinc-700 dark:text-zinc-300">
+                        Keep-Alive Interval (seconds)
+                      </Label>
+                      <Input
+                        id="keepAliveInterval"
+                        type="number"
+                        min="0"
+                        max="300"
+                        value={keepAliveInterval}
+                        onChange={(e) => setKeepAliveInterval(Math.max(0, Number(e.target.value)))}
+                        className="bg-white dark:bg-zinc-900 border-zinc-300 dark:border-zinc-800 text-xs h-7.5"
+                      />
+                    </div>
+                    <p className="text-[10px] text-zinc-500 mt-3 leading-relaxed">
+                      Sends periodic OpenSSH probes to prevent firewall/NAT idle disconnects.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2 pt-1">
+                    <input
+                      type="checkbox"
+                      id="autoReconnect"
+                      checked={autoReconnect}
+                      onChange={(e) => setAutoReconnect(e.target.checked)}
+                      className="rounded border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-blue-600 cursor-pointer"
+                    />
+                    <Label htmlFor="autoReconnect" className="text-xs text-zinc-600 dark:text-zinc-400 cursor-pointer">
+                      Automatically attempt reconnection if connection drops
+                    </Label>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Save Profile Checkbox */}

@@ -106,6 +106,10 @@ export function ReadRemoteFile(arg1, arg2) {
   return window['go']['main']['App']['ReadRemoteFile'](arg1, arg2);
 }
 
+export function Reconnect(arg1) {
+  return window['go']['main']['App']['Reconnect'](arg1);
+}
+
 export function RenameRemotePath(arg1, arg2, arg3) {
   return window['go']['main']['App']['RenameRemotePath'](arg1, arg2, arg3);
 }

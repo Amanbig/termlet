@@ -70,6 +70,20 @@ func NewApp() *App {
 // so we can call the runtime methods.
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
+	if a.connMgr != nil {
+		a.connMgr.SetDroppedHandler(func(sessionID string, profile connections.Profile, reason error) {
+			if a.ctx != nil {
+				wailsRuntime.EventsEmit(a.ctx, "session:dropped", map[string]interface{}{
+					"sessionId":   sessionID,
+					"profileId":   profile.ID,
+					"profileName": profile.Name,
+					"host":        profile.Host,
+					"port":        profile.Port,
+					"error":       reason.Error(),
+				})
+			}
+		})
+	}
 }
 
 // shutdown is called during application termination.
@@ -219,6 +233,57 @@ func (a *App) Connect(profile models.Profile, password string, trustKey bool) (*
 		for _, pf := range p.PortForwards {
 			a.tunnelMgr.AddConfiguredTunnel(pf.ID, session.ID, pf.LocalPort, pf.RemoteHost, pf.RemotePort, pf.Name)
 		}
+	}
+
+	return &ConnectResponse{
+		Success: true,
+		Session: &summary,
+	}, nil
+}
+
+// Reconnect attempts to re-establish an SSH and SFTP session after a dropped connection.
+func (a *App) Reconnect(sessionID string) (*ConnectResponse, error) {
+	if a.connMgr == nil {
+		return &ConnectResponse{
+			Success: false,
+			Error:   "connection manager not initialized",
+		}, nil
+	}
+
+	ctx := a.ctx
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	session, prompt, err := a.connMgr.Reconnect(ctx, sessionID)
+	if err != nil {
+		return &ConnectResponse{
+			Success:       false,
+			HostKeyPrompt: prompt,
+			Error:         err.Error(),
+		}, nil
+	}
+
+	if prompt != nil {
+		return &ConnectResponse{
+			Success:       false,
+			HostKeyPrompt: prompt,
+		}, nil
+	}
+
+	// Resume any tunnels that were configured/active for this session
+	if a.tunnelMgr != nil {
+		tunnels := a.tunnelMgr.ListTunnels(sessionID)
+		for _, tun := range tunnels {
+			if tun.Status == "active" || tun.Status == "error" {
+				_, _ = a.tunnelMgr.RestartForwarding(tun.ID, session.SSH)
+			}
+		}
+	}
+
+	summary := session.Summary()
+	if a.ctx != nil {
+		wailsRuntime.EventsEmit(a.ctx, "session:reconnected", summary)
 	}
 
 	return &ConnectResponse{

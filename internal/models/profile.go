@@ -22,17 +22,19 @@ type ForwardedPortConfig struct {
 
 // Profile holds saved configuration for an SSH/SFTP connection.
 type Profile struct {
-	ID             string                `json:"id"`
-	Name           string                `json:"name"`
-	Host           string                `json:"host"`
-	Port           int                   `json:"port"`
-	Username       string                `json:"username"`
-	AuthMethod     AuthMethod            `json:"auth_method"`
-	KeyPath        string                `json:"key_path,omitempty"`
-	StartDirectory string                `json:"start_directory,omitempty"`
-	PortForwards   []ForwardedPortConfig `json:"port_forwards,omitempty"`
-	CreatedAt      int64                 `json:"created_at"`
-	UpdatedAt      int64                 `json:"updated_at"`
+	ID                string                `json:"id"`
+	Name              string                `json:"name"`
+	Host              string                `json:"host"`
+	Port              int                   `json:"port"`
+	Username          string                `json:"username"`
+	AuthMethod        AuthMethod            `json:"auth_method"`
+	KeyPath           string                `json:"key_path,omitempty"`
+	StartDirectory    string                `json:"start_directory,omitempty"`
+	PortForwards      []ForwardedPortConfig `json:"port_forwards,omitempty"`
+	KeepAliveInterval int                   `json:"keepalive_interval,omitempty"`
+	AutoReconnect     bool                  `json:"auto_reconnect,omitempty"`
+	CreatedAt         int64                 `json:"created_at"`
+	UpdatedAt         int64                 `json:"updated_at"`
 }
 
 // Normalize ensures reasonable defaults like standard SSH port.
@@ -45,6 +47,9 @@ func (p *Profile) Normalize() {
 	}
 	if p.StartDirectory == "" {
 		p.StartDirectory = "."
+	}
+	if p.KeepAliveInterval <= 0 {
+		p.KeepAliveInterval = 20
 	}
 	now := time.Now().Unix()
 	if p.CreatedAt == 0 {

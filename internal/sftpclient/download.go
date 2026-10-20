@@ -2,6 +2,7 @@ package sftpclient
 
 import (
 	"archive/zip"
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -10,8 +11,32 @@ import (
 	"strings"
 )
 
+// GetFileSize returns the byte size of a remote file.
+func (c *Client) GetFileSize(remotePath string) (int64, error) {
+	if c == nil || c.sftpClient == nil {
+		return 0, fmt.Errorf("sftp client is not initialized")
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if c.closed {
+		return 0, fmt.Errorf("sftp client is closed")
+	}
+
+	stat, err := c.sftpClient.Stat(remotePath)
+	if err != nil {
+		return 0, err
+	}
+	return stat.Size(), nil
+}
+
 // DownloadFile streams a remote file from the server into a local file path.
 func (c *Client) DownloadFile(remotePath string, localPath string) error {
+	return c.DownloadFileWithProgress(context.Background(), remotePath, localPath, nil)
+}
+
+// DownloadFileWithProgress streams a remote file with optional progress wrapping and context cancellation.
+func (c *Client) DownloadFileWithProgress(ctx context.Context, remotePath string, localPath string, wrapWriter func(io.Writer) io.Writer) error {
 	if c == nil || c.sftpClient == nil {
 		return fmt.Errorf("sftp client is not initialized")
 	}
@@ -39,7 +64,43 @@ func (c *Client) DownloadFile(remotePath string, localPath string) error {
 		return fmt.Errorf("failed to create local file %s: %w", localPath, err)
 	}
 
-	_, copyErr := io.Copy(localFile, remoteFile)
+	var w io.Writer = localFile
+	if wrapWriter != nil {
+		w = wrapWriter(localFile)
+	}
+
+	// Copy data while checking context
+	var copyErr error
+	if ctx != nil && ctx.Done() != nil {
+		buf := make([]byte, 32*1024)
+		for {
+			if ctx.Err() != nil {
+				copyErr = ctx.Err()
+				break
+			}
+			nr, er := remoteFile.Read(buf)
+			if nr > 0 {
+				nw, ew := w.Write(buf[0:nr])
+				if ew != nil {
+					copyErr = ew
+					break
+				}
+				if nr != nw {
+					copyErr = io.ErrShortWrite
+					break
+				}
+			}
+			if er != nil {
+				if er != io.EOF {
+					copyErr = er
+				}
+				break
+			}
+		}
+	} else {
+		_, copyErr = io.Copy(w, remoteFile)
+	}
+
 	closeErr := localFile.Close()
 
 	if copyErr != nil {
@@ -56,6 +117,11 @@ func (c *Client) DownloadFile(remotePath string, localPath string) error {
 
 // DownloadDirectoryAsZip archives a remote directory into a local .zip archive.
 func (c *Client) DownloadDirectoryAsZip(remotePath string, localZipPath string) error {
+	return c.DownloadDirectoryAsZipWithProgress(context.Background(), remotePath, localZipPath, nil)
+}
+
+// DownloadDirectoryAsZipWithProgress archives a remote directory with optional progress monitoring and context cancellation.
+func (c *Client) DownloadDirectoryAsZipWithProgress(ctx context.Context, remotePath string, localZipPath string, wrapWriter func(io.Writer) io.Writer) error {
 	if c == nil || c.sftpClient == nil {
 		return fmt.Errorf("sftp client is not initialized")
 	}
@@ -78,7 +144,12 @@ func (c *Client) DownloadDirectoryAsZip(remotePath string, localZipPath string) 
 	}
 	defer localZipFile.Close()
 
-	zipWriter := zip.NewWriter(localZipFile)
+	var underlyingWriter io.Writer = localZipFile
+	if wrapWriter != nil {
+		underlyingWriter = wrapWriter(localZipFile)
+	}
+
+	zipWriter := zip.NewWriter(underlyingWriter)
 	defer zipWriter.Close()
 
 	// Clean remote root
@@ -93,6 +164,11 @@ func (c *Client) DownloadDirectoryAsZip(remotePath string, localZipPath string) 
 	queue := []walkItem{{remotePath: remoteRoot, relPath: rootBase}}
 
 	for len(queue) > 0 {
+		if ctx != nil && ctx.Err() != nil {
+			_ = os.Remove(localZipPath)
+			return ctx.Err()
+		}
+
 		curr := queue[0]
 		queue = queue[1:]
 
@@ -102,12 +178,16 @@ func (c *Client) DownloadDirectoryAsZip(remotePath string, localZipPath string) 
 		}
 
 		for _, entry := range entries {
+			if ctx != nil && ctx.Err() != nil {
+				_ = os.Remove(localZipPath)
+				return ctx.Err()
+			}
+
 			entryName := entry.Name()
 			entryRemotePath := path.Join(curr.remotePath, entryName)
 			entryRelPath := path.Join(curr.relPath, entryName)
 
 			if entry.IsDir() {
-				// Write directory entry to zip
 				header := &zip.FileHeader{
 					Name:     entryRelPath + "/",
 					Method:   zip.Deflate,
@@ -119,7 +199,6 @@ func (c *Client) DownloadDirectoryAsZip(remotePath string, localZipPath string) 
 				}
 				queue = append(queue, walkItem{remotePath: entryRemotePath, relPath: entryRelPath})
 			} else {
-				// Stream file content into zip
 				header := &zip.FileHeader{
 					Name:     entryRelPath,
 					Method:   zip.Deflate,
@@ -135,40 +214,27 @@ func (c *Client) DownloadDirectoryAsZip(remotePath string, localZipPath string) 
 				if err != nil {
 					continue
 				}
+
 				_, _ = io.Copy(writer, rf)
 				_ = rf.Close()
 			}
 		}
 	}
 
+	if err := zipWriter.Close(); err != nil {
+		_ = os.Remove(localZipPath)
+		return fmt.Errorf("failed to finalize zip archive: %w", err)
+	}
+
 	return nil
 }
 
-// FormatPermissions formats a unix permission mode into symbolic format (e.g. -rwxr-xr-x or drwxr-xr-x).
-func FormatPermissions(mode uint32, isDir bool) string {
-	var sb strings.Builder
-	if isDir {
-		sb.WriteByte('d')
-	} else {
-		sb.WriteByte('-')
+// sanitizeFilename replaces characters that are invalid in Windows or Unix file paths.
+func sanitizeFilename(name string) string {
+	invalidChars := []string{"/", "\\", ":", "*", "?", "\"", "<", ">", "|"}
+	res := name
+	for _, char := range invalidChars {
+		res = strings.ReplaceAll(res, char, "_")
 	}
-
-	perms := []struct {
-		mask uint32
-		char byte
-	}{
-		{0400, 'r'}, {0200, 'w'}, {0100, 'x'},
-		{0040, 'r'}, {0020, 'w'}, {0010, 'x'},
-		{0004, 'r'}, {0002, 'w'}, {0001, 'x'},
-	}
-
-	for _, p := range perms {
-		if mode&p.mask != 0 {
-			sb.WriteByte(p.char)
-		} else {
-			sb.WriteByte('-')
-		}
-	}
-
-	return sb.String()
+	return res
 }

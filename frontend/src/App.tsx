@@ -26,13 +26,14 @@ import { TitleBar } from './components/TitleBar';
 import { QuickOpenModal } from './components/QuickOpenModal';
 import { ImportSSHConfigModal } from './components/ImportSSHConfigModal';
 import { ReconnectBanner, DroppedSessionInfo } from './components/ReconnectBanner';
+import { TransferDrawer } from './components/TransferDrawer';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { useRemoteFiles } from './hooks/useRemoteFiles';
 import { useSettings } from './hooks/useSettings';
 import { useConfirm } from './context/ConfirmContext';
 import { Toaster } from './components/ui/sonner';
 import { toast } from 'sonner';
-import { Power, Sparkles, X, Radio } from 'lucide-react';
+import { Power, Sparkles, X, Radio, ArrowUpDown } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -65,6 +66,8 @@ export function App() {
   const [appVersion, setAppVersion] = useState('0.7.0');
   const [activePortsCount, setActivePortsCount] = useState<number>(0);
   const [droppedSession, setDroppedSession] = useState<DroppedSessionInfo | null>(null);
+  const [transferDrawerOpen, setTransferDrawerOpen] = useState(false);
+  const [activeTransfersCount, setActiveTransfersCount] = useState<number>(0);
 
   const { settings, updateSettings, resetSettings } = useSettings();
 
@@ -650,6 +653,28 @@ export function App() {
               </span>
             </button>
           )}
+
+          {/* File Transfers status button */}
+          <button
+            onClick={() => setTransferDrawerOpen((prev) => !prev)}
+            className={`px-2 py-0.5 rounded cursor-pointer transition-colors flex items-center gap-1.5 ${
+              activeTransfersCount > 0
+                ? 'bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 font-medium border border-blue-200 dark:border-blue-900/60'
+                : transferDrawerOpen
+                ? 'bg-zinc-200/80 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 font-medium'
+                : 'hover:bg-zinc-200/60 dark:hover:bg-zinc-800 text-zinc-500 dark:text-zinc-400'
+            }`}
+            title="Toggle File Transfers Queue"
+          >
+            <ArrowUpDown
+              className={`w-3 h-3 ${activeTransfersCount > 0 ? 'text-blue-500 animate-pulse' : 'text-zinc-400'}`}
+            />
+            <span>
+              {activeTransfersCount > 0
+                ? `${activeTransfersCount} Transfer${activeTransfersCount === 1 ? '' : 's'}`
+                : 'Transfers'}
+            </span>
+          </button>
         </div>
 
         {/* Right: Quick shortcuts / status info */}
@@ -699,6 +724,13 @@ export function App() {
         startDirectory={currentSession?.start_directory || '.'}
         openFiles={openFiles}
         onOpenFile={handleOpenFile}
+      />
+
+      {/* SFTP Transfer Queue & Progress Drawer */}
+      <TransferDrawer
+        isOpen={transferDrawerOpen}
+        onClose={() => setTransferDrawerOpen(false)}
+        onActiveCountChange={setActiveTransfersCount}
       />
 
       {/* Non-intrusive Update Toast Notification */}

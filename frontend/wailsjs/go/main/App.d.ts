@@ -6,6 +6,9 @@ import {models} from '../models';
 import {main} from '../models';
 import {connections} from '../models';
 import {sftpclient} from '../models';
+import {transfer} from '../models';
+
+export function CancelTransfer(arg1:string):Promise<void>;
 
 export function CheckAllPortsHealth(arg1:Array<string>):Promise<Array<tunnel.PortHealthStatus>>;
 
@@ -14,6 +17,8 @@ export function CheckForAppUpdate():Promise<updater.UpdateInfo>;
 export function CheckForUpdates():Promise<updater.UpdateInfo>;
 
 export function CheckPortHealth(arg1:string):Promise<tunnel.PortHealthStatus>;
+
+export function ClearFinishedTransfers():Promise<void>;
 
 export function ChmodRemotePath(arg1:string,arg2:string,arg3:number,arg4:boolean):Promise<void>;
 
@@ -54,6 +59,10 @@ export function ListPortForwards(arg1:string):Promise<Array<tunnel.TunnelInfo>>;
 export function ListProfiles():Promise<Array<models.Profile>>;
 
 export function ListRemoteFiles(arg1:string,arg2:string):Promise<Array<models.RemoteFile>>;
+
+export function ListTransfers():Promise<Array<transfer.Item>>;
+
+export function OpenLocalFile(arg1:string):Promise<void>;
 
 export function ParseSSHConfig(arg1:string):Promise<Array<models.Profile>>;
 

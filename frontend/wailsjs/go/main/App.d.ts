@@ -63,6 +63,8 @@ export function SaveProfile(arg1:models.Profile,arg2:string):Promise<void>;
 
 export function SaveRemoteFile(arg1:string,arg2:string,arg3:string,arg4:number):Promise<sftpclient.SaveResult>;
 
+export function SearchRemoteFiles(arg1:string,arg2:string,arg3:string,arg4:number):Promise<Array<models.RemoteFile>>;
+
 export function StartPortForward(arg1:string,arg2:number,arg3:string,arg4:number,arg5:string):Promise<tunnel.TunnelInfo>;
 
 export function StopPortForward(arg1:string):Promise<void>;

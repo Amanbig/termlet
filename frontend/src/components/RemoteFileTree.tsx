@@ -397,16 +397,18 @@ export const RemoteFileTree: React.FC<RemoteFileTreeProps> = ({
               className={`flex items-center shrink-0 ${
                 menuOpenPath === item.path ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
               }`}
+              onClick={(e) => {
+                e.stopPropagation();
+              }}
+              onPointerDown={(e) => {
+                e.stopPropagation();
+              }}
             >
               <DropdownMenu
                 open={menuOpenPath === item.path}
                 onOpenChange={(open) => setMenuOpenPath(open ? item.path : null)}
               >
                 <DropdownMenuTrigger
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setMenuOpenPath(menuOpenPath === item.path ? null : item.path);
-                  }}
                   className="p-0.5 rounded text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-100 hover:bg-zinc-200 dark:hover:bg-zinc-700 cursor-pointer"
                 >
                   <span className="text-xs px-1">•••</span>
@@ -417,6 +419,7 @@ export const RemoteFileTree: React.FC<RemoteFileTreeProps> = ({
                       <DropdownMenuItem
                         onClick={(e) => {
                           e.stopPropagation();
+                          setMenuOpenPath(null);
                           setTargetParentPath(item.path);
                           setNewItemType('file');
                         }}
@@ -426,6 +429,7 @@ export const RemoteFileTree: React.FC<RemoteFileTreeProps> = ({
                       <DropdownMenuItem
                         onClick={(e) => {
                           e.stopPropagation();
+                          setMenuOpenPath(null);
                           setTargetParentPath(item.path);
                           setNewItemType('folder');
                         }}
@@ -438,6 +442,7 @@ export const RemoteFileTree: React.FC<RemoteFileTreeProps> = ({
                   <DropdownMenuItem
                     onClick={(e) => {
                       e.stopPropagation();
+                      setMenuOpenPath(null);
                       handleDownload(item);
                     }}
                   >
@@ -446,6 +451,7 @@ export const RemoteFileTree: React.FC<RemoteFileTreeProps> = ({
                   <DropdownMenuItem
                     onClick={(e) => {
                       e.stopPropagation();
+                      setMenuOpenPath(null);
                       setChmodTarget(item);
                     }}
                   >
@@ -454,6 +460,7 @@ export const RemoteFileTree: React.FC<RemoteFileTreeProps> = ({
                   <DropdownMenuItem
                     onClick={(e) => {
                       e.stopPropagation();
+                      setMenuOpenPath(null);
                       handleCopyPath(item.path);
                     }}
                   >
@@ -463,6 +470,7 @@ export const RemoteFileTree: React.FC<RemoteFileTreeProps> = ({
                   <DropdownMenuItem
                     onClick={(e) => {
                       e.stopPropagation();
+                      setMenuOpenPath(null);
                       setRenamingPath(item.path);
                       setRenameValue(item.name);
                     }}
@@ -472,6 +480,7 @@ export const RemoteFileTree: React.FC<RemoteFileTreeProps> = ({
                   <DropdownMenuItem
                     onClick={(e) => {
                       e.stopPropagation();
+                      setMenuOpenPath(null);
                       handleDelete(item.path, item.is_dir, item.name);
                     }}
                     className="text-rose-500 dark:text-rose-400 focus:text-rose-600 dark:focus:text-rose-300"

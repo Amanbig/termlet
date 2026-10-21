@@ -20,6 +20,7 @@ import { CodeEditor } from './components/CodeEditor';
 import { ConnectDialog } from './components/ConnectDialog';
 import { SettingsView } from './components/SettingsView';
 import { ReleaseNotesView } from './components/ReleaseNotesView';
+import { KnownHostsView } from './components/KnownHostsView';
 import { PortForwardView } from './components/PortForwardView';
 import { WelcomeScreen } from './components/WelcomeScreen';
 import { TitleBar } from './components/TitleBar';
@@ -33,7 +34,7 @@ import { useSettings } from './hooks/useSettings';
 import { useConfirm } from './context/ConfirmContext';
 import { Toaster } from './components/ui/sonner';
 import { toast } from 'sonner';
-import { Power, Sparkles, X, Radio, ArrowUpDown } from 'lucide-react';
+import { Power, Sparkles, X, Radio, ArrowUpDown, ShieldCheck } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -44,6 +45,7 @@ import {
 
 const SETTINGS_TAB_PATH = 'termlet://settings';
 const RELEASE_NOTES_TAB_PATH = 'termlet://release-notes';
+const KNOWN_HOSTS_TAB_PATH = 'termlet://known-hosts';
 
 export function App() {
   const confirm = useConfirm();
@@ -60,11 +62,12 @@ export function App() {
   const [editingProfile, setEditingProfile] = useState<Profile | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isReleaseNotesOpen, setIsReleaseNotesOpen] = useState(false);
+  const [isKnownHostsOpen, setIsKnownHostsOpen] = useState(false);
 
   const [updateInfo, setUpdateInfo] = useState<updater.UpdateInfo | null>(null);
   const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
   const [showUpdateToast, setShowUpdateToast] = useState(false);
-  const [appVersion, setAppVersion] = useState('0.7.6');
+  const [appVersion, setAppVersion] = useState('0.7.7');
   const [activePortsCount, setActivePortsCount] = useState<number>(0);
   const [droppedSession, setDroppedSession] = useState<DroppedSessionInfo | null>(null);
   const [transferDrawerOpen, setTransferDrawerOpen] = useState(false);
@@ -394,7 +397,9 @@ export function App() {
   const handleCloseSettingsTab = () => {
     setIsSettingsOpen(false);
     if (activeFilePath === SETTINGS_TAB_PATH) {
-      if (isReleaseNotesOpen) {
+      if (isKnownHostsOpen) {
+        setActiveFilePath(KNOWN_HOSTS_TAB_PATH);
+      } else if (isReleaseNotesOpen) {
         setActiveFilePath(RELEASE_NOTES_TAB_PATH);
       } else {
         const nextFile = openFiles.length > 0 ? openFiles[openFiles.length - 1] : null;
@@ -411,8 +416,29 @@ export function App() {
   const handleCloseReleaseNotesTab = () => {
     setIsReleaseNotesOpen(false);
     if (activeFilePath === RELEASE_NOTES_TAB_PATH) {
+      if (isKnownHostsOpen) {
+        setActiveFilePath(KNOWN_HOSTS_TAB_PATH);
+      } else if (isSettingsOpen) {
+        setActiveFilePath(SETTINGS_TAB_PATH);
+      } else {
+        const nextFile = openFiles.length > 0 ? openFiles[openFiles.length - 1] : null;
+        setActiveFilePath(nextFile ? nextFile.path : null);
+      }
+    }
+  };
+
+  const handleOpenKnownHostsTab = () => {
+    setIsKnownHostsOpen(true);
+    setActiveFilePath(KNOWN_HOSTS_TAB_PATH);
+  };
+
+  const handleCloseKnownHostsTab = () => {
+    setIsKnownHostsOpen(false);
+    if (activeFilePath === KNOWN_HOSTS_TAB_PATH) {
       if (isSettingsOpen) {
         setActiveFilePath(SETTINGS_TAB_PATH);
+      } else if (isReleaseNotesOpen) {
+        setActiveFilePath(RELEASE_NOTES_TAB_PATH);
       } else {
         const nextFile = openFiles.length > 0 ? openFiles[openFiles.length - 1] : null;
         setActiveFilePath(nextFile ? nextFile.path : null);
@@ -422,8 +448,13 @@ export function App() {
 
   const isSettingsActive = isSettingsOpen && activeFilePath === SETTINGS_TAB_PATH;
   const isReleaseNotesActive = isReleaseNotesOpen && activeFilePath === RELEASE_NOTES_TAB_PATH;
+  const isKnownHostsActive = isKnownHostsOpen && activeFilePath === KNOWN_HOSTS_TAB_PATH;
   const showWelcome =
-    !currentSessionId && openFiles.length === 0 && !isSettingsOpen && !isReleaseNotesOpen;
+    !currentSessionId &&
+    openFiles.length === 0 &&
+    !isSettingsOpen &&
+    !isReleaseNotesOpen &&
+    !isKnownHostsOpen;
 
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 font-sans antialiased">
@@ -557,10 +588,15 @@ export function App() {
                   isReleaseNotesOpen={isReleaseNotesOpen}
                   onSelectReleaseNotes={handleOpenReleaseNotesTab}
                   onCloseReleaseNotes={handleCloseReleaseNotesTab}
+                  isKnownHostsOpen={isKnownHostsOpen}
+                  onSelectKnownHosts={handleOpenKnownHostsTab}
+                  onCloseKnownHosts={handleCloseKnownHostsTab}
                 />
 
                 <ErrorBoundary fallbackTitle="Failed to render editor content">
-                  {isReleaseNotesActive ? (
+                  {isKnownHostsActive ? (
+                    <KnownHostsView onClose={handleCloseKnownHostsTab} />
+                  ) : isReleaseNotesActive ? (
                     <ReleaseNotesView
                       version={appVersion}
                       onClose={handleCloseReleaseNotesTab}
@@ -572,6 +608,7 @@ export function App() {
                       onResetSettings={resetSettings}
                       onClose={handleCloseSettingsTab}
                       onOpenReleaseNotes={handleOpenReleaseNotesTab}
+                      onOpenKnownHosts={handleOpenKnownHostsTab}
                       updateInfo={updateInfo}
                       onUpdateInfoChange={setUpdateInfo}
                       isCheckingUpdates={isCheckingUpdate}
@@ -703,6 +740,16 @@ export function App() {
               Connected
             </span>
           )}
+          <button
+            onClick={handleOpenKnownHostsTab}
+            className={`hover:text-zinc-800 dark:hover:text-zinc-200 cursor-pointer transition-colors flex items-center gap-1 ${
+              isKnownHostsActive ? 'text-emerald-600 dark:text-emerald-400 font-medium' : ''
+            }`}
+            title="Open Known Hosts & Security"
+          >
+            <ShieldCheck className="w-3 h-3 text-emerald-500" />
+            <span>Known Hosts</span>
+          </button>
           <button
             onClick={handleOpenSettingsTab}
             className="hover:text-zinc-800 dark:hover:text-zinc-200 cursor-pointer transition-colors flex items-center gap-1"

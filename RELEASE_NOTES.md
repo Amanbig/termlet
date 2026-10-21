@@ -1,61 +1,41 @@
-# Termlet v0.7.6 🚀
+# Termlet v0.7.7 🛡️
 
-Termlet **v0.7.6** is a major stability and feature update delivering an **SFTP Transfer Queue & Live Progress Drawer**, **SSH Keep-Alive & Auto-Reconnect Engine**, **Instant 0ms Workspace Search Caching**, and **Reliable Teardown & Context Menu fixes**.
+Termlet **v0.7.7** introduces enterprise-grade **SSH Host Key Verification & MitM Protection**, a dedicated **SSH Security & Known Hosts Manager Tab (`termlet://known-hosts`)**, and modernized build infrastructure powered by **TypeScript 7.0 & Bundler resolution**.
 
 ---
 
 ### ✨ What's New & Highlights
 
-#### 📊 SFTP Transfer Queue & Live Progress Drawer
-- **Real-Time Transfer Metrics**:
-  - Sliding bottom drawer tracking all active, completed, and cancelled downloads & uploads.
-  - Live progress bars, transfer speeds (KB/s, MB/s), elapsed time, and ETA calculations.
-  - Real-time active transfers count badge pinned to the bottom status bar with 1-click toggle.
-- **In-Flight Cancellation**:
-  - Cancel any ongoing download or upload immediately with context cancellation, instantly freeing network I/O and cleaning up partial local files.
-- **Native OS Reveal**:
-  - "Show in Folder" action on completed downloads reveals the file directly in your native OS file manager (Windows Explorer, macOS Finder, Linux xdg-open).
-- **Tab Filtering & History Management**:
-  - Filter transfers across *All*, *Active*, and *Completed* tabs with 1-click history cleanup.
+#### 🛡️ SSH Host Key Verification & MitM Attack Protection
+- **Dual-Layer Known Hosts Store**:
+  - Automatically queries both the standard OpenSSH `~/.ssh/known_hosts` file and Termlet's dedicated application store (`~/.config/termlet/known_hosts` / `%APPDATA%\termlet\known_hosts`).
+  - Automatically records newly trusted hosts with SHA256 cryptographic fingerprints, host keys, and port numbers without mutating standard system files unless configured.
+- **Trust On First Use (TOFU) Verification**:
+  - When connecting to an unknown host for the first time, an interactive modal presents the host address, key type (e.g., `ssh-ed25519`, `ecdsa-sha2-nistp256`, `rsa-sha2-512`), and full SHA256 fingerprint.
+  - Allows you to inspect and confirm the remote server's identity before any authentication tokens or credentials are transmitted over the network.
+- **Strict Host Key Mismatch Detection**:
+  - If a server's host key changes unexpectedly, Termlet flags a high-priority security warning to prevent Man-in-the-Middle (MitM) eavesdropping and spoofing attacks.
+  - Displays side-by-side comparison of the expected fingerprint versus the incoming fingerprint, requiring explicit confirmation before proceeding.
 
-#### 💓 Proactive SSH Keep-Alive & Auto-Reconnect Engine
-- **OpenSSH Heartbeat Probes**:
-  - Periodic `keepalive@openssh.com` global requests (default every 20s, configurable) with a 5s probe timeout to prevent idle connection drops behind NAT/firewalls.
-- **Accurate Drop Detection**:
-  - Distinguishes intentional user disconnects (`Session.Close`) from unexpected network drops (`Session.MarkDropped`).
-- **Contextual Reconnection Banner**:
-  - Top floating banner with live countdown (*"Reconnecting in 3s... Attempt 1/5"*), exponential backoff, and 1-click *"Reconnect Now"* action.
-- **Seamless Session Revival**:
-  - In-memory cached session credentials allow reconnection without re-prompting for credentials.
-  - Automatically restores active port forward tunnels upon reconnect without altering the session ID, preserving open editor tabs.
-- **Configurable Settings**:
-  - New *Advanced Options* in Connection Profile dialog to customize keep-alive interval (seconds) and toggle auto-reconnect.
+#### 🗂️ Dedicated SSH Security & Known Hosts Manager (`termlet://known-hosts`)
+- **Full Workspace Tab Experience**:
+  - Moved out of general settings into a dedicated, first-class workspace tab (`termlet://known-hosts`) featuring a shield icon, tab state persistence, and responsive full-width layout.
+  - Quick-access button added directly to the bottom status bar (`Known Hosts`) and from the Security section in Settings.
+- **Search & Source Filtering**:
+  - Real-time search across hostnames, key algorithms, and fingerprints.
+  - Filter chips to quickly narrow entries between *All*, *Termlet Store*, and *System Store (`~/.ssh/known_hosts`)*.
+- **Hashed Hostname Privacy Support**:
+  - Cleanly handles OpenSSH HMAC-SHA1 hashed host entries (`|1|...`), displaying an informative `[Hashed Host]` badge with privacy tooltips instead of raw cryptic hashes.
+- **Key Inspection & Revocation**:
+  - 1-click SHA256 fingerprint copying with visual confirmation.
+  - Instant host revocation and bulk cache clearing directly from the UI.
 
-#### ⚡ Instant 0ms Workspace Search & Quick Open Caching (<kbd>Ctrl+P</kbd> / <kbd>Cmd+P</kbd>)
-- **In-Memory File Cache & Deduplication**:
-  - Workspace files are cached in memory per session. Opening Quick Open is now **instantaneous (0ms latency)** without triggering repeated SSH requests.
-  - Concurrent search requests are deduplicated so rapid opens share the same promise rather than flooding the remote server.
-- **60fps Client-Side Fuzzy Search**:
-  - Keystrokes no longer dispatch heavy remote find commands; filtering runs locally at 60fps with multi-word scoring, exact matching, and recency ranking.
-- **Manual Refresh Trigger**:
-  - Added a 1-click *"Refresh workspace index"* button (<kbd>RefreshCw</kbd>) for updating the file cache when server files change.
-
-#### 🛡️ Robust Connection Teardown & Non-Blocking SFTP I/O
-- **Never-Hanging Disconnect**:
-  - `Disconnect()` now terminates cleanly with a safety timeout, ensuring the app never freezes or becomes stuck when dropping an unresponsive or broken connection.
-- **Fine-Grained SFTP Concurrency**:
-  - Released client mutexes during streaming downloads, uploads, and directory walks, preventing SFTP operations from blocking UI requests.
-- **Explorer Disconnect Action**:
-  - Added a dedicated *"Disconnect"* button directly on the Explorer error card when sessions drop, ensuring you are never trapped.
-
-#### 🖱️ File Tree Context Menu Three-Dots Fix
-- **Three-Dots Dropdown Trigger**:
-  - Fixed an issue where left-clicking the three-dots button (`•••`) on file and directory items dismissed the dropdown menu immediately.
-  - Isolated pointer and click event propagation from parent row actions.
-
-#### ⚡ Core Engine Upgrades
-- **Vite 8 Upgrade**:
-  - Upgraded frontend build pipeline to Vite 8.3.4, yielding ~4x faster compilation times (~1.2s).
+#### ⚡ Core Engine & Build Modernization
+- **TypeScript 7.0 Upgrade**:
+  - Upgraded frontend build pipeline to `typescript@7.0.2`.
+- **Modern Bundler Module Resolution**:
+  - Migrated `tsconfig.json` from legacy `node` resolution to modern Vite `bundler` resolution (`moduleResolution: "bundler"`, `allowImportingTsExtensions`, `isolatedModules: true`).
+  - Streamlined type checking and reduced development build latency.
 
 ---
 

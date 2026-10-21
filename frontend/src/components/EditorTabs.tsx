@@ -9,6 +9,7 @@ import {
   ChevronLeft,
   ChevronRight,
   CheckCheck,
+  ShieldCheck,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -32,6 +33,9 @@ interface EditorTabsProps {
   isReleaseNotesOpen?: boolean;
   onSelectReleaseNotes?: () => void;
   onCloseReleaseNotes?: () => void;
+  isKnownHostsOpen?: boolean;
+  onSelectKnownHosts?: () => void;
+  onCloseKnownHosts?: () => void;
 }
 
 export const EditorTabs: React.FC<EditorTabsProps> = ({
@@ -48,6 +52,9 @@ export const EditorTabs: React.FC<EditorTabsProps> = ({
   isReleaseNotesOpen = false,
   onSelectReleaseNotes,
   onCloseReleaseNotes,
+  isKnownHostsOpen = false,
+  onSelectKnownHosts,
+  onCloseKnownHosts,
 }) => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [hasOverflow, setHasOverflow] = useState(false);
@@ -118,12 +125,13 @@ export const EditorTabs: React.FC<EditorTabsProps> = ({
     }
   }, [activeFilePath]);
 
-  if (files.length === 0 && !isSettingsOpen && !isReleaseNotesOpen) {
+  if (files.length === 0 && !isSettingsOpen && !isReleaseNotesOpen && !isKnownHostsOpen) {
     return null;
   }
 
   const isSettingsActive = activeFilePath === 'termlet://settings';
   const isReleaseNotesActive = activeFilePath === 'termlet://release-notes';
+  const isKnownHostsActive = activeFilePath === 'termlet://known-hosts';
   const hasSavedFiles = files.some((f) => !f.isDirty);
   const activeFile = files.find((f) => f.path === activeFilePath);
 
@@ -189,9 +197,40 @@ export const EditorTabs: React.FC<EditorTabsProps> = ({
           </div>
         )}
 
+        {/* Known Hosts Tab if Open */}
+        {isKnownHostsOpen && (
+          <div
+            data-tab-path="termlet://known-hosts"
+            onClick={onSelectKnownHosts}
+            className={`group flex items-center gap-2 px-3 h-full text-xs border-r border-zinc-200 dark:border-zinc-800/80 cursor-pointer transition-colors max-w-[210px] shrink-0 ${
+              isKnownHostsActive
+                ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 font-medium border-t-2 border-t-emerald-500'
+                : 'bg-zinc-200/50 dark:bg-zinc-950/80 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-900/60 hover:text-zinc-900 dark:hover:text-zinc-200 border-t-2 border-t-transparent'
+            }`}
+          >
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+            <span className="truncate flex-1">Known Hosts</span>
+
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onCloseKnownHosts?.();
+              }}
+              title="Close Known Hosts"
+              className="p-0.5 rounded-sm hover:bg-zinc-200 dark:hover:bg-zinc-700/80 text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 cursor-pointer"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          </div>
+        )}
+
         {/* File Tabs */}
         {files.map((file) => {
-          const isActive = file.path === activeFilePath && !isSettingsOpen && !isReleaseNotesActive;
+          const isActive =
+            file.path === activeFilePath &&
+            !isSettingsOpen &&
+            !isReleaseNotesActive &&
+            !isKnownHostsActive;
           return (
             <div
               key={file.path}

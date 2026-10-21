@@ -161,9 +161,9 @@ export const KnownHostsView: React.FC<KnownHostsViewProps> = ({ onClose }) => {
           </div>
 
           {/* Centered Search & Source Filter Bar */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1">
-            <div className="relative w-full sm:max-w-md">
-              <Search className="w-4 h-4 absolute left-3 top-2.5 text-zinc-400" />
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-1">
+            <div className="relative flex-1 min-w-[200px] max-w-md">
+              <Search className="w-4 h-4 absolute left-3 top-2.5 text-zinc-400 pointer-events-none" />
               <Input
                 placeholder="Search by hostname, algorithm (ed25519, rsa), or fingerprint..."
                 value={searchQuery}
@@ -183,22 +183,35 @@ export const KnownHostsView: React.FC<KnownHostsViewProps> = ({ onClose }) => {
             </div>
 
             {/* Source tabs filter */}
-            <div className="flex items-center gap-1.5 bg-zinc-100 dark:bg-zinc-900 p-1 rounded-lg border border-zinc-200 dark:border-zinc-800 self-stretch sm:self-auto justify-center">
-              {(['all', 'termlet', 'system'] as const).map((src) => {
-                const count = src === 'all' ? knownHosts.length : src === 'termlet' ? termletCount : systemCount;
-                const active = sourceFilter === src;
-                const label = src === 'all' ? 'All' : src === 'termlet' ? 'Termlet' : 'System (~/.ssh)';
+            <div className="flex items-center gap-1 bg-zinc-100 dark:bg-zinc-900 p-1 rounded-lg border border-zinc-200 dark:border-zinc-800 shrink-0 self-start sm:self-auto overflow-x-auto max-w-full">
+              {[
+                { id: 'all' as const, label: 'All', title: 'All known host entries', count: knownHosts.length },
+                { id: 'termlet' as const, label: 'Termlet', title: 'Termlet application store (~/.config/termlet/known_hosts)', count: termletCount },
+                { id: 'system' as const, label: 'System', title: 'OpenSSH system store (~/.ssh/known_hosts)', count: systemCount },
+              ].map((tab) => {
+                const active = sourceFilter === tab.id;
                 return (
                   <button
-                    key={src}
-                    onClick={() => setSourceFilter(src)}
-                    className={`px-3 py-1 rounded-md text-xs font-medium transition-all cursor-pointer ${
+                    key={tab.id}
+                    type="button"
+                    title={tab.title}
+                    onClick={() => setSourceFilter(tab.id)}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all cursor-pointer whitespace-nowrap shrink-0 ${
                       active
                         ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-2xs font-semibold'
                         : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
                     }`}
                   >
-                    {label} ({count})
+                    <span>{tab.label}</span>
+                    <span
+                      className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono leading-none ${
+                        active
+                          ? 'bg-zinc-100 dark:bg-zinc-700/80 text-zinc-900 dark:text-zinc-100 font-bold'
+                          : 'bg-zinc-200/70 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400'
+                      }`}
+                    >
+                      {tab.count}
+                    </span>
                   </button>
                 );
               })}

@@ -18,6 +18,7 @@ import (
 	"termlet/internal/models"
 	"termlet/internal/sftpclient"
 	"termlet/internal/sshconfig"
+	"termlet/internal/sshkeys"
 	"termlet/internal/storage"
 	"termlet/internal/transfer"
 	"termlet/internal/tunnel"
@@ -889,3 +890,28 @@ func (a *App) ClearKnownHosts(source string) error {
 	}
 	return hkm.ClearKnownHosts(source)
 }
+
+// GenerateSSHKey creates a new SSH key pair according to the request parameters.
+func (a *App) GenerateSSHKey(req models.GenerateSSHKeyRequest) (*models.GeneratedSSHKey, error) {
+	return sshkeys.GenerateSSHKey(req)
+}
+
+// ListLocalSSHKeys inspects the user's ~/.ssh directory and returns info on all discovered SSH keys.
+func (a *App) ListLocalSSHKeys() ([]models.SSHKeyInfo, error) {
+	return sshkeys.ListLocalKeys("")
+}
+
+// DeleteLocalSSHKey removes both the private key and public key (.pub) files for the given path.
+func (a *App) DeleteLocalSSHKey(keyPath string) error {
+	return sshkeys.DeleteLocalKey(keyPath)
+}
+
+// InstallSSHKeyToRemote installs a public key onto the remote server's ~/.ssh/authorized_keys file.
+func (a *App) InstallSSHKeyToRemote(sessionID string, publicKey string) error {
+	sftpCl, err := a.getSFTPClient(sessionID)
+	if err != nil {
+		return fmt.Errorf("failed to get remote connection: %w", err)
+	}
+	return sshkeys.InstallPublicKeyToRemote(sftpCl.SFTP(), publicKey)
+}
+

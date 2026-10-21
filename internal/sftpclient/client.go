@@ -87,3 +87,11 @@ func (c *Client) GetWorkingDirectory() (string, error) {
 	}
 	return wd, nil
 }
+
+// SFTP returns the underlying *sftp.Client.
+func (c *Client) SFTP() *sftp.Client {
+	if c == nil {
+		return nil
+	}
+	return c.sftpClient
+}

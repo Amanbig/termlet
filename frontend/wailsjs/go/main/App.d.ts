@@ -28,6 +28,8 @@ export function CreateRemoteDirectory(arg1:string,arg2:string):Promise<void>;
 
 export function CreateRemoteFile(arg1:string,arg2:string):Promise<void>;
 
+export function DeleteLocalSSHKey(arg1:string):Promise<void>;
+
 export function DeletePortForward(arg1:string):Promise<void>;
 
 export function DeleteProfile(arg1:string):Promise<void>;
@@ -41,6 +43,8 @@ export function DownloadAndApplyUpdate(arg1:string,arg2:string):Promise<void>;
 export function DownloadRemotePath(arg1:string,arg2:string,arg3:boolean):Promise<string>;
 
 export function ClearKnownHosts(arg1:string):Promise<void>;
+
+export function GenerateSSHKey(arg1:models.GenerateSSHKeyRequest):Promise<models.GeneratedSSHKey>;
 
 export function GetAppVersion():Promise<string>;
 
@@ -56,7 +60,11 @@ export function GetUpdateProgress():Promise<updater.DownloadProgress>;
 
 export function ImportSSHConfigProfiles(arg1:Array<models.Profile>,arg2:boolean):Promise<number>;
 
+export function InstallSSHKeyToRemote(arg1:string,arg2:string):Promise<void>;
+
 export function ListActiveSessions():Promise<Array<connections.SessionSummary>>;
+
+export function ListLocalSSHKeys():Promise<Array<models.SSHKeyInfo>>;
 
 export function ListPortForwards(arg1:string):Promise<Array<tunnel.TunnelInfo>>;
 

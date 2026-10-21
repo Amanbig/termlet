@@ -42,6 +42,10 @@ export function CreateRemoteFile(arg1, arg2) {
   return window['go']['main']['App']['CreateRemoteFile'](arg1, arg2);
 }
 
+export function DeleteLocalSSHKey(arg1) {
+  return window['go']['main']['App']['DeleteLocalSSHKey'](arg1);
+}
+
 export function DeletePortForward(arg1) {
   return window['go']['main']['App']['DeletePortForward'](arg1);
 }
@@ -68,6 +72,10 @@ export function DownloadRemotePath(arg1, arg2, arg3) {
 
 export function ClearKnownHosts(arg1) {
   return window['go']['main']['App']['ClearKnownHosts'](arg1);
+}
+
+export function GenerateSSHKey(arg1) {
+  return window['go']['main']['App']['GenerateSSHKey'](arg1);
 }
 
 export function GetAppVersion() {
@@ -98,8 +106,16 @@ export function ImportSSHConfigProfiles(arg1, arg2) {
   return window['go']['main']['App']['ImportSSHConfigProfiles'](arg1, arg2);
 }
 
+export function InstallSSHKeyToRemote(arg1, arg2) {
+  return window['go']['main']['App']['InstallSSHKeyToRemote'](arg1, arg2);
+}
+
 export function ListActiveSessions() {
   return window['go']['main']['App']['ListActiveSessions']();
+}
+
+export function ListLocalSSHKeys() {
+  return window['go']['main']['App']['ListLocalSSHKeys']();
 }
 
 export function ListPortForwards(arg1) {

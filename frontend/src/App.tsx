@@ -21,6 +21,7 @@ import { ConnectDialog } from './components/ConnectDialog';
 import { SettingsView } from './components/SettingsView';
 import { ReleaseNotesView } from './components/ReleaseNotesView';
 import { KnownHostsView } from './components/KnownHostsView';
+import { SSHKeyModal } from './components/SSHKeyModal';
 import { PortForwardView } from './components/PortForwardView';
 import { WelcomeScreen } from './components/WelcomeScreen';
 import { TitleBar } from './components/TitleBar';
@@ -34,7 +35,7 @@ import { useSettings } from './hooks/useSettings';
 import { useConfirm } from './context/ConfirmContext';
 import { Toaster } from './components/ui/sonner';
 import { toast } from 'sonner';
-import { Power, Sparkles, X, Radio, ArrowUpDown, ShieldCheck } from 'lucide-react';
+import { Power, Sparkles, X, Radio, ArrowUpDown, ShieldCheck, KeyRound } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -63,6 +64,7 @@ export function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isReleaseNotesOpen, setIsReleaseNotesOpen] = useState(false);
   const [isKnownHostsOpen, setIsKnownHostsOpen] = useState(false);
+  const [isSSHKeyModalOpen, setIsSSHKeyModalOpen] = useState(false);
 
   const [updateInfo, setUpdateInfo] = useState<updater.UpdateInfo | null>(null);
   const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
@@ -609,6 +611,7 @@ export function App() {
                       onClose={handleCloseSettingsTab}
                       onOpenReleaseNotes={handleOpenReleaseNotesTab}
                       onOpenKnownHosts={handleOpenKnownHostsTab}
+                      onOpenSSHKeys={() => setIsSSHKeyModalOpen(true)}
                       updateInfo={updateInfo}
                       onUpdateInfoChange={setUpdateInfo}
                       isCheckingUpdates={isCheckingUpdate}
@@ -751,6 +754,14 @@ export function App() {
             <span>Known Hosts</span>
           </button>
           <button
+            onClick={() => setIsSSHKeyModalOpen(true)}
+            className="hover:text-zinc-800 dark:hover:text-zinc-200 cursor-pointer transition-colors flex items-center gap-1"
+            title="Open SSH Key Manager & Generator"
+          >
+            <KeyRound className="w-3 h-3 text-blue-500" />
+            <span>SSH Keys</span>
+          </button>
+          <button
             onClick={handleOpenSettingsTab}
             className="hover:text-zinc-800 dark:hover:text-zinc-200 cursor-pointer transition-colors flex items-center gap-1"
             title="Open Settings & Updates"
@@ -848,6 +859,13 @@ export function App() {
           </div>
         </div>
       )}
+
+      {/* SSH Key Manager & Generator Modal */}
+      <SSHKeyModal
+        isOpen={isSSHKeyModalOpen}
+        onClose={() => setIsSSHKeyModalOpen(false)}
+        activeSessionId={currentSession?.id}
+      />
 
       {/* Notifications */}
       <Toaster theme={settings.uiTheme} position="bottom-right" closeButton richColors />

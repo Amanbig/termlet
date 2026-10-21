@@ -50,6 +50,7 @@ interface SettingsViewProps {
   onClose: () => void;
   onOpenReleaseNotes?: () => void;
   onOpenKnownHosts?: () => void;
+  onOpenSSHKeys?: () => void;
   updateInfo?: updater.UpdateInfo | null;
   onUpdateInfoChange?: (info: updater.UpdateInfo | null) => void;
   isCheckingUpdates?: boolean;
@@ -79,6 +80,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   onClose,
   onOpenReleaseNotes,
   onOpenKnownHosts,
+  onOpenSSHKeys,
   updateInfo: propUpdateInfo,
   onUpdateInfoChange,
   isCheckingUpdates: propIsChecking,
@@ -619,6 +621,30 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     >
                       <ShieldCheck className="w-3.5 h-3.5" />
                       <span>Manage Known Hosts</span>
+                      <ExternalLink className="w-3 h-3 ml-0.5 opacity-70" />
+                    </Button>
+                  )}
+                </div>
+
+                {/* SSH Key Pairs & Generator */}
+                <div className="flex items-center justify-between border-t border-zinc-100 dark:border-zinc-800/60 pt-3">
+                  <div>
+                    <Label className="text-xs font-semibold text-zinc-900 dark:text-zinc-200">
+                      SSH Key Pairs &amp; Identity
+                    </Label>
+                    <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                      Generate modern Ed25519/RSA keys, copy public keys, and inspect local key pairs in ~/.ssh/
+                    </p>
+                  </div>
+                  {onOpenSSHKeys && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={onOpenSSHKeys}
+                      className="h-8 text-xs text-blue-600 dark:text-blue-400 border-blue-300 dark:border-blue-800/60 hover:bg-blue-50 dark:hover:bg-blue-950/30 flex items-center gap-1.5 cursor-pointer shadow-2xs font-medium"
+                    >
+                      <KeyRound className="w-3.5 h-3.5" />
+                      <span>SSH Key Manager</span>
                       <ExternalLink className="w-3 h-3 ml-0.5 opacity-70" />
                     </Button>
                   )}

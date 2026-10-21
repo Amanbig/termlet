@@ -78,6 +78,93 @@ export namespace main {
 
 export namespace models {
 	
+	export class GenerateSSHKeyRequest {
+	    type: string;
+	    bits: number;
+	    comment: string;
+	    passphrase: string;
+	    saveToDisk: boolean;
+	    targetFilename: string;
+	    overwrite: boolean;
+
+	    static createFrom(source: any = {}) {
+	        return new GenerateSSHKeyRequest(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.type = source["type"];
+	        this.bits = source["bits"];
+	        this.comment = source["comment"];
+	        this.passphrase = source["passphrase"];
+	        this.saveToDisk = source["saveToDisk"];
+	        this.targetFilename = source["targetFilename"];
+	        this.overwrite = source["overwrite"];
+	    }
+	}
+
+	export class GeneratedSSHKey {
+	    publicKey: string;
+	    privateKey: string;
+	    fingerprint: string;
+	    keyType: string;
+	    bits: number;
+	    comment: string;
+	    savedPath: string;
+	    publicKeyPath: string;
+	    randomart: string;
+
+	    static createFrom(source: any = {}) {
+	        return new GeneratedSSHKey(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.publicKey = source["publicKey"];
+	        this.privateKey = source["privateKey"];
+	        this.fingerprint = source["fingerprint"];
+	        this.keyType = source["keyType"];
+	        this.bits = source["bits"];
+	        this.comment = source["comment"];
+	        this.savedPath = source["savedPath"];
+	        this.publicKeyPath = source["publicKeyPath"];
+	        this.randomart = source["randomart"];
+	    }
+	}
+
+	export class SSHKeyInfo {
+	    name: string;
+	    path: string;
+	    publicKeyPath: string;
+	    publicKey: string;
+	    fingerprint: string;
+	    keyType: string;
+	    comment: string;
+	    hasPrivateKey: boolean;
+	    isEncrypted: boolean;
+	    modTime: number;
+	    size: number;
+
+	    static createFrom(source: any = {}) {
+	        return new SSHKeyInfo(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.path = source["path"];
+	        this.publicKeyPath = source["publicKeyPath"];
+	        this.publicKey = source["publicKey"];
+	        this.fingerprint = source["fingerprint"];
+	        this.keyType = source["keyType"];
+	        this.comment = source["comment"];
+	        this.hasPrivateKey = source["hasPrivateKey"];
+	        this.isEncrypted = source["isEncrypted"];
+	        this.modTime = source["modTime"];
+	        this.size = source["size"];
+	    }
+	}
+
 	export class FileContent {
 	    path: string;
 	    content: string;

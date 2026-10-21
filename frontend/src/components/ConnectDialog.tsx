@@ -13,9 +13,10 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/tabs';
-import { ShieldAlert, Server, Key, Lock, Loader2, Check, AlertTriangle, ChevronDown, ChevronUp, FolderDown } from 'lucide-react';
+import { ShieldAlert, Server, Key, KeyRound, Lock, Loader2, Check, AlertTriangle, ChevronDown, ChevronUp, FolderDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatErrorMessage, FormattedError } from '../utils/errors';
+import { SSHKeyModal } from './SSHKeyModal';
 
 interface ConnectDialogProps {
   open: boolean;
@@ -54,6 +55,7 @@ export const ConnectDialog: React.FC<ConnectDialogProps> = ({
   const [hostKeyPrompt, setHostKeyPrompt] = useState<HostKeyPrompt | null>(null);
   const [connError, setConnError] = useState<FormattedError | null>(null);
   const [showErrorRaw, setShowErrorRaw] = useState(false);
+  const [isKeyModalOpen, setIsKeyModalOpen] = useState(false);
 
   useEffect(() => {
     setConnError(null);
@@ -274,7 +276,17 @@ export const ConnectDialog: React.FC<ConnectDialogProps> = ({
 
                 <TabsContent value="private_key" className="space-y-2 pt-2">
                   <div className="space-y-1.5">
-                    <Label className="text-xs text-zinc-600 dark:text-zinc-400">Private Key File Path</Label>
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs text-zinc-600 dark:text-zinc-400">Private Key File Path</Label>
+                      <button
+                        type="button"
+                        onClick={() => setIsKeyModalOpen(true)}
+                        className="text-[11px] text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 cursor-pointer"
+                      >
+                        <KeyRound className="w-3 h-3" />
+                        Pick / Generate Key...
+                      </button>
+                    </div>
                     <Input
                       placeholder="/home/user/.ssh/id_ed25519"
                       value={keyPath}
@@ -499,6 +511,16 @@ export const ConnectDialog: React.FC<ConnectDialogProps> = ({
           </DialogContent>
         </Dialog>
       )}
+
+      {/* In-app SSH Key Pair Picker & Generator Modal */}
+      <SSHKeyModal
+        isOpen={isKeyModalOpen}
+        onClose={() => setIsKeyModalOpen(false)}
+        onSelectKeyPath={(path) => {
+          setKeyPath(path);
+          setIsKeyModalOpen(false);
+        }}
+      />
     </>
   );
 };

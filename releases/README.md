@@ -10,7 +10,8 @@ For the active release currently being compiled or deployed, refer to the root [
 
 | Version | Release Date / Milestone | Highlights | Release Notes |
 | :--- | :--- | :--- | :---: |
-| **v0.7.7** | *Current* | SSH Host Key Verification & MitM protection, interactive Trust On First Use modal, dedicated Known Hosts manager tab (`termlet://known-hosts`), hashed hostname privacy support, and TypeScript 7.0 & bundler resolution migration | [v0.7.7.md](v0.7.7.md) |
+| **v0.7.8** | *Current* | In-app SSH Key Pair Generator (Ed25519, RSA, ECDSA), AES-256 passphrase encryption, OpenSSH Drunken Bishop randomart, dedicated SSH Keys tab (`termlet://ssh-keys`), and 1-click remote server deploy (`ssh-copy-id`) | [v0.7.8.md](v0.7.8.md) |
+| **v0.7.7** | Patch Release | SSH Host Key Verification & MitM protection, interactive Trust On First Use modal, dedicated Known Hosts manager tab (`termlet://known-hosts`), hashed hostname privacy support, and TypeScript 7.0 & bundler resolution migration | [v0.7.7.md](v0.7.7.md) |
 | **v0.7.6** | Patch Release | SFTP Transfer Queue & Live Progress Drawer, proactive SSH Keep-Alive & Auto-Reconnect engine, instant 0ms workspace search caching, non-blocking SFTP I/O, file tree context menu fix, and Vite 8 build speedups | [v0.7.6.md](v0.7.6.md) |
 | **v0.7.0** | Minor Release | Fast Remote File Quick Open (Ctrl+P), 1-click OpenSSH ~/.ssh/config importer, remote file & zip directory download, interactive chmod permissions modal, port forwarding live health badges, and floating code editor find & replace toolbar (Ctrl+F/H) | [v0.7.0.md](v0.7.0.md) |
 | **v0.6.0** | Minor Release | Integrated SSH Local Port Forwarding & Tunneling engine, 1-click browser launcher, live status tracking, profile-persisted port forwards, native in-app modal confirmation dialogs, and interactive Ports management view | [v0.6.0.md](v0.6.0.md) |

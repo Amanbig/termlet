@@ -29,3 +29,14 @@ type HostKeyPrompt struct {
 	Status      string `json:"status"` // "unknown", "changed", "trusted"
 	Message     string `json:"message"`
 }
+
+// KnownHostEntry represents a stored SSH host public key record.
+type KnownHostEntry struct {
+	Host        string `json:"host"`
+	KeyType     string `json:"key_type"`
+	Fingerprint string `json:"fingerprint"`
+	PublicKey   string `json:"public_key"`
+	Comment     string `json:"comment"`
+	Source      string `json:"source"` // "termlet" or "system"
+	LineNumber  int    `json:"line_number"`
+}

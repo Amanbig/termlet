@@ -40,9 +40,13 @@ export function DownloadAndApplyUpdate(arg1:string,arg2:string):Promise<void>;
 
 export function DownloadRemotePath(arg1:string,arg2:string,arg3:boolean):Promise<string>;
 
+export function ClearKnownHosts(arg1:string):Promise<void>;
+
 export function GetAppVersion():Promise<string>;
 
 export function GetDefaultSSHConfigPath():Promise<string>;
+
+export function GetKnownHosts():Promise<Array<models.KnownHostEntry>>;
 
 export function GetProfileSecret(arg1:string):Promise<string>;
 
@@ -57,6 +61,10 @@ export function ListActiveSessions():Promise<Array<connections.SessionSummary>>;
 export function ListPortForwards(arg1:string):Promise<Array<tunnel.TunnelInfo>>;
 
 export function ListProfiles():Promise<Array<models.Profile>>;
+
+export function RemoveKnownHost(arg1:string,arg2:string):Promise<void>;
+
+export function RemoveKnownHostByLine(arg1:string,arg2:number):Promise<void>;
 
 export function ListRemoteFiles(arg1:string,arg2:string):Promise<Array<models.RemoteFile>>;
 

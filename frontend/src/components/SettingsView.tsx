@@ -22,6 +22,10 @@ import {
   Plus,
   Sparkles,
   Loader2,
+  ShieldCheck,
+  Trash2,
+  Copy,
+  KeyRound,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -30,9 +34,12 @@ import {
   DownloadAndApplyUpdate,
   GetUpdateProgress,
   RestartApp,
+  GetKnownHosts,
+  RemoveKnownHostByLine,
+  ClearKnownHosts,
 } from '../../wailsjs/go/main/App';
 import { BrowserOpenURL } from '../../wailsjs/runtime/runtime';
-import { updater } from '../../wailsjs/go/models';
+import { updater, models } from '../../wailsjs/go/models';
 import { useConfirm } from '../context/ConfirmContext';
 import logoImg from '../assets/images/logo.png';
 
@@ -152,6 +159,73 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     }
   };
 
+  // Known Hosts Management State
+  const [knownHosts, setKnownHosts] = useState<models.KnownHostEntry[]>([]);
+  const [loadingHosts, setLoadingHosts] = useState(false);
+  const [hostSearchQuery, setHostSearchQuery] = useState('');
+  const [hostSourceFilter, setHostSourceFilter] = useState<'all' | 'termlet' | 'system'>('all');
+  const [copiedFingerprint, setCopiedFingerprint] = useState<string | null>(null);
+
+  const loadKnownHosts = async () => {
+    setLoadingHosts(true);
+    try {
+      const list = await GetKnownHosts();
+      setKnownHosts(list || []);
+    } catch (err: any) {
+      console.error('Failed to load known hosts:', err);
+      toast.error('Failed to load known hosts');
+    } finally {
+      setLoadingHosts(false);
+    }
+  };
+
+  useEffect(() => {
+    loadKnownHosts();
+  }, []);
+
+  const handleRemoveKnownHost = async (entry: models.KnownHostEntry) => {
+    const ok = await confirm({
+      title: 'Remove Known Host Key?',
+      description: `Are you sure you want to remove the trusted host key for "${entry.host}" from ${entry.source === 'termlet' ? 'Termlet known_hosts' : 'System ~/.ssh/known_hosts'}? You will be prompted to verify the host key on your next connection.`,
+      confirmText: 'Remove Key',
+      variant: 'destructive',
+    });
+    if (!ok) return;
+
+    try {
+      await RemoveKnownHostByLine(entry.source, entry.line_number);
+      toast.success(`Removed host key for ${entry.host}`);
+      await loadKnownHosts();
+    } catch (err: any) {
+      toast.error(`Failed to remove host key: ${err?.message || err}`);
+    }
+  };
+
+  const handleClearTermletHosts = async () => {
+    const ok = await confirm({
+      title: 'Clear All Termlet Known Hosts?',
+      description: 'This will purge all host keys recorded by Termlet (~/.config/termlet/known_hosts). System ~/.ssh/known_hosts keys will remain unaffected. You will be prompted to approve host keys again on future connections.',
+      confirmText: 'Clear All',
+      variant: 'destructive',
+    });
+    if (!ok) return;
+
+    try {
+      await ClearKnownHosts('termlet');
+      toast.success('Cleared Termlet known_hosts cache');
+      await loadKnownHosts();
+    } catch (err: any) {
+      toast.error(`Failed to clear known hosts: ${err?.message || err}`);
+    }
+  };
+
+  const copyFingerprint = (fp: string, id: string) => {
+    navigator.clipboard.writeText(fp);
+    setCopiedFingerprint(id);
+    toast.success('Fingerprint copied to clipboard');
+    setTimeout(() => setCopiedFingerprint(null), 2000);
+  };
+
   const handleUiThemeChange = (mode: 'dark' | 'light') => {
     // If switching to light mode and current theme is dark, suggest/set githubLight
     const newPartial: Partial<AppSettings> = { uiTheme: mode };
@@ -242,8 +316,23 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const showAppearance = matchesSearch('theme appearance dark light mode syntax editor ui');
   const showEditor = matchesSearch('editor font size tab indentation wrap line numbers');
   const showSsh = matchesSearch('ssh port delete confirm reset general preferences');
+  const showKnownHosts = matchesSearch('known hosts security host key fingerprint sha256 ssh rsa ed25519 ecdsa verification');
   const showAbout = matchesSearch('about version update release license repository termlet info');
-  const hasMatches = showAppearance || showEditor || showSsh || showAbout;
+  const hasMatches = showAppearance || showEditor || showSsh || showKnownHosts || showAbout;
+
+  const filteredKnownHosts = knownHosts.filter((entry) => {
+    if (hostSourceFilter !== 'all' && entry.source !== hostSourceFilter) {
+      return false;
+    }
+    if (!hostSearchQuery.trim()) return true;
+    const q = hostSearchQuery.toLowerCase();
+    return (
+      entry.host.toLowerCase().includes(q) ||
+      entry.key_type.toLowerCase().includes(q) ||
+      entry.fingerprint.toLowerCase().includes(q) ||
+      (entry.comment && entry.comment.toLowerCase().includes(q))
+    );
+  });
 
   return (
     <div className="flex-1 flex flex-col h-full bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 overflow-hidden select-none">
@@ -599,6 +688,211 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     <RotateCcw className="w-3.5 h-3.5" /> Reset All
                   </Button>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* --- 4. SSH SECURITY & KNOWN HOSTS SECTION --- */}
+          {showKnownHosts && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between pb-2 border-b border-zinc-200 dark:border-zinc-800">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-emerald-500" />
+                  <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-700 dark:text-zinc-300">
+                    SSH Security &amp; Known Hosts
+                  </h2>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={loadKnownHosts}
+                    disabled={loadingHosts}
+                    className="h-7 text-[11px] px-2.5 text-zinc-600 dark:text-zinc-300 border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800 cursor-pointer"
+                  >
+                    <RefreshCw className={`w-3 h-3 mr-1.5 ${loadingHosts ? 'animate-spin' : ''}`} />
+                    Refresh
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleClearTermletHosts}
+                    disabled={knownHosts.filter((k) => k.source === 'termlet').length === 0}
+                    className="h-7 text-[11px] px-2.5 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-900/50 hover:bg-rose-50 dark:hover:bg-rose-950/30 cursor-pointer"
+                  >
+                    <Trash2 className="w-3 h-3 mr-1.5" />
+                    Clear Termlet Cache
+                  </Button>
+                </div>
+              </div>
+
+              <div className="p-4 sm:p-5 rounded-lg bg-white dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800/80 shadow-xs space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-zinc-100 dark:border-zinc-800/60">
+                  <div>
+                    <Label className="text-xs font-semibold text-zinc-900 dark:text-zinc-200">
+                      Trusted Remote Host Public Keys
+                    </Label>
+                    <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                      Manage cryptographic host keys recorded during SSH handshakes to protect against man-in-the-middle attacks.
+                    </p>
+                  </div>
+
+                  {/* Filter source pills */}
+                  <div className="flex items-center gap-1.5 bg-zinc-100 dark:bg-zinc-800/70 p-1 rounded-lg border border-zinc-200/80 dark:border-zinc-700/60 text-xs">
+                    {(['all', 'termlet', 'system'] as const).map((src) => {
+                      const count =
+                        src === 'all'
+                          ? knownHosts.length
+                          : knownHosts.filter((k) => k.source === src).length;
+                      const active = hostSourceFilter === src;
+                      const label =
+                        src === 'all' ? 'All' : src === 'termlet' ? 'Termlet' : 'System (~/.ssh)';
+                      return (
+                        <button
+                          key={src}
+                          onClick={() => setHostSourceFilter(src)}
+                          className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors cursor-pointer ${
+                            active
+                              ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-2xs font-semibold'
+                              : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
+                          }`}
+                        >
+                          {label} ({count})
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Sub-search input for host list */}
+                <div className="relative">
+                  <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-zinc-400" />
+                  <Input
+                    placeholder="Search host keys by hostname, algorithm (ed25519, rsa), or fingerprint..."
+                    value={hostSearchQuery}
+                    onChange={(e) => setHostSearchQuery(e.target.value)}
+                    className="pl-9 pr-8 h-8 text-xs bg-zinc-50 dark:bg-zinc-800/80 border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 rounded-md"
+                  />
+                  {hostSearchQuery && (
+                    <button
+                      onClick={() => setHostSearchQuery('')}
+                      className="absolute right-2.5 top-2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 cursor-pointer"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                {/* List Container */}
+                {loadingHosts ? (
+                  <div className="flex items-center justify-center py-10 text-zinc-400 text-xs gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
+                    <span>Loading known hosts records...</span>
+                  </div>
+                ) : filteredKnownHosts.length === 0 ? (
+                  <div className="text-center py-8 px-4 rounded-md border border-dashed border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/30 space-y-2">
+                    <ShieldCheck className="w-7 h-7 mx-auto text-zinc-400" />
+                    <p className="text-xs font-medium text-zinc-700 dark:text-zinc-300">
+                      {knownHosts.length === 0
+                        ? 'No known hosts recorded yet'
+                        : 'No host keys match your search'}
+                    </p>
+                    <p className="text-[11px] text-zinc-500 dark:text-zinc-400 max-w-md mx-auto">
+                      {knownHosts.length === 0
+                        ? 'When you connect to remote SSH servers and approve their host fingerprint, entries will appear here for audit and revocation.'
+                        : 'Try adjusting your search query or switching source filters above.'}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-zinc-100 dark:divide-zinc-800/60 max-h-80 overflow-y-auto rounded-md border border-zinc-200 dark:border-zinc-800 bg-zinc-50/30 dark:bg-zinc-900/30">
+                    {filteredKnownHosts.map((entry) => {
+                      const entryId = `${entry.source}-${entry.line_number}-${entry.host}`;
+                      const isCopied = copiedFingerprint === entryId;
+                      const isTermlet = entry.source === 'termlet';
+
+                      return (
+                        <div
+                          key={entryId}
+                          className="p-3 hover:bg-zinc-100/50 dark:hover:bg-zinc-800/40 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
+                        >
+                          <div className="space-y-1 min-w-0 flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-mono font-semibold text-zinc-900 dark:text-zinc-100 select-all">
+                                {entry.host}
+                              </span>
+
+                              {/* Key type badge */}
+                              <span
+                                className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-medium ${
+                                  entry.key_type.includes('ed25519')
+                                    ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+                                    : entry.key_type.includes('rsa')
+                                    ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'
+                                    : 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20'
+                                }`}
+                              >
+                                {entry.key_type}
+                              </span>
+
+                              {/* Source badge */}
+                              <span
+                                className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                                  isTermlet
+                                    ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20'
+                                    : 'bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300'
+                                }`}
+                                title={
+                                  isTermlet
+                                    ? 'Stored in Termlet (~/.config/termlet/known_hosts)'
+                                    : 'Stored in OpenSSH system config (~/.ssh/known_hosts)'
+                                }
+                              >
+                                {isTermlet ? 'Termlet' : 'System (~/.ssh)'}
+                              </span>
+
+                              {entry.comment && (
+                                <span className="text-[10px] text-zinc-400 font-mono truncate max-w-xs">
+                                  {entry.comment}
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Fingerprint row with copy */}
+                            <div className="flex items-center gap-2">
+                              <span className="text-[11px] font-mono text-zinc-500 dark:text-zinc-400 truncate select-all">
+                                {entry.fingerprint}
+                              </span>
+                              <button
+                                onClick={() => copyFingerprint(entry.fingerprint, entryId)}
+                                className="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 p-0.5 rounded cursor-pointer"
+                                title="Copy fingerprint"
+                              >
+                                {isCopied ? (
+                                  <Check className="w-3 h-3 text-emerald-500" />
+                                ) : (
+                                  <Copy className="w-3 h-3" />
+                                )}
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleRemoveKnownHost(entry)}
+                              className="h-7 px-2 text-[11px] text-rose-600 dark:text-rose-400 border-zinc-200 dark:border-zinc-800 hover:bg-rose-50 dark:hover:bg-rose-950/30 cursor-pointer"
+                              title="Revoke and remove key from known_hosts"
+                            >
+                              <Trash2 className="w-3 h-3 mr-1" />
+                              Revoke
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
           )}

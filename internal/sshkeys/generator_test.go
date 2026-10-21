@@ -4,8 +4,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"testing"
 	"termlet/internal/models"
+	"testing"
 )
 
 func TestGenerateSSHKeyEd25519(t *testing.T) {

@@ -914,4 +914,3 @@ func (a *App) InstallSSHKeyToRemote(sessionID string, publicKey string) error {
 	}
 	return sshkeys.InstallPublicKeyToRemote(sftpCl.SFTP(), publicKey)
 }
-

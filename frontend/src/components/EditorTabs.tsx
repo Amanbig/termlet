@@ -10,6 +10,7 @@ import {
   ChevronRight,
   CheckCheck,
   ShieldCheck,
+  KeyRound,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -36,6 +37,9 @@ interface EditorTabsProps {
   isKnownHostsOpen?: boolean;
   onSelectKnownHosts?: () => void;
   onCloseKnownHosts?: () => void;
+  isSSHKeysOpen?: boolean;
+  onSelectSSHKeys?: () => void;
+  onCloseSSHKeys?: () => void;
 }
 
 export const EditorTabs: React.FC<EditorTabsProps> = ({
@@ -55,6 +59,9 @@ export const EditorTabs: React.FC<EditorTabsProps> = ({
   isKnownHostsOpen = false,
   onSelectKnownHosts,
   onCloseKnownHosts,
+  isSSHKeysOpen = false,
+  onSelectSSHKeys,
+  onCloseSSHKeys,
 }) => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [hasOverflow, setHasOverflow] = useState(false);
@@ -125,13 +132,14 @@ export const EditorTabs: React.FC<EditorTabsProps> = ({
     }
   }, [activeFilePath]);
 
-  if (files.length === 0 && !isSettingsOpen && !isReleaseNotesOpen && !isKnownHostsOpen) {
+  if (files.length === 0 && !isSettingsOpen && !isReleaseNotesOpen && !isKnownHostsOpen && !isSSHKeysOpen) {
     return null;
   }
 
   const isSettingsActive = activeFilePath === 'termlet://settings';
   const isReleaseNotesActive = activeFilePath === 'termlet://release-notes';
   const isKnownHostsActive = activeFilePath === 'termlet://known-hosts';
+  const isSSHKeysActive = activeFilePath === 'termlet://ssh-keys';
   const hasSavedFiles = files.some((f) => !f.isDirty);
   const activeFile = files.find((f) => f.path === activeFilePath);
 
@@ -217,6 +225,33 @@ export const EditorTabs: React.FC<EditorTabsProps> = ({
                 onCloseKnownHosts?.();
               }}
               title="Close Known Hosts"
+              className="p-0.5 rounded-sm hover:bg-zinc-200 dark:hover:bg-zinc-700/80 text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 cursor-pointer"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          </div>
+        )}
+
+        {/* SSH Keys Tab if Open */}
+        {isSSHKeysOpen && (
+          <div
+            data-tab-path="termlet://ssh-keys"
+            onClick={onSelectSSHKeys}
+            className={`group flex items-center gap-2 px-3 h-full text-xs border-r border-zinc-200 dark:border-zinc-800/80 cursor-pointer transition-colors max-w-[210px] shrink-0 ${
+              isSSHKeysActive
+                ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 font-medium border-t-2 border-t-blue-500'
+                : 'bg-zinc-200/50 dark:bg-zinc-950/80 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-900/60 hover:text-zinc-900 dark:hover:text-zinc-200 border-t-2 border-t-transparent'
+            }`}
+          >
+            <KeyRound className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+            <span className="truncate flex-1">SSH Keys</span>
+
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onCloseSSHKeys?.();
+              }}
+              title="Close SSH Keys"
               className="p-0.5 rounded-sm hover:bg-zinc-200 dark:hover:bg-zinc-700/80 text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 cursor-pointer"
             >
               <X className="w-3 h-3" />

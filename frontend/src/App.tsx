@@ -30,13 +30,14 @@ import { QuickOpenModal } from './components/QuickOpenModal';
 import { ImportSSHConfigModal } from './components/ImportSSHConfigModal';
 import { ReconnectBanner, DroppedSessionInfo } from './components/ReconnectBanner';
 import { TransferDrawer } from './components/TransferDrawer';
+import { RemoteTerminalDrawer } from './components/RemoteTerminalDrawer';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { useRemoteFiles } from './hooks/useRemoteFiles';
 import { useSettings } from './hooks/useSettings';
 import { useConfirm } from './context/ConfirmContext';
 import { Toaster } from './components/ui/sonner';
 import { toast } from 'sonner';
-import { Power, Sparkles, X, Radio, ArrowUpDown, ShieldCheck, KeyRound } from 'lucide-react';
+import { Power, Sparkles, X, Radio, ArrowUpDown, ShieldCheck, KeyRound, Terminal } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -77,6 +78,7 @@ export function App() {
   const [droppedSession, setDroppedSession] = useState<DroppedSessionInfo | null>(null);
   const [transferDrawerOpen, setTransferDrawerOpen] = useState(false);
   const [activeTransfersCount, setActiveTransfersCount] = useState<number>(0);
+  const [terminalDrawerOpen, setTerminalDrawerOpen] = useState(false);
 
   const { settings, updateSettings, resetSettings } = useSettings();
 
@@ -149,7 +151,7 @@ export function App() {
 
   const currentSession = activeSessions.find((s) => s.id === currentSessionId) || null;
 
-  // Global Shortcut: Ctrl+P / Cmd+P for Quick Open
+  // Global Shortcut: Ctrl+P / Cmd+P for Quick Open and Ctrl+` for Remote Terminal
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'p' && !e.shiftKey) {
@@ -158,6 +160,15 @@ export function App() {
           setQuickOpenOpen((prev) => !prev);
         } else {
           toast.info('Connect to a remote server to quick open files');
+        }
+      }
+
+      if ((e.ctrlKey || e.metaKey) && (e.key === '`' || e.key === '~')) {
+        e.preventDefault();
+        if (currentSessionId) {
+          setTerminalDrawerOpen((prev) => !prev);
+        } else {
+          toast.info('Connect to a remote server to open terminal');
         }
       }
     };
@@ -769,6 +780,26 @@ export function App() {
                 : 'Transfers'}
             </span>
           </button>
+
+          {/* Remote Terminal status button */}
+          <button
+            onClick={() => {
+              if (currentSessionId) {
+                setTerminalDrawerOpen((prev) => !prev);
+              } else {
+                toast.info('Connect to a remote server to open terminal');
+              }
+            }}
+            className={`px-2 py-0.5 rounded cursor-pointer transition-colors flex items-center gap-1.5 ${
+              terminalDrawerOpen
+                ? 'bg-zinc-200/80 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 font-medium'
+                : 'hover:bg-zinc-200/60 dark:hover:bg-zinc-800 text-zinc-500 dark:text-zinc-400'
+            }`}
+            title="Toggle Remote Terminal (Ctrl+`)"
+          >
+            <Terminal className="w-3 h-3 text-emerald-500" />
+            <span>Terminal</span>
+          </button>
         </div>
 
         {/* Right: Quick shortcuts / status info */}
@@ -849,6 +880,13 @@ export function App() {
         isOpen={transferDrawerOpen}
         onClose={() => setTransferDrawerOpen(false)}
         onActiveCountChange={setActiveTransfersCount}
+      />
+
+      {/* Remote Interactive SSH Terminal Drawer */}
+      <RemoteTerminalDrawer
+        isOpen={terminalDrawerOpen}
+        onClose={() => setTerminalDrawerOpen(false)}
+        currentSession={currentSession}
       />
 
       {/* Non-intrusive Update Toast Notification */}

@@ -40,3 +40,11 @@ type KnownHostEntry struct {
 	Source      string `json:"source"` // "termlet" or "system"
 	LineNumber  int    `json:"line_number"`
 }
+
+// RemoteExecResult holds the outcome of running a remote command on the SSH server.
+type RemoteExecResult struct {
+	Output   string `json:"output"`
+	Cwd      string `json:"cwd"`
+	ExitCode int    `json:"exit_code"`
+	Error    string `json:"error,omitempty"`
+}

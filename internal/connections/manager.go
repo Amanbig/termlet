@@ -250,3 +250,45 @@ func (m *Manager) CloseAll() {
 		delete(m.sessions, id)
 	}
 }
+
+// ExecCommand executes a command on the remote server for the given session.
+func (m *Manager) ExecCommand(ctx context.Context, sessionID string, command string) (*models.RemoteExecResult, error) {
+	sess, err := m.GetSession(sessionID)
+	if err != nil {
+		return nil, err
+	}
+	return sess.ExecCommand(ctx, command)
+}
+
+// CancelCommand terminates the active command for the given session.
+func (m *Manager) CancelCommand(sessionID string) error {
+	m.mu.RLock()
+	sess, exists := m.sessions[sessionID]
+	m.mu.RUnlock()
+
+	if !exists {
+		return fmt.Errorf("session not found: %s", sessionID)
+	}
+
+	sess.CancelCommand()
+	return nil
+}
+
+// GetRemoteCwd retrieves the remote working directory for the session.
+func (m *Manager) GetRemoteCwd(sessionID string) (string, error) {
+	sess, err := m.GetSession(sessionID)
+	if err != nil {
+		return "", err
+	}
+	return sess.GetRemoteCwd(), nil
+}
+
+// SetRemoteCwd updates the remote working directory for the session.
+func (m *Manager) SetRemoteCwd(sessionID string, cwd string) error {
+	sess, err := m.GetSession(sessionID)
+	if err != nil {
+		return err
+	}
+	sess.SetRemoteCwd(cwd)
+	return nil
+}

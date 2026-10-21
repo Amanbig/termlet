@@ -1,41 +1,40 @@
-# Termlet v0.7.7 🛡️
+# Termlet v0.7.8 🔑
 
-Termlet **v0.7.7** introduces enterprise-grade **SSH Host Key Verification & MitM Protection**, a dedicated **SSH Security & Known Hosts Manager Tab (`termlet://known-hosts`)**, and modernized build infrastructure powered by **TypeScript 7.0 & Bundler resolution**.
+Termlet **v0.7.8** introduces a native **SSH Key Pair Generator**, an interactive **Local SSH Keys Explorer**, a dedicated **SSH Keys Workspace Tab (`termlet://ssh-keys`)**, and **1-click remote server key installation (`ssh-copy-id`)**.
 
 ---
 
 ### ✨ What's New & Highlights
 
-#### 🛡️ SSH Host Key Verification & MitM Attack Protection
-- **Dual-Layer Known Hosts Store**:
-  - Automatically queries both the standard OpenSSH `~/.ssh/known_hosts` file and Termlet's dedicated application store (`~/.config/termlet/known_hosts` / `%APPDATA%\termlet\known_hosts`).
-  - Automatically records newly trusted hosts with SHA256 cryptographic fingerprints, host keys, and port numbers without mutating standard system files unless configured.
-- **Trust On First Use (TOFU) Verification**:
-  - When connecting to an unknown host for the first time, an interactive modal presents the host address, key type (e.g., `ssh-ed25519`, `ecdsa-sha2-nistp256`, `rsa-sha2-512`), and full SHA256 fingerprint.
-  - Allows you to inspect and confirm the remote server's identity before any authentication tokens or credentials are transmitted over the network.
-- **Strict Host Key Mismatch Detection**:
-  - If a server's host key changes unexpectedly, Termlet flags a high-priority security warning to prevent Man-in-the-Middle (MitM) eavesdropping and spoofing attacks.
-  - Displays side-by-side comparison of the expected fingerprint versus the incoming fingerprint, requiring explicit confirmation before proceeding.
+#### 🔑 Native SSH Key Pair Generator
+- **Multi-Algorithm Cryptographic Key Creation**:
+  - Generate industry-standard **Ed25519** *(Recommended, 256-bit)*, **RSA (2048 / 3072 / 4096-bit)**, and **ECDSA (P-256 / P-384 / P-521)** key pairs directly in Termlet without needing terminal CLI tools like `ssh-keygen`.
+- **Passphrase Encryption (AES-256)**:
+  - Encrypt private keys with an optional passphrase using OpenSSH-standard AES-256 ciphering (`ssh.MarshalPrivateKeyWithPassphrase`).
+- **OpenSSH "Drunken Bishop" Randomart Visualizer**:
+  - Generates the classic OpenSSH ASCII art representation for instant visual fingerprint verification.
+- **Safe Auto-Save to `~/.ssh/`**:
+  - Writes private key files with strict `0600` and public key files with `0644` file permissions.
+  - Includes duplicate filename detection and explicit overwrite protection.
 
-#### 🗂️ Dedicated SSH Security & Known Hosts Manager (`termlet://known-hosts`)
+#### 🗂️ Dedicated SSH Keys Workspace Tab (`termlet://ssh-keys`)
 - **Full Workspace Tab Experience**:
-  - Moved out of general settings into a dedicated, first-class workspace tab (`termlet://known-hosts`) featuring a shield icon, tab state persistence, and responsive full-width layout.
-  - Quick-access button added directly to the bottom status bar (`Known Hosts`) and from the Security section in Settings.
-- **Search & Source Filtering**:
-  - Real-time search across hostnames, key algorithms, and fingerprints.
-  - Filter chips to quickly narrow entries between *All*, *Termlet Store*, and *System Store (`~/.ssh/known_hosts`)*.
-- **Hashed Hostname Privacy Support**:
-  - Cleanly handles OpenSSH HMAC-SHA1 hashed host entries (`|1|...`), displaying an informative `[Hashed Host]` badge with privacy tooltips instead of raw cryptic hashes.
-- **Key Inspection & Revocation**:
-  - 1-click SHA256 fingerprint copying with visual confirmation.
-  - Instant host revocation and bulk cache clearing directly from the UI.
+  - Open and manage SSH keys in a dedicated workspace tab ([`SSHKeysView.tsx`](file:///home/amanpreet/Documents/termlet/frontend/src/components/SSHKeysView.tsx)) featuring a key icon, tab persistence, and responsive split layout.
+  - Quick launcher directly accessible from the bottom Status Bar (`SSH Keys`) and the Settings View.
+- **Local Keys Explorer (`~/.ssh/`)**:
+  - Automatically scans and displays all local key pairs found in `~/.ssh/`.
+  - Shows algorithm badges, key comments, SHA256 fingerprints, file paths, and encryption status.
+  - 1-click **Copy Public Key** to clipboard for pasting into GitHub, GitLab, or server configurations.
+  - Safe key pair deletion with modal confirmation.
 
-#### ⚡ Core Engine & Build Modernization
-- **TypeScript 7.0 Upgrade**:
-  - Upgraded frontend build pipeline to `typescript@7.0.2`.
-- **Modern Bundler Module Resolution**:
-  - Migrated `tsconfig.json` from legacy `node` resolution to modern Vite `bundler` resolution (`moduleResolution: "bundler"`, `allowImportingTsExtensions`, `isolatedModules: true`).
-  - Streamlined type checking and reduced development build latency.
+#### 🚀 1-Click Remote Server Deployment (`ssh-copy-id` in-app)
+- **Direct Remote Authorization**:
+  - Install any generated or local public key onto any active SSH connection with a single click.
+  - Automatically ensures remote `~/.ssh` directory exists with `0700` permissions, appends the public key to `~/.ssh/authorized_keys`, and enforces strict `0600` permissions.
+
+#### 🛠️ Connection Profile Integration
+- **In-Dialog Key Picker & Generator**:
+  - When configuring a private key connection in the Connection Profile Dialog ([`ConnectDialog.tsx`](file:///home/amanpreet/Documents/termlet/frontend/src/components/ConnectDialog.tsx)), a *"Pick / Generate Key..."* button opens the manager and auto-populates the chosen or generated key path.
 
 ---
 

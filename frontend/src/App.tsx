@@ -11,7 +11,7 @@ import {
   GetAppVersion,
 } from '../wailsjs/go/main/App';
 import { EventsOn } from '../wailsjs/runtime/runtime';
-import { updater } from '../wailsjs/go/models';
+import { updater, models } from '../wailsjs/go/models';
 import { ActivityBar, ActivityView } from './components/ActivityBar';
 import { ConnectionSidebar } from './components/ConnectionSidebar';
 import { RemoteFileTree } from './components/RemoteFileTree';
@@ -54,6 +54,7 @@ export function App() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   const [connectDialogOpen, setConnectDialogOpen] = useState(false);
+  const [pendingHostKeyPrompt, setPendingHostKeyPrompt] = useState<models.HostKeyPrompt | null>(null);
   const [quickOpenOpen, setQuickOpenOpen] = useState(false);
   const [importSSHConfigOpen, setImportSSHConfigOpen] = useState(false);
   const [editingProfile, setEditingProfile] = useState<Profile | null>(null);
@@ -205,6 +206,13 @@ export function App() {
     // Try auto-connecting with saved secret or open dialog
     try {
       const resp = await Connect(profile, '', false);
+      if (resp.host_key_prompt) {
+        setEditingProfile(profile);
+        setPendingHostKeyPrompt(resp.host_key_prompt);
+        setConnectDialogOpen(true);
+        return;
+      }
+
       if (resp.success && resp.session) {
         toast.success(`Connected to ${profile.name}`);
         refreshSessions();
@@ -212,12 +220,14 @@ export function App() {
         setActiveActivityView('explorer');
         setSidebarOpen(true);
       } else {
-        // Needs credentials or host key prompt
+        // Needs credentials
         setEditingProfile(profile);
+        setPendingHostKeyPrompt(null);
         setConnectDialogOpen(true);
       }
     } catch {
       setEditingProfile(profile);
+      setPendingHostKeyPrompt(null);
       setConnectDialogOpen(true);
     }
   };
@@ -709,8 +719,12 @@ export function App() {
       {/* Connection & Host Key Dialog */}
       <ConnectDialog
         open={connectDialogOpen}
-        onOpenChange={setConnectDialogOpen}
+        onOpenChange={(open) => {
+          setConnectDialogOpen(open);
+          if (!open) setPendingHostKeyPrompt(null);
+        }}
         initialProfile={editingProfile}
+        initialHostKeyPrompt={pendingHostKeyPrompt}
         onConnected={handleConnected}
         onProfileSaved={refreshProfiles}
         onImportSSHConfig={() => setImportSSHConfigOpen(true)}

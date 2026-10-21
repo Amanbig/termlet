@@ -48,6 +48,11 @@ func (m *Manager) SetDroppedHandler(handler DroppedHandler) {
 	m.onDropped = handler
 }
 
+// GetHostKeyManager returns the underlying HostKeyManager.
+func (m *Manager) GetHostKeyManager() *sshclient.HostKeyManager {
+	return m.clientMgr.GetHostKeyManager()
+}
+
 func (m *Manager) handleDropped(sessionID string, reason error) {
 	m.mu.RLock()
 	sess, exists := m.sessions[sessionID]

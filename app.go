@@ -841,3 +841,51 @@ func (a *App) CheckAllPortsHealth(tunnelIDs []string) ([]tunnel.PortHealthStatus
 	}
 	return a.tunnelMgr.CheckAllHealth(tunnelIDs), nil
 }
+
+// GetKnownHosts retrieves all stored known host entries from Termlet and system known_hosts.
+func (a *App) GetKnownHosts() ([]models.KnownHostEntry, error) {
+	if a.connMgr == nil {
+		return []models.KnownHostEntry{}, nil
+	}
+	hkm := a.connMgr.GetHostKeyManager()
+	if hkm == nil {
+		return []models.KnownHostEntry{}, nil
+	}
+	return hkm.ListKnownHosts()
+}
+
+// RemoveKnownHost removes all known host entries matching target from the specified source.
+func (a *App) RemoveKnownHost(source string, host string) error {
+	if a.connMgr == nil {
+		return fmt.Errorf("connection manager not initialized")
+	}
+	hkm := a.connMgr.GetHostKeyManager()
+	if hkm == nil {
+		return fmt.Errorf("host key manager not initialized")
+	}
+	return hkm.RemoveKnownHost(source, host)
+}
+
+// RemoveKnownHostByLine removes a known host entry at a specific line number.
+func (a *App) RemoveKnownHostByLine(source string, lineNum int) error {
+	if a.connMgr == nil {
+		return fmt.Errorf("connection manager not initialized")
+	}
+	hkm := a.connMgr.GetHostKeyManager()
+	if hkm == nil {
+		return fmt.Errorf("host key manager not initialized")
+	}
+	return hkm.RemoveKnownHostByLine(source, lineNum)
+}
+
+// ClearKnownHosts resets known host entries for the specified source.
+func (a *App) ClearKnownHosts(source string) error {
+	if a.connMgr == nil {
+		return fmt.Errorf("connection manager not initialized")
+	}
+	hkm := a.connMgr.GetHostKeyManager()
+	if hkm == nil {
+		return fmt.Errorf("host key manager not initialized")
+	}
+	return hkm.ClearKnownHosts(source)
+}

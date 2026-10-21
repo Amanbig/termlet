@@ -66,12 +66,20 @@ export function DownloadRemotePath(arg1, arg2, arg3) {
   return window['go']['main']['App']['DownloadRemotePath'](arg1, arg2, arg3);
 }
 
+export function ClearKnownHosts(arg1) {
+  return window['go']['main']['App']['ClearKnownHosts'](arg1);
+}
+
 export function GetAppVersion() {
   return window['go']['main']['App']['GetAppVersion']();
 }
 
 export function GetDefaultSSHConfigPath() {
   return window['go']['main']['App']['GetDefaultSSHConfigPath']();
+}
+
+export function GetKnownHosts() {
+  return window['go']['main']['App']['GetKnownHosts']();
 }
 
 export function GetProfileSecret(arg1) {
@@ -100,6 +108,14 @@ export function ListPortForwards(arg1) {
 
 export function ListProfiles() {
   return window['go']['main']['App']['ListProfiles']();
+}
+
+export function RemoveKnownHost(arg1, arg2) {
+  return window['go']['main']['App']['RemoveKnownHost'](arg1, arg2);
+}
+
+export function RemoveKnownHostByLine(arg1, arg2) {
+  return window['go']['main']['App']['RemoveKnownHostByLine'](arg1, arg2);
 }
 
 export function ListRemoteFiles(arg1, arg2) {

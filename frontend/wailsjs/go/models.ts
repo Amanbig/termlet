@@ -142,6 +142,30 @@ export namespace models {
 	        this.message = source["message"];
 	    }
 	}
+	export class KnownHostEntry {
+	    host: string;
+	    key_type: string;
+	    fingerprint: string;
+	    public_key: string;
+	    comment: string;
+	    source: string;
+	    line_number: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new KnownHostEntry(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.host = source["host"];
+	        this.key_type = source["key_type"];
+	        this.fingerprint = source["fingerprint"];
+	        this.public_key = source["public_key"];
+	        this.comment = source["comment"];
+	        this.source = source["source"];
+	        this.line_number = source["line_number"];
+	    }
+	}
 	export class Profile {
 	    id: string;
 	    name: string;

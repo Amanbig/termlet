@@ -21,6 +21,7 @@ interface ConnectDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   initialProfile?: Profile | null;
+  initialHostKeyPrompt?: HostKeyPrompt | null;
   onConnected: (sessionId: string, profile: Profile) => void;
   onProfileSaved?: () => void;
   onImportSSHConfig?: () => void;
@@ -30,6 +31,7 @@ export const ConnectDialog: React.FC<ConnectDialogProps> = ({
   open,
   onOpenChange,
   initialProfile,
+  initialHostKeyPrompt,
   onConnected,
   onProfileSaved,
   onImportSSHConfig,
@@ -86,8 +88,8 @@ export const ConnectDialog: React.FC<ConnectDialogProps> = ({
       setAutoReconnect(true);
       setShowAdvanced(false);
     }
-    setHostKeyPrompt(null);
-  }, [initialProfile, open]);
+    setHostKeyPrompt(initialHostKeyPrompt || null);
+  }, [initialProfile, initialHostKeyPrompt, open]);
 
   const handleSubmit = async (trustKey = false) => {
     if (!host.trim() || !username.trim()) {

@@ -193,6 +193,17 @@ func (s *Session) ExecCommand(ctx context.Context, command string) (*models.Remo
 		s.activeCmdMu.Unlock()
 	}()
 
+	done := make(chan struct{})
+	defer close(done)
+
+	go func() {
+		select {
+		case <-ctx.Done():
+			_ = sshSess.Close()
+		case <-done:
+		}
+	}()
+
 	currentCwd := s.GetRemoteCwd()
 	cdPrefix := ""
 	if currentCwd != "" && currentCwd != "~" {
@@ -201,7 +212,7 @@ func (s *Session) ExecCommand(ctx context.Context, command string) (*models.Remo
 		cdPrefix = "cd ~ 2>/dev/null || true;\n"
 	}
 
-	wrapperScript := fmt.Sprintf("%s%s\n__TERMLET_STATUS__=$?\necho \"\"\necho -n \"__TERMLET_CWD__:\"\npwd -P 2>/dev/null || pwd\nexit $__TERMLET_STATUS__", cdPrefix, trimmed)
+	wrapperScript := fmt.Sprintf("%s%s\n__TERMLET_STATUS__=$?\nprintf \"\\n__TERMLET_CWD__:%%s\\n\" \"$(pwd -P 2>/dev/null || pwd)\"\nexit $__TERMLET_STATUS__", cdPrefix, trimmed)
 
 	outBytes, execErr := sshSess.CombinedOutput(wrapperScript)
 
@@ -229,7 +240,11 @@ func (s *Session) ExecCommand(ctx context.Context, command string) (*models.Remo
 			exitCode = exitErr.ExitStatus()
 		} else {
 			exitCode = 1
-			errMsg = execErr.Error()
+			if ctx != nil && ctx.Err() != nil {
+				errMsg = "command cancelled or timed out"
+			} else {
+				errMsg = execErr.Error()
+			}
 		}
 	}
 

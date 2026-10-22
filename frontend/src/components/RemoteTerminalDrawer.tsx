@@ -81,6 +81,7 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
   const inputRef = useRef<HTMLInputElement>(null);
   const drawerRef = useRef<HTMLDivElement>(null);
   const prevSessionIdRef = useRef<string | null>(null);
+  const isCancelledRef = useRef(false);
 
   // Initialize or reset session history
   useEffect(() => {
@@ -155,6 +156,7 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
 
   const handleCancelCommand = useCallback(async () => {
     if (!currentSession) return;
+    isCancelledRef.current = true;
     try {
       await CancelRemoteCommand(currentSession.id);
       appendHistory({
@@ -244,6 +246,9 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
 
     try {
       const res = await ExecRemoteCommand(currentSession.id, cmdStr);
+      if (isCancelledRef.current) {
+        return;
+      }
       if (res) {
         if (res.cwd && res.cwd !== cwd) {
           setCwd(res.cwd);
@@ -269,15 +274,25 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
             timestamp: Date.now(),
             exitCode: res.exit_code,
           });
+        } else if (!res.output && res.exit_code !== 0) {
+          appendHistory({
+            type: 'err',
+            text: `[Process exited with code ${res.exit_code}]`,
+            timestamp: Date.now(),
+            exitCode: res.exit_code,
+          });
         }
       }
     } catch (err: any) {
-      appendHistory({
-        type: 'err',
-        text: `Execution failed: ${err?.message || err}`,
-        timestamp: Date.now(),
-      });
+      if (!isCancelledRef.current) {
+        appendHistory({
+          type: 'err',
+          text: `Execution failed: ${err?.message || err}`,
+          timestamp: Date.now(),
+        });
+      }
     } finally {
+      isCancelledRef.current = false;
       setExecuting(false);
       setTimeout(() => inputRef.current?.focus({ preventScroll: true }), 40);
     }
@@ -463,7 +478,11 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
           return (
             <div
               key={item.id}
-              className="text-zinc-300 whitespace-pre-wrap break-all pl-3 select-all text-[11px]"
+              className={`whitespace-pre-wrap break-all pl-3 select-all text-[11px] ${
+                item.exitCode !== undefined && item.exitCode !== 0
+                  ? 'text-rose-300/90 border-l border-rose-500/30'
+                  : 'text-zinc-300'
+              }`}
             >
               {item.text}
             </div>

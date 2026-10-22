@@ -25,10 +25,9 @@
   <a href="https://github.com/Amanbig/termlet/issues/new/choose">Report a bug</a>
 </p>
 
-<!--
-  TODO: add a screenshot or short GIF here, e.g.
-  <p align="center"><img src="docs/screenshot.png" alt="Termlet screenshot" width="800" /></p>
--->
+<p align="center">
+  <img src="docs/screenshot.png" alt="Termlet screenshot" width="800" />
+</p>
 
 ## Why Termlet?
 

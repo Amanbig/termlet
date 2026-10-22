@@ -3,7 +3,10 @@ package connections
 import (
 	"context"
 	"fmt"
+	"path/filepath"
+	"strings"
 	"sync"
+	"termlet/internal/models"
 	"termlet/internal/sftpclient"
 	"time"
 
@@ -12,6 +15,22 @@ import (
 
 // DisconnectCallback is invoked when a session disconnects unexpectedly.
 type DisconnectCallback func(sessionID string, reason error)
+
+var interactiveCommands = map[string]string{
+	"vim":   "text editor",
+	"vi":    "text editor",
+	"nvim":  "text editor",
+	"nano":  "text editor",
+	"pico":  "text editor",
+	"emacs": "text editor",
+	"top":   "interactive process monitor",
+	"htop":  "interactive process monitor",
+	"btop":  "interactive process monitor",
+	"less":  "interactive pager",
+	"more":  "interactive pager",
+	"man":   "interactive manual pager",
+	"watch": "interactive display monitor",
+}
 
 // Session represents an active connection to an SSH server with an SFTP subsystem.
 type Session struct {
@@ -27,6 +46,12 @@ type Session struct {
 	cachedSecret    string
 	cancelKeepAlive context.CancelFunc
 	onDisconnect    DisconnectCallback
+
+	// Terminal execution fields
+	remoteCwdMu   sync.RWMutex
+	remoteCwd     string
+	activeCmdMu   sync.Mutex
+	activeSSHSess *ssh.Session
 }
 
 // SessionSummary provides a view of an active session suitable for UI presentation.
@@ -47,6 +72,10 @@ type SessionSummary struct {
 // NewSession creates a new initialized Session.
 func NewSession(id string, profile Profile, sshClient *ssh.Client, sftpClient *sftpclient.Client) *Session {
 	now := time.Now()
+	startDir := profile.StartDirectory
+	if startDir == "" || startDir == "." {
+		startDir = "~"
+	}
 	return &Session{
 		ID:          id,
 		Profile:     profile,
@@ -54,7 +83,181 @@ func NewSession(id string, profile Profile, sshClient *ssh.Client, sftpClient *s
 		SFTP:        sftpClient,
 		ConnectedAt: now,
 		LastActive:  now,
+		remoteCwd:   startDir,
 	}
+}
+
+// GetRemoteCwd returns the tracked remote working directory for the session.
+func (s *Session) GetRemoteCwd() string {
+	s.remoteCwdMu.RLock()
+	defer s.remoteCwdMu.RUnlock()
+	if s.remoteCwd == "" {
+		return "~"
+	}
+	return s.remoteCwd
+}
+
+// SetRemoteCwd explicitly updates the remote working directory.
+func (s *Session) SetRemoteCwd(cwd string) {
+	s.remoteCwdMu.Lock()
+	defer s.remoteCwdMu.Unlock()
+	s.remoteCwd = strings.TrimSpace(cwd)
+}
+
+// CancelCommand cancels the currently executing command if one is in flight.
+func (s *Session) CancelCommand() bool {
+	s.activeCmdMu.Lock()
+	defer s.activeCmdMu.Unlock()
+	if s.activeSSHSess != nil {
+		_ = s.activeSSHSess.Close()
+		s.activeSSHSess = nil
+		return true
+	}
+	return false
+}
+
+// ExecCommand executes a shell command on the remote SSH server while maintaining stateful cwd.
+func (s *Session) ExecCommand(ctx context.Context, command string) (*models.RemoteExecResult, error) {
+	trimmed := strings.TrimSpace(command)
+	if trimmed == "" {
+		return &models.RemoteExecResult{
+			Cwd:      s.GetRemoteCwd(),
+			ExitCode: 0,
+		}, nil
+	}
+
+	if trimmed == "clear" {
+		return &models.RemoteExecResult{
+			Cwd:      s.GetRemoteCwd(),
+			ExitCode: 0,
+		}, nil
+	}
+
+	// Intercept known full-screen interactive TTY applications that cannot run without a PTY
+	fields := strings.Fields(trimmed)
+	if len(fields) > 0 {
+		baseCmd := strings.ToLower(filepath.Base(fields[0]))
+		if desc, isInteractive := interactiveCommands[baseCmd]; isInteractive {
+			currentCwd := s.GetRemoteCwd()
+			arg := ""
+			if len(fields) > 1 {
+				arg = fields[1]
+			}
+			hint := ""
+			switch baseCmd {
+			case "vim", "vi", "nvim", "nano", "pico", "emacs":
+				if arg != "" {
+					hint = fmt.Sprintf("\nTip: Termlet includes a built-in graphical code editor! Double-click '%s' in the Explorer or use Quick Open (Ctrl+P) to view and edit files directly, or use 'cat %s' to view contents.", arg, arg)
+				} else {
+					hint = "\nTip: Termlet includes a built-in graphical code editor! Double-click any file in the Explorer or use Quick Open (Ctrl+P) to edit files."
+				}
+			case "top", "htop", "btop":
+				hint = "\nTip: For non-interactive process status, use 'ps aux' or 'top -b -n 1'."
+			case "less", "more", "man":
+				if arg != "" {
+					hint = fmt.Sprintf("\nTip: View complete text non-interactively using 'cat %s'.", arg)
+				} else {
+					hint = "\nTip: Use 'cat <file>' to display text without an interactive pager."
+				}
+			}
+			return &models.RemoteExecResult{
+				Cwd:      currentCwd,
+				ExitCode: 1,
+				Error:    fmt.Sprintf("'%s' is an %s requiring an interactive TTY and cannot run inside an inline subshell.%s", baseCmd, desc, hint),
+			}, nil
+		}
+	}
+
+	s.mu.RLock()
+	sshCl := s.SSH
+	closed := s.closed || s.dropped
+	s.mu.RUnlock()
+
+	if closed || sshCl == nil {
+		return nil, fmt.Errorf("session is not connected")
+	}
+
+	sshSess, err := sshCl.NewSession()
+	if err != nil {
+		return nil, fmt.Errorf("failed to open SSH channel: %w", err)
+	}
+	defer sshSess.Close()
+
+	s.activeCmdMu.Lock()
+	s.activeSSHSess = sshSess
+	s.activeCmdMu.Unlock()
+
+	defer func() {
+		s.activeCmdMu.Lock()
+		s.activeSSHSess = nil
+		s.activeCmdMu.Unlock()
+	}()
+
+	done := make(chan struct{})
+	defer close(done)
+
+	go func() {
+		select {
+		case <-ctx.Done():
+			_ = sshSess.Close()
+		case <-done:
+		}
+	}()
+
+	currentCwd := s.GetRemoteCwd()
+	cdPrefix := ""
+	if currentCwd != "" && currentCwd != "~" {
+		cdPrefix = fmt.Sprintf("cd %q 2>/dev/null || cd ~;\n", currentCwd)
+	} else {
+		cdPrefix = "cd ~ 2>/dev/null || true;\n"
+	}
+
+	wrapperScript := fmt.Sprintf("%s%s\n__TERMLET_STATUS__=$?\nprintf \"\\n__TERMLET_CWD__:%%s\\n\" \"$(pwd -P 2>/dev/null || pwd)\"\nexit $__TERMLET_STATUS__", cdPrefix, trimmed)
+
+	outBytes, execErr := sshSess.CombinedOutput(wrapperScript)
+
+	rawOutput := string(outBytes)
+	cwdMarker := "__TERMLET_CWD__:"
+	newCwd := currentCwd
+	cleanOutput := rawOutput
+	exitCode := 0
+
+	if idx := strings.LastIndex(rawOutput, cwdMarker); idx != -1 {
+		cleanOutput = strings.TrimRight(rawOutput[:idx], "\r\n")
+		cwdPart := strings.TrimSpace(rawOutput[idx+len(cwdMarker):])
+		if lines := strings.Split(cwdPart, "\n"); len(lines) > 0 {
+			extractedCwd := strings.TrimSpace(lines[0])
+			if extractedCwd != "" {
+				newCwd = extractedCwd
+				s.SetRemoteCwd(newCwd)
+			}
+		}
+	}
+
+	var errMsg string
+	if execErr != nil {
+		if exitErr, ok := execErr.(*ssh.ExitError); ok {
+			exitCode = exitErr.ExitStatus()
+		} else {
+			exitCode = 1
+			if ctx != nil && ctx.Err() != nil {
+				errMsg = "command cancelled or timed out"
+			} else {
+				errMsg = execErr.Error()
+			}
+		}
+	}
+
+	s.mu.Lock()
+	s.LastActive = time.Now()
+	s.mu.Unlock()
+
+	return &models.RemoteExecResult{
+		Output:   cleanOutput,
+		Cwd:      newCwd,
+		ExitCode: exitCode,
+		Error:    errMsg,
+	}, nil
 }
 
 // SetCachedSecret stores the credentials in memory for the session lifespan to allow reconnecting.

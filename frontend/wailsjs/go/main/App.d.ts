@@ -5,8 +5,10 @@ import {updater} from '../models';
 import {models} from '../models';
 import {main} from '../models';
 import {connections} from '../models';
-import {sftpclient} from '../models';
 import {transfer} from '../models';
+import {sftpclient} from '../models';
+
+export function CancelRemoteCommand(arg1:string):Promise<void>;
 
 export function CancelTransfer(arg1:string):Promise<void>;
 
@@ -18,9 +20,11 @@ export function CheckForUpdates():Promise<updater.UpdateInfo>;
 
 export function CheckPortHealth(arg1:string):Promise<tunnel.PortHealthStatus>;
 
+export function ChmodRemotePath(arg1:string,arg2:string,arg3:number,arg4:boolean):Promise<void>;
+
 export function ClearFinishedTransfers():Promise<void>;
 
-export function ChmodRemotePath(arg1:string,arg2:string,arg3:number,arg4:boolean):Promise<void>;
+export function ClearKnownHosts(arg1:string):Promise<void>;
 
 export function Connect(arg1:models.Profile,arg2:string,arg3:boolean):Promise<main.ConnectResponse>;
 
@@ -42,7 +46,7 @@ export function DownloadAndApplyUpdate(arg1:string,arg2:string):Promise<void>;
 
 export function DownloadRemotePath(arg1:string,arg2:string,arg3:boolean):Promise<string>;
 
-export function ClearKnownHosts(arg1:string):Promise<void>;
+export function ExecRemoteCommand(arg1:string,arg2:string):Promise<models.RemoteExecResult>;
 
 export function GenerateSSHKey(arg1:models.GenerateSSHKeyRequest):Promise<models.GeneratedSSHKey>;
 
@@ -55,6 +59,8 @@ export function GetKnownHosts():Promise<Array<models.KnownHostEntry>>;
 export function GetProfileSecret(arg1:string):Promise<string>;
 
 export function GetReleaseNotes():Promise<string>;
+
+export function GetRemoteCwd(arg1:string):Promise<string>;
 
 export function GetUpdateProgress():Promise<updater.DownloadProgress>;
 
@@ -70,10 +76,6 @@ export function ListPortForwards(arg1:string):Promise<Array<tunnel.TunnelInfo>>;
 
 export function ListProfiles():Promise<Array<models.Profile>>;
 
-export function RemoveKnownHost(arg1:string,arg2:string):Promise<void>;
-
-export function RemoveKnownHostByLine(arg1:string,arg2:number):Promise<void>;
-
 export function ListRemoteFiles(arg1:string,arg2:string):Promise<Array<models.RemoteFile>>;
 
 export function ListTransfers():Promise<Array<transfer.Item>>;
@@ -85,6 +87,10 @@ export function ParseSSHConfig(arg1:string):Promise<Array<models.Profile>>;
 export function ReadRemoteFile(arg1:string,arg2:string):Promise<models.FileContent>;
 
 export function Reconnect(arg1:string):Promise<main.ConnectResponse>;
+
+export function RemoveKnownHost(arg1:string,arg2:string):Promise<void>;
+
+export function RemoveKnownHostByLine(arg1:string,arg2:number):Promise<void>;
 
 export function RenameRemotePath(arg1:string,arg2:string,arg3:string):Promise<void>;
 
@@ -99,6 +105,8 @@ export function SaveProfile(arg1:models.Profile,arg2:string):Promise<void>;
 export function SaveRemoteFile(arg1:string,arg2:string,arg3:string,arg4:number):Promise<sftpclient.SaveResult>;
 
 export function SearchRemoteFiles(arg1:string,arg2:string,arg3:string,arg4:number):Promise<Array<models.RemoteFile>>;
+
+export function SetRemoteCwd(arg1:string,arg2:string):Promise<void>;
 
 export function StartPortForward(arg1:string,arg2:number,arg3:string,arg4:number,arg5:string):Promise<tunnel.TunnelInfo>;
 

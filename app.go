@@ -914,3 +914,39 @@ func (a *App) InstallSSHKeyToRemote(sessionID string, publicKey string) error {
 	}
 	return sshkeys.InstallPublicKeyToRemote(sftpCl.SFTP(), publicKey)
 }
+
+// ExecRemoteCommand runs a shell command on the remote server for the active session.
+func (a *App) ExecRemoteCommand(sessionID string, command string) (*models.RemoteExecResult, error) {
+	if a.connMgr == nil {
+		return nil, fmt.Errorf("connection manager not initialized")
+	}
+	ctx := a.ctx
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	return a.connMgr.ExecCommand(ctx, sessionID, command)
+}
+
+// CancelRemoteCommand terminates the running command on the remote session.
+func (a *App) CancelRemoteCommand(sessionID string) error {
+	if a.connMgr == nil {
+		return fmt.Errorf("connection manager not initialized")
+	}
+	return a.connMgr.CancelCommand(sessionID)
+}
+
+// GetRemoteCwd returns the tracked remote working directory for the session.
+func (a *App) GetRemoteCwd(sessionID string) (string, error) {
+	if a.connMgr == nil {
+		return "", fmt.Errorf("connection manager not initialized")
+	}
+	return a.connMgr.GetRemoteCwd(sessionID)
+}
+
+// SetRemoteCwd explicitly sets the remote working directory for the session.
+func (a *App) SetRemoteCwd(sessionID string, cwd string) error {
+	if a.connMgr == nil {
+		return fmt.Errorf("connection manager not initialized")
+	}
+	return a.connMgr.SetRemoteCwd(sessionID, cwd)
+}

@@ -307,6 +307,24 @@ export namespace models {
 		    return a;
 		}
 	}
+	export class RemoteExecResult {
+	    output: string;
+	    cwd: string;
+	    exit_code: number;
+	    error?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new RemoteExecResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.output = source["output"];
+	        this.cwd = source["cwd"];
+	        this.exit_code = source["exit_code"];
+	        this.error = source["error"];
+	    }
+	}
 	export class RemoteFile {
 	    name: string;
 	    path: string;
@@ -348,6 +366,49 @@ export namespace sftpclient {
 	        this.path = source["path"];
 	        this.size = source["size"];
 	        this.mod_time = source["mod_time"];
+	    }
+	}
+
+}
+
+export namespace transfer {
+	
+	export class Item {
+	    id: string;
+	    sessionId: string;
+	    name: string;
+	    type: string;
+	    status: string;
+	    sourcePath: string;
+	    destPath: string;
+	    bytesTransferred: number;
+	    totalBytes: number;
+	    percentage: number;
+	    speedBytesPerSec: number;
+	    error?: string;
+	    startTime: number;
+	    endTime?: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new Item(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.sessionId = source["sessionId"];
+	        this.name = source["name"];
+	        this.type = source["type"];
+	        this.status = source["status"];
+	        this.sourcePath = source["sourcePath"];
+	        this.destPath = source["destPath"];
+	        this.bytesTransferred = source["bytesTransferred"];
+	        this.totalBytes = source["totalBytes"];
+	        this.percentage = source["percentage"];
+	        this.speedBytesPerSec = source["speedBytesPerSec"];
+	        this.error = source["error"];
+	        this.startTime = source["startTime"];
+	        this.endTime = source["endTime"];
 	    }
 	}
 
@@ -523,49 +584,6 @@ export namespace updater {
 		    }
 		    return a;
 		}
-	}
-
-}
-
-export namespace transfer {
-	
-	export class Item {
-	    id: string;
-	    sessionId: string;
-	    name: string;
-	    type: string;
-	    status: string;
-	    sourcePath: string;
-	    destPath: string;
-	    bytesTransferred: number;
-	    totalBytes: number;
-	    percentage: number;
-	    speedBytesPerSec: number;
-	    error?: string;
-	    startTime: number;
-	    endTime?: number;
-	
-	    static createFrom(source: any = {}) {
-	        return new Item(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.id = source["id"];
-	        this.sessionId = source["sessionId"];
-	        this.name = source["name"];
-	        this.type = source["type"];
-	        this.status = source["status"];
-	        this.sourcePath = source["sourcePath"];
-	        this.destPath = source["destPath"];
-	        this.bytesTransferred = source["bytesTransferred"];
-	        this.totalBytes = source["totalBytes"];
-	        this.percentage = source["percentage"];
-	        this.speedBytesPerSec = source["speedBytesPerSec"];
-	        this.error = source["error"];
-	        this.startTime = source["startTime"];
-	        this.endTime = source["endTime"];
-	    }
 	}
 
 }

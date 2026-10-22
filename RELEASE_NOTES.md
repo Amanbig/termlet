@@ -1,40 +1,39 @@
-# Termlet v0.7.8 🔑
+# Termlet v0.8.0 💻
 
-Termlet **v0.7.8** introduces a native **SSH Key Pair Generator**, an interactive **Local SSH Keys Explorer**, a dedicated **SSH Keys Workspace Tab (`termlet://ssh-keys`)**, and **1-click remote server key installation (`ssh-copy-id`)**.
+Termlet **v0.8.0** introduces a high-performance, interactive **Remote SSH Command Runner & Terminal Drawer** with stateful working directory persistence, live SFTP directory tree synchronization, interactive TTY interception, and instant cancellation.
 
 ---
 
 ### ✨ What's New & Highlights
 
-#### 🔑 Native SSH Key Pair Generator
-- **Multi-Algorithm Cryptographic Key Creation**:
-  - Generate industry-standard **Ed25519** *(Recommended, 256-bit)*, **RSA (2048 / 3072 / 4096-bit)**, and **ECDSA (P-256 / P-384 / P-521)** key pairs directly in Termlet without needing terminal CLI tools like `ssh-keygen`.
-- **Passphrase Encryption (AES-256)**:
-  - Encrypt private keys with an optional passphrase using OpenSSH-standard AES-256 ciphering (`ssh.MarshalPrivateKeyWithPassphrase`).
-- **OpenSSH "Drunken Bishop" Randomart Visualizer**:
-  - Generates the classic OpenSSH ASCII art representation for instant visual fingerprint verification.
-- **Safe Auto-Save to `~/.ssh/`**:
-  - Writes private key files with strict `0600` and public key files with `0644` file permissions.
-  - Includes duplicate filename detection and explicit overwrite protection.
-
-#### 🗂️ Dedicated SSH Keys Workspace Tab (`termlet://ssh-keys`)
-- **Full Workspace Tab Experience**:
-  - Open and manage SSH keys in a dedicated workspace tab ([`SSHKeysView.tsx`](file:///home/amanpreet/Documents/termlet/frontend/src/components/SSHKeysView.tsx)) featuring a key icon, tab persistence, and responsive split layout.
-  - Quick launcher directly accessible from the bottom Status Bar (`SSH Keys`) and the Settings View.
-- **Local Keys Explorer (`~/.ssh/`)**:
-  - Automatically scans and displays all local key pairs found in `~/.ssh/`.
-  - Shows algorithm badges, key comments, SHA256 fingerprints, file paths, and encryption status.
-  - 1-click **Copy Public Key** to clipboard for pasting into GitHub, GitLab, or server configurations.
-  - Safe key pair deletion with modal confirmation.
-
-#### 🚀 1-Click Remote Server Deployment (`ssh-copy-id` in-app)
-- **Direct Remote Authorization**:
-  - Install any generated or local public key onto any active SSH connection with a single click.
-  - Automatically ensures remote `~/.ssh` directory exists with `0700` permissions, appends the public key to `~/.ssh/authorized_keys`, and enforces strict `0600` permissions.
-
-#### 🛠️ Connection Profile Integration
-- **In-Dialog Key Picker & Generator**:
-  - When configuring a private key connection in the Connection Profile Dialog ([`ConnectDialog.tsx`](file:///home/amanpreet/Documents/termlet/frontend/src/components/ConnectDialog.tsx)), a *"Pick / Generate Key..."* button opens the manager and auto-populates the chosen or generated key path.
+#### 💻 Interactive Remote SSH Terminal Runner & Drawer
+- **Persistent Bottom Terminal Drawer**:
+  - Open a sleek, embedded remote terminal runner directly beneath your SSH file workspace using the shortcut `Ctrl+\`` or the bottom Status Bar **Terminal** toggle button.
+  - Seamlessly runs remote shell commands against the active SSH connection without needing an external terminal emulator or third-party tools.
+- **Stateful Remote Working Directory Tracking (`cd` Persistence)**:
+  - Preserves working directory across command executions. If you execute `cd /var/log && pwd`, subsequent commands execute within `/var/log`.
+  - Captures the exact physical directory using POSIX-compliant `pwd -P` and cleanly propagates working directory changes.
+- **Bi-directional SFTP Explorer & Workspace Synchronization**:
+  - Whenever the remote directory changes inside the terminal runner (e.g. `cd /etc/nginx`), Termlet's remote SFTP tree and navigation breadcrumb automatically sync and reload to that directory in real time.
+- **Interactive TTY Interception & Smart Editor Hints**:
+  - Inline subshells cannot run full-screen interactive curses/TTY applications without freezing or sending unprintable terminal escape sequences.
+  - Commands requiring an interactive TTY (e.g. `vim`, `vi`, `nvim`, `nano`, `emacs`, `top`, `htop`, `btop`, `less`, `more`, `man`) are intelligently intercepted before execution.
+  - Termlet provides an actionable hint suggesting the graphical inline code editor, Quick Open (`Ctrl+P`), or non-interactive alternatives like `cat` or `ps aux`.
+- **Instant In-Flight Command Interruption (`Ctrl+C` / UI Cancel)**:
+  - Stop running commands immediately by pressing `Ctrl+C` or clicking the **Cancel** button.
+  - Closes the active SSH execution channel instantly without dropping the main SSH connection or disrupting file transfers.
+  - Respects standard clipboard text selection when pressing `Ctrl+C`.
+- **Exit Code Reporting & Error Styling**:
+  - Displays exit codes for commands that return non-zero exit statuses.
+  - Failed command output is styled with a distinct rose accent and border (`border-rose-500/30`), while quiet commands that exit non-zero (such as `false` or `diff`) display explicit `[Process exited with code X]` tags.
+- **Output Safety & Memory Limits**:
+  - Strips ANSI color codes for clean typography.
+  - Protects webview DOM performance by truncating outputs exceeding 100,000 characters with an alert marker.
+- **Terminal History & Productivity Shortcuts**:
+  - Browse command history with `Up` and `Down` arrow keys.
+  - Quick screen clear via `clear` command, `Ctrl+L`, or the trash button.
+  - One-click **Copy All Output** to clipboard.
+  - Maximize / restore height toggle buttons.
 
 ---
 

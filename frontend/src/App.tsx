@@ -89,7 +89,7 @@ export function App() {
   const [updateInfo, setUpdateInfo] = useState<updater.UpdateInfo | null>(null);
   const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
   const [showUpdateToast, setShowUpdateToast] = useState(false);
-  const [appVersion, setAppVersion] = useState('0.9.0');
+  const [appVersion, setAppVersion] = useState('0.9.3');
   const [activePortsCount, setActivePortsCount] = useState<number>(0);
   const [droppedSession, setDroppedSession] = useState<DroppedSessionInfo | null>(null);
   const [transferDrawerOpen, setTransferDrawerOpen] = useState(false);

@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=Termlet
+Comment=Modern Cross-Platform SSH Client, SFTP File Browser & Remote Editor
+Exec=termlet
+Icon=${SNAP}/meta/gui/termlet.png
+Terminal=false
+Type=Application
+Categories=Development;TextEditor;Utility;
+Keywords=ssh;sftp;remote;editor;terminal;vps;
+StartupWMClass=termlet

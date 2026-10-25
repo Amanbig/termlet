@@ -6,6 +6,7 @@ description: |
   Termlet is a fast, lightweight desktop SSH client featuring a built-in
   SFTP dual-pane file manager, remote code editor, local port forwarding,
   and interactive multi-tab remote terminal drawer.
+icon: snap/gui/termlet.png
 
 grade: stable
 confinement: strict
@@ -16,7 +17,7 @@ architectures:
 apps:
   termlet:
     command: bin/termlet
-    desktop: usr/share/applications/termlet.desktop
+    desktop: snap/gui/termlet.desktop
     extensions: [gnome]
     environment:
       WEBKIT_DISABLE_DMABUF_RENDERER: "1"
@@ -63,10 +64,10 @@ parts:
       mkdir -p "$SNAPCRAFT_PART_INSTALL/bin"
       cp build/bin/termlet "$SNAPCRAFT_PART_INSTALL/bin/termlet"
 
-      # 5. Install desktop entry
+      # 5. Install desktop entry and icons
       mkdir -p "$SNAPCRAFT_PART_INSTALL/usr/share/applications"
-      sed 's|Exec=.*|Exec=termlet|g' build/linux/termlet.desktop > "$SNAPCRAFT_PART_INSTALL/usr/share/applications/termlet.desktop"
-
-      # 6. Install icon
+      cp snap/gui/termlet.desktop "$SNAPCRAFT_PART_INSTALL/usr/share/applications/termlet.desktop"
+      mkdir -p "$SNAPCRAFT_PART_INSTALL/usr/share/icons/hicolor/512x512/apps"
+      cp snap/gui/termlet.png "$SNAPCRAFT_PART_INSTALL/usr/share/icons/hicolor/512x512/apps/termlet.png"
       mkdir -p "$SNAPCRAFT_PART_INSTALL/usr/share/icons/hicolor/256x256/apps"
-      cp build/appicon.png "$SNAPCRAFT_PART_INSTALL/usr/share/icons/hicolor/256x256/apps/termlet.png"
+      cp snap/gui/termlet.png "$SNAPCRAFT_PART_INSTALL/usr/share/icons/hicolor/256x256/apps/termlet.png"

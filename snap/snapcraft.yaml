@@ -50,10 +50,11 @@ parts:
       fi
       craftctl set version="$VERSION"
 
-      # 2. Install Wails CLI
-      export GOPATH="$SNAPCRAFT_PART_BUILD/go"
+      # 2. Setup Go paths outside the source directory to prevent Go from scanning GOPATH/pkg/mod
+      export GOPATH=/tmp/go
+      export GOCACHE=/tmp/gocache
       export PATH="$GOPATH/bin:$PATH"
-      go install github.com/wailsapp/wails/v2/cmd/wails@latest
+      go install github.com/wailsapp/wails/v2/cmd/wails@v2.16.0
 
       # 3. Build Wails app with WebKitGTK 4.1
       wails build -tags webkit2_41 -platform linux/amd64 -ldflags "-X 'termlet/internal/version.Version=v$VERSION'"

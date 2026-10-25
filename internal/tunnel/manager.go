@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"sort"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -347,6 +348,14 @@ func (m *Manager) ListTunnels(sessionID string) []*TunnelInfo {
 			result = append(result, &info)
 		}
 	}
+
+	sort.Slice(result, func(i, j int) bool {
+		if result[i].LocalPort != result[j].LocalPort {
+			return result[i].LocalPort < result[j].LocalPort
+		}
+		return result[i].ID < result[j].ID
+	})
+
 	return result
 }
 

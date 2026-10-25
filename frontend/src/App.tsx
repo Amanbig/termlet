@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Profile, SessionSummary, RemoteFile } from './types/remote';
 import {
   ListProfiles,
@@ -56,8 +56,22 @@ export function App() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [activeSessions, setActiveSessions] = useState<SessionSummary[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
-  const [activeActivityView, setActiveActivityView] = useState<ActivityView>('explorer');
+  const [activeActivityView, setActiveActivityView] = useState<ActivityView>('connections');
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const DEFAULT_SIDEBAR_WIDTH = 270;
+  const [sidebarWidth, setSidebarWidth] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('termlet_sidebar_width');
+      if (saved) {
+        const val = parseInt(saved, 10);
+        if (!isNaN(val) && val >= 180 && val <= 800) return val;
+      }
+    } catch {}
+    return DEFAULT_SIDEBAR_WIDTH;
+  });
+  const [isSidebarDragging, setIsSidebarDragging] = useState(false);
+  const isSidebarDraggingRef = useRef(false);
+  const sidebarRef = useRef<HTMLDivElement>(null);
 
   const [connectDialogOpen, setConnectDialogOpen] = useState(false);
   const [pendingHostKeyPrompt, setPendingHostKeyPrompt] = useState<models.HostKeyPrompt | null>(null);
@@ -73,7 +87,7 @@ export function App() {
   const [updateInfo, setUpdateInfo] = useState<updater.UpdateInfo | null>(null);
   const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
   const [showUpdateToast, setShowUpdateToast] = useState(false);
-  const [appVersion, setAppVersion] = useState('0.8.0');
+  const [appVersion, setAppVersion] = useState('0.9.0');
   const [activePortsCount, setActivePortsCount] = useState<number>(0);
   const [droppedSession, setDroppedSession] = useState<DroppedSessionInfo | null>(null);
   const [transferDrawerOpen, setTransferDrawerOpen] = useState(false);
@@ -405,6 +419,56 @@ export function App() {
     }
   };
 
+  const handleSidebarMouseDownResize = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    isSidebarDraggingRef.current = true;
+    setIsSidebarDragging(true);
+
+    const startX = e.clientX;
+    const startWidth = sidebarRef.current ? sidebarRef.current.clientWidth : sidebarWidth;
+
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      if (!isSidebarDraggingRef.current) return;
+      const deltaX = moveEvent.clientX - startX;
+      const maxAllowed = Math.min(800, Math.max(300, window.innerWidth * 0.6));
+      const minAllowed = 180;
+      const newW = Math.max(minAllowed, Math.min(startWidth + deltaX, maxAllowed));
+      setSidebarWidth(newW);
+    };
+
+    const handleMouseUp = (upEvent: MouseEvent) => {
+      isSidebarDraggingRef.current = false;
+      setIsSidebarDragging(false);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+
+      const deltaX = upEvent.clientX - startX;
+      const maxAllowed = Math.min(800, Math.max(300, window.innerWidth * 0.6));
+      const minAllowed = 180;
+      const finalW = Math.max(minAllowed, Math.min(startWidth + deltaX, maxAllowed));
+      setSidebarWidth(finalW);
+      try {
+        localStorage.setItem('termlet_sidebar_width', finalW.toString());
+      } catch {}
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+  }, [sidebarWidth]);
+
+  const handleSidebarDoubleClick = useCallback(() => {
+    setSidebarWidth(DEFAULT_SIDEBAR_WIDTH);
+    try {
+      localStorage.setItem('termlet_sidebar_width', DEFAULT_SIDEBAR_WIDTH.toString());
+    } catch {}
+  }, []);
+
   const handleOpenSettingsTab = () => {
     setIsSettingsOpen(true);
     setActiveFilePath(SETTINGS_TAB_PATH);
@@ -542,62 +606,87 @@ export function App() {
 
         {/* 2. Primary Side Panel (Collapsible: Explorer, Connections, or Ports) */}
         {sidebarOpen && (
-          <div className={`${activeActivityView === 'ports' ? 'w-72 sm:w-80' : 'w-64'} h-full flex flex-col shrink-0 overflow-hidden bg-zinc-50 dark:bg-zinc-950/70 border-r border-zinc-200 dark:border-zinc-800/80 transition-all duration-150`}>
-            <ErrorBoundary fallbackTitle="Failed to load side panel">
-              <div className={activeActivityView === 'explorer' ? 'h-full flex flex-col' : 'hidden'}>
-                <RemoteFileTree
-                  sessionId={currentSessionId}
-                  sessionSummary={currentSession}
-                  startDirectory={currentSession?.start_directory || '.'}
-                  onOpenFile={handleOpenFile}
-                  activeFilePath={activeFilePath}
-                  onDisconnect={handleDisconnect}
-                  onOpenProfiles={() => setActiveActivityView('connections')}
-                />
-              </div>
+          <div
+            ref={sidebarRef}
+            style={{
+              width: `${sidebarWidth}px`,
+              transition: isSidebarDragging ? 'none' : 'width 150ms cubic-bezier(0.16, 1, 0.3, 1)',
+            }}
+            className="h-full flex flex-col shrink-0 bg-zinc-50 dark:bg-zinc-950/70 border-r border-zinc-200 dark:border-zinc-800/80 relative"
+          >
+            {/* Draggable Vertical Resize Handle (VS Code style) */}
+            <div
+              onMouseDown={handleSidebarMouseDownResize}
+              onDoubleClick={handleSidebarDoubleClick}
+              className="absolute -right-1.5 top-0 bottom-0 w-3 cursor-col-resize z-40 group flex items-center justify-center select-none"
+              title="Drag to resize, double-click to reset width"
+            >
+              <div
+                className={`w-0.5 h-full transition-colors ${
+                  isSidebarDragging
+                    ? 'bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.8)]'
+                    : 'bg-transparent group-hover:bg-blue-500/70'
+                }`}
+              />
+            </div>
 
-              <div className={activeActivityView === 'ports' ? 'h-full flex flex-col' : 'hidden'}>
-                <PortForwardView
-                  sessionId={currentSessionId}
-                  activeSession={currentSession}
-                  onOpenConnectDialog={() => {
-                    setEditingProfile(null);
-                    setConnectDialogOpen(true);
-                  }}
-                  onTunnelsChange={setActivePortsCount}
-                />
-              </div>
+            <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+              <ErrorBoundary fallbackTitle="Failed to load side panel">
+                <div className={activeActivityView === 'explorer' ? 'h-full flex flex-col' : 'hidden'}>
+                  <RemoteFileTree
+                    sessionId={currentSessionId}
+                    sessionSummary={currentSession}
+                    startDirectory={currentSession?.start_directory || '.'}
+                    onOpenFile={handleOpenFile}
+                    activeFilePath={activeFilePath}
+                    onDisconnect={handleDisconnect}
+                    onOpenProfiles={() => setActiveActivityView('connections')}
+                  />
+                </div>
 
-              <div className={activeActivityView === 'connections' ? 'h-full flex flex-col' : 'hidden'}>
-                <ConnectionSidebar
-                  profiles={profiles}
-                  activeSessions={activeSessions}
-                  currentSessionId={currentSessionId}
-                  onSelectSession={(sid) => {
-                    setCurrentSessionId(sid);
-                    setActiveActivityView('explorer');
-                  }}
-                  onNewConnection={() => {
-                    setEditingProfile(null);
-                    setConnectDialogOpen(true);
-                  }}
-                  onEditProfile={(profile) => {
-                    setEditingProfile(profile);
-                    setConnectDialogOpen(true);
-                  }}
-                  onDeleteProfile={handleDeleteProfile}
-                  onConnectProfile={handleConnectProfile}
-                  onDisconnectSession={handleDisconnect}
-                  onReconnectSession={handleReconnectSession}
-                  onImportSSHConfig={() => setImportSSHConfigOpen(true)}
-                />
-              </div>
-            </ErrorBoundary>
+                <div className={activeActivityView === 'ports' ? 'h-full flex flex-col' : 'hidden'}>
+                  <PortForwardView
+                    sessionId={currentSessionId}
+                    activeSession={currentSession}
+                    onOpenConnectDialog={() => {
+                      setEditingProfile(null);
+                      setConnectDialogOpen(true);
+                    }}
+                    onTunnelsChange={setActivePortsCount}
+                  />
+                </div>
+
+                <div className={activeActivityView === 'connections' ? 'h-full flex flex-col' : 'hidden'}>
+                  <ConnectionSidebar
+                    profiles={profiles}
+                    activeSessions={activeSessions}
+                    currentSessionId={currentSessionId}
+                    onSelectSession={(sid) => {
+                      setCurrentSessionId(sid);
+                      setActiveActivityView('explorer');
+                    }}
+                    onNewConnection={() => {
+                      setEditingProfile(null);
+                      setConnectDialogOpen(true);
+                    }}
+                    onEditProfile={(profile) => {
+                      setEditingProfile(profile);
+                      setConnectDialogOpen(true);
+                    }}
+                    onDeleteProfile={handleDeleteProfile}
+                    onConnectProfile={handleConnectProfile}
+                    onDisconnectSession={handleDisconnect}
+                    onReconnectSession={handleReconnectSession}
+                    onImportSSHConfig={() => setImportSSHConfigOpen(true)}
+                  />
+                </div>
+              </ErrorBoundary>
+            </div>
           </div>
         )}
 
         {/* 3. Main Center Area: Welcome Screen, Settings Tab, or Code Workspace */}
-        <div className="flex-1 flex flex-col h-full min-w-0 bg-zinc-50 dark:bg-zinc-950 overflow-hidden">
+        <div className="flex-1 flex flex-col h-full min-w-0 bg-zinc-50 dark:bg-zinc-950 overflow-hidden relative">
           <ErrorBoundary fallbackTitle="An unexpected view error occurred">
             {showWelcome ? (
               <WelcomeScreen
@@ -680,6 +769,13 @@ export function App() {
               </div>
             )}
           </ErrorBoundary>
+
+          {/* Remote Interactive SSH Terminal Drawer (Scoped to Workspace/Tab area) */}
+          <RemoteTerminalDrawer
+            isOpen={terminalDrawerOpen}
+            onClose={() => setTerminalDrawerOpen(false)}
+            currentSession={currentSession}
+          />
         </div>
       </div>
 
@@ -880,13 +976,6 @@ export function App() {
         isOpen={transferDrawerOpen}
         onClose={() => setTransferDrawerOpen(false)}
         onActiveCountChange={setActiveTransfersCount}
-      />
-
-      {/* Remote Interactive SSH Terminal Drawer */}
-      <RemoteTerminalDrawer
-        isOpen={terminalDrawerOpen}
-        onClose={() => setTerminalDrawerOpen(false)}
-        currentSession={currentSession}
       />
 
       {/* Non-intrusive Update Toast Notification */}

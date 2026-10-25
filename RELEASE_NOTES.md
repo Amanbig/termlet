@@ -1,39 +1,49 @@
-# Termlet v0.8.0 💻
+# Termlet v0.9.0 💻
 
-Termlet **v0.8.0** introduces a high-performance, interactive **Remote SSH Command Runner & Terminal Drawer** with stateful working directory persistence, live SFTP directory tree synchronization, interactive TTY interception, and instant cancellation.
+Termlet **v0.9.0** brings a major UX and productivity upgrade across the entire workspace, introducing a **Multi-Tab Remote Terminal** runner, real **Line-Based Shell Stream** with multi-line command continuation (`\` & Shift+Enter), **VS Code Style Draggable Resizing** for both the terminal drawer and sidepanel, unified sidebar width, and tab management polish.
 
 ---
 
 ### ✨ What's New & Highlights
 
-#### 💻 Interactive Remote SSH Terminal Runner & Drawer
-- **Persistent Bottom Terminal Drawer**:
-  - Open a sleek, embedded remote terminal runner directly beneath your SSH file workspace using the shortcut `Ctrl+\`` or the bottom Status Bar **Terminal** toggle button.
-  - Seamlessly runs remote shell commands against the active SSH connection without needing an external terminal emulator or third-party tools.
-- **Stateful Remote Working Directory Tracking (`cd` Persistence)**:
-  - Preserves working directory across command executions. If you execute `cd /var/log && pwd`, subsequent commands execute within `/var/log`.
-  - Captures the exact physical directory using POSIX-compliant `pwd -P` and cleanly propagates working directory changes.
-- **Bi-directional SFTP Explorer & Workspace Synchronization**:
-  - Whenever the remote directory changes inside the terminal runner (e.g. `cd /etc/nginx`), Termlet's remote SFTP tree and navigation breadcrumb automatically sync and reload to that directory in real time.
-- **Interactive TTY Interception & Smart Editor Hints**:
-  - Inline subshells cannot run full-screen interactive curses/TTY applications without freezing or sending unprintable terminal escape sequences.
-  - Commands requiring an interactive TTY (e.g. `vim`, `vi`, `nvim`, `nano`, `emacs`, `top`, `htop`, `btop`, `less`, `more`, `man`) are intelligently intercepted before execution.
-  - Termlet provides an actionable hint suggesting the graphical inline code editor, Quick Open (`Ctrl+P`), or non-interactive alternatives like `cat` or `ps aux`.
-- **Instant In-Flight Command Interruption (`Ctrl+C` / UI Cancel)**:
-  - Stop running commands immediately by pressing `Ctrl+C` or clicking the **Cancel** button.
-  - Closes the active SSH execution channel instantly without dropping the main SSH connection or disrupting file transfers.
-  - Respects standard clipboard text selection when pressing `Ctrl+C`.
-- **Exit Code Reporting & Error Styling**:
-  - Displays exit codes for commands that return non-zero exit statuses.
-  - Failed command output is styled with a distinct rose accent and border (`border-rose-500/30`), while quiet commands that exit non-zero (such as `false` or `diff`) display explicit `[Process exited with code X]` tags.
-- **Output Safety & Memory Limits**:
-  - Strips ANSI color codes for clean typography.
-  - Protects webview DOM performance by truncating outputs exceeding 100,000 characters with an alert marker.
-- **Terminal History & Productivity Shortcuts**:
-  - Browse command history with `Up` and `Down` arrow keys.
-  - Quick screen clear via `clear` command, `Ctrl+L`, or the trash button.
-  - One-click **Copy All Output** to clipboard.
-  - Maximize / restore height toggle buttons.
+#### 💻 Multi-Tab Line-Based Terminal Runner
+- **True Line-Based Stream**:
+  - Replaced the detached bottom input box with a real terminal emulator stream where the prompt (`username@host:path$ [cursor]`) follows output directly inline.
+  - History entries render as authentic prompt lines with working directory context.
+  - Pressing Enter on an empty line naturally emits a fresh prompt on the next line; pressing Ctrl+C prints `^C` inline and resets the prompt.
+- **Multi-Line Command Continuation (`\` and Shift+Enter)**:
+  - Write multi-line commands using standard trailing backslash `\` (e.g. `docker run -d \`) or Shift+Enter.
+  - Continuation lines render with secondary shell prompt (`> `) matching real Bash/Zsh behavior.
+  - Pressing Backspace on an empty continuation prompt pops the previous line back into the active input for easy editing.
+  - Smart multi-line paste support: pasting multi-line scripts or command blocks automatically parses them into continuation lines and active input ready to inspect and run.
+- **Multiple Concurrent Terminal Tabs**:
+  - Open multiple concurrent terminals (`Terminal 1`, `Terminal 2`, etc.) multiplexed over the same SSH connection.
+  - Each tab maintains independent remote working directory (`CWD`), history, and command execution state.
+  - Run long-running tasks in one tab while executing commands concurrently in another.
+- **Tab Management Polish**:
+  - **Double-Click to Rename**: Double-click any tab title to rename it to something custom like `docker`, `web-server`, or `logs`.
+  - **Duplicate Tab**: Dedicated button next to `+` to duplicate active tab in its current remote working directory.
+  - **Horizontal Wheel & Arrow Scrolling**: Scroll horizontally with your mouse wheel, click left/right navigation arrows, and enjoy smooth automatic centering on the active tab.
+  - **Local `exit` / `logout` Handling**: Typing `exit` or `logout` cleanly closes the active tab (or drawer if last tab).
+
+#### 📐 Workspace Layout & Resizing
+- **VS Code Style Drag-to-Resize Drawer**:
+  - Drag the top border of the terminal drawer to adjust height smoothly between 100px and `workspaceHeight - 50px`.
+  - Double-click the resize handle to toggle maximize / restore height.
+  - Height is saved across app restarts.
+- **Draggable Sidepanel & Unified Width**:
+  - Added a draggable vertical resize handle on the right border of the sidepanel.
+  - Clamped smoothly between 180px and 60% of the window width, with double-click reset to default (270px).
+  - Unified width across **Explorer**, **Ports**, and **Profiles** views, eliminating previous width jumping.
+- **Workspace-Scoped Drawer**:
+  - Terminal drawer sits strictly inside the editor workspace to the right of the sidebar, never covering the ActivityBar or file tree.
+- **ActivityBar Tab Reordering**:
+  - Moved **Remote Profiles & Sessions** (`Server` icon) to the very top above **Explorer** (`Files` icon), defaulting to connections on app startup for instant server selection.
+
+#### ⚡ Port Forwarding Stability
+- **Deterministic Port List Ordering**:
+  - Fixed a race condition where Go map iteration randomization caused active/inactive port forwarding cards to continually bounce and swap positions on periodic refresh.
+  - Ports are now stably sorted by local port and ID on both backend and frontend.
 
 ---
 

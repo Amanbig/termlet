@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Radio,
   Plus,
@@ -290,17 +290,26 @@ export const PortForwardView: React.FC<PortForwardViewProps> = ({
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  // Filtered tunnels
-  const filteredTunnels = tunnels.filter((t) => {
-    if (!searchQuery) return true;
-    const q = searchQuery.toLowerCase();
-    return (
-      t.name.toLowerCase().includes(q) ||
-      t.localPort.toString().includes(q) ||
-      t.remotePort.toString().includes(q) ||
-      t.remoteHost.toLowerCase().includes(q)
-    );
-  });
+  // Filtered & stably sorted tunnels (prevents layout jumping on periodic refresh)
+  const sortedTunnels = useMemo(() => {
+    const list = tunnels.filter((t) => {
+      if (!searchQuery) return true;
+      const q = searchQuery.toLowerCase();
+      return (
+        t.name.toLowerCase().includes(q) ||
+        t.localPort.toString().includes(q) ||
+        t.remotePort.toString().includes(q) ||
+        t.remoteHost.toLowerCase().includes(q)
+      );
+    });
+
+    return list.sort((a, b) => {
+      if (a.localPort !== b.localPort) {
+        return a.localPort - b.localPort;
+      }
+      return a.id.localeCompare(b.id);
+    });
+  }, [tunnels, searchQuery]);
 
   if (!sessionId) {
     return (
@@ -528,12 +537,12 @@ export const PortForwardView: React.FC<PortForwardViewProps> = ({
               Click &quot;Forward Port&quot; above to map any remote server service directly to your localhost.
             </p>
           </div>
-        ) : filteredTunnels.length === 0 ? (
+        ) : sortedTunnels.length === 0 ? (
           <div className="py-8 text-center text-xs text-zinc-400">
             No port forwards match &quot;{searchQuery}&quot;
           </div>
         ) : (
-          filteredTunnels.map((t) => {
+          sortedTunnels.map((t) => {
             const isActive = t.status === 'active';
             const isError = t.status === 'error';
 

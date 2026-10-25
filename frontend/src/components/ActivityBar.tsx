@@ -29,22 +29,6 @@ export const ActivityBar: React.FC<ActivityBarProps> = ({
           <HardDrive className="w-5 h-5" />
         </div>
 
-        {/* Explorer Button (only if connected, or switches to explorer) */}
-        <button
-          onClick={() => onSelectView('explorer')}
-          title="Explorer (Files)"
-          className={`relative w-full h-10 flex items-center justify-center transition-colors cursor-pointer ${
-            activeView === 'explorer'
-              ? 'text-zinc-900 dark:text-zinc-100'
-              : 'text-zinc-400 hover:text-zinc-800 dark:text-zinc-500 dark:hover:text-zinc-200'
-          }`}
-        >
-          {activeView === 'explorer' && (
-            <span className="absolute left-0 top-1.5 bottom-1.5 w-0.5 bg-blue-500 rounded-r" />
-          )}
-          <Files className="w-5 h-5 stroke-[1.6]" />
-        </button>
-
         {/* Remote Profiles / Connections Button */}
         <button
           onClick={() => onSelectView('connections')}
@@ -59,6 +43,22 @@ export const ActivityBar: React.FC<ActivityBarProps> = ({
             <span className="absolute left-0 top-1.5 bottom-1.5 w-0.5 bg-blue-500 rounded-r" />
           )}
           <Server className="w-5 h-5 stroke-[1.6]" />
+        </button>
+
+        {/* Explorer Button (Files) */}
+        <button
+          onClick={() => onSelectView('explorer')}
+          title="Explorer (Files)"
+          className={`relative w-full h-10 flex items-center justify-center transition-colors cursor-pointer ${
+            activeView === 'explorer'
+              ? 'text-zinc-900 dark:text-zinc-100'
+              : 'text-zinc-400 hover:text-zinc-800 dark:text-zinc-500 dark:hover:text-zinc-200'
+          }`}
+        >
+          {activeView === 'explorer' && (
+            <span className="absolute left-0 top-1.5 bottom-1.5 w-0.5 bg-blue-500 rounded-r" />
+          )}
+          <Files className="w-5 h-5 stroke-[1.6]" />
         </button>
 
         {/* Port Forwarding / Tunnels Button */}

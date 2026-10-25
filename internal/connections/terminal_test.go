@@ -80,3 +80,44 @@ func TestSessionTerminalCwdAndInteractive(t *testing.T) {
 		t.Fatalf("expected error executing without SSH connection")
 	}
 }
+
+func TestMultipleTerminalTabs(t *testing.T) {
+	profile := Profile{
+		ID:             "prof-multi",
+		Name:           "Multi-Terminal Server",
+		Host:           "127.0.0.1",
+		Port:           22,
+		Username:       "root",
+		StartDirectory: "/home/root",
+	}
+
+	session := NewSession("sess-multi", profile, nil, nil)
+
+	// 1. Default terminal should start at /home/root
+	if cwd := session.GetRemoteCwd("term-1"); cwd != "/home/root" {
+		t.Fatalf("expected initial cwd '/home/root', got '%s'", cwd)
+	}
+
+	// 2. Setting CWD on term-1 should not affect term-2
+	session.SetRemoteCwd("/var/log", "term-1")
+	session.SetRemoteCwd("/etc/nginx", "term-2")
+
+	if cwd1 := session.GetRemoteCwd("term-1"); cwd1 != "/var/log" {
+		t.Fatalf("expected term-1 cwd '/var/log', got '%s'", cwd1)
+	}
+	if cwd2 := session.GetRemoteCwd("term-2"); cwd2 != "/etc/nginx" {
+		t.Fatalf("expected term-2 cwd '/etc/nginx', got '%s'", cwd2)
+	}
+
+	// 3. Closing term-2 and re-checking
+	session.CloseTerminal("term-2")
+	// Re-accessing closed term-2 should re-initialize to StartDirectory
+	if cwd2Reopened := session.GetRemoteCwd("term-2"); cwd2Reopened != "/home/root" {
+		t.Fatalf("expected re-opened term-2 cwd to reset to startDir '/home/root', got '%s'", cwd2Reopened)
+	}
+
+	// term-1 should still have /var/log
+	if cwd1 := session.GetRemoteCwd("term-1"); cwd1 != "/var/log" {
+		t.Fatalf("expected term-1 cwd to remain '/var/log', got '%s'", cwd1)
+	}
+}

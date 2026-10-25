@@ -95,6 +95,8 @@ export function App() {
   const [transferDrawerOpen, setTransferDrawerOpen] = useState(false);
   const [activeTransfersCount, setActiveTransfersCount] = useState<number>(0);
   const [terminalDrawerOpen, setTerminalDrawerOpen] = useState(false);
+  const initialProfileHandledRef = useRef(false);
+  const connectingProfilesRef = useRef<Set<string>>(new Set());
 
   const { settings, updateSettings, resetSettings } = useSettings();
 
@@ -232,8 +234,13 @@ export function App() {
   useEffect(() => {
     refreshProfiles();
     refreshSessions();
+  }, [refreshProfiles, refreshSessions]);
 
-    // Check if window was launched targeting a specific profile via CLI flag
+  // Check if window was launched targeting a specific profile via CLI flag (run once on mount)
+  useEffect(() => {
+    if (initialProfileHandledRef.current) return;
+    initialProfileHandledRef.current = true;
+
     GetInitialProfileID().then(async (initId) => {
       if (initId) {
         try {
@@ -247,7 +254,7 @@ export function App() {
         }
       }
     }).catch(() => {});
-  }, [refreshProfiles, refreshSessions]);
+  }, []);
 
   const handleConnected = (sessionId: string) => {
     refreshSessions();
@@ -257,55 +264,69 @@ export function App() {
   };
 
   const handleConnectProfile = async (profile: Profile) => {
-    // If multi-window setting is enabled and another session is already connected:
-    if (settings.openNewWindowForMultipleConnections && activeSessions.length > 0) {
-      const existing = activeSessions.find((s) => s.profile_id === profile.id);
+    if (connectingProfilesRef.current.has(profile.id)) {
+      return;
+    }
+    connectingProfilesRef.current.add(profile.id);
+
+    try {
+      // Query latest sessions from backend to avoid any stale state
+      const currentSessions = (await ListActiveSessions().catch(() => null)) || activeSessions;
+
+      // If multi-window setting is enabled and another session is already connected:
+      if (settings.openNewWindowForMultipleConnections && currentSessions.length > 0) {
+        const existing = currentSessions.find((s) => s.profile_id === profile.id);
+        if (existing) {
+          setActiveSessions(currentSessions);
+          setCurrentSessionId(existing.id);
+          setActiveActivityView('explorer');
+          setSidebarOpen(true);
+          return;
+        }
+        toast.info(`Opening ${profile.name} in a new window...`);
+        handleOpenNewWindow(profile.id);
+        return;
+      }
+
+      // Check if session already active for this profile
+      const existing = currentSessions.find((s) => s.profile_id === profile.id);
       if (existing) {
+        setActiveSessions(currentSessions);
         setCurrentSessionId(existing.id);
         setActiveActivityView('explorer');
         setSidebarOpen(true);
         return;
       }
-      toast.info(`Opening ${profile.name} in a new window...`);
-      handleOpenNewWindow(profile.id);
-      return;
-    }
 
-    // Check if session already active for this profile
-    const existing = activeSessions.find((s) => s.profile_id === profile.id);
-    if (existing) {
-      setCurrentSessionId(existing.id);
-      setActiveActivityView('explorer');
-      setSidebarOpen(true);
-      return;
-    }
+      // Try auto-connecting with saved secret or open dialog
+      try {
+        const resp = await Connect(profile, '', false);
+        if (resp.host_key_prompt) {
+          setEditingProfile(profile);
+          setPendingHostKeyPrompt(resp.host_key_prompt);
+          setConnectDialogOpen(true);
+          return;
+        }
 
-    // Try auto-connecting with saved secret or open dialog
-    try {
-      const resp = await Connect(profile, '', false);
-      if (resp.host_key_prompt) {
-        setEditingProfile(profile);
-        setPendingHostKeyPrompt(resp.host_key_prompt);
-        setConnectDialogOpen(true);
-        return;
-      }
-
-      if (resp.success && resp.session) {
-        toast.success(`Connected to ${profile.name}`);
-        refreshSessions();
-        setCurrentSessionId(resp.session.id);
-        setActiveActivityView('explorer');
-        setSidebarOpen(true);
-      } else {
-        // Needs credentials
+        if (resp.success && resp.session) {
+          toast.success(`Connected to ${profile.name}`);
+          await refreshSessions();
+          setCurrentSessionId(resp.session.id);
+          setActiveActivityView('explorer');
+          setSidebarOpen(true);
+        } else {
+          // Needs credentials
+          setEditingProfile(profile);
+          setPendingHostKeyPrompt(null);
+          setConnectDialogOpen(true);
+        }
+      } catch {
         setEditingProfile(profile);
         setPendingHostKeyPrompt(null);
         setConnectDialogOpen(true);
       }
-    } catch {
-      setEditingProfile(profile);
-      setPendingHostKeyPrompt(null);
-      setConnectDialogOpen(true);
+    } finally {
+      connectingProfilesRef.current.delete(profile.id);
     }
   };
 

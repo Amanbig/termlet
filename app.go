@@ -219,6 +219,18 @@ func (a *App) Connect(profile models.Profile, password string, trustKey bool) (*
 		}, nil
 	}
 
+	// Guard against duplicate connection attempts if this profile is already actively connected
+	if profile.ID != "" {
+		for _, s := range a.connMgr.ListSessions() {
+			if s.ProfileID == profile.ID && s.IsAlive {
+				return &ConnectResponse{
+					Success: true,
+					Session: &s,
+				}, nil
+			}
+		}
+	}
+
 	ctx := a.ctx
 	if ctx == nil {
 		ctx = context.Background()
@@ -565,7 +577,9 @@ func (a *App) SelectPrivateKeyFile() (string, error) {
 
 // GetInitialProfileID returns the profile ID passed via CLI flag when starting this window, if any.
 func (a *App) GetInitialProfileID() string {
-	return a.initialProfileID
+	id := a.initialProfileID
+	a.initialProfileID = "" // Clear once consumed to prevent repeated connections
+	return id
 }
 
 // OpenNewWindow spawns a new native instance of Termlet, optionally auto-connecting to profileID.

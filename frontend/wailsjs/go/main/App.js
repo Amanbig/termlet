@@ -98,6 +98,10 @@ export function GetDefaultSSHConfigPath() {
   return window['go']['main']['App']['GetDefaultSSHConfigPath']();
 }
 
+export function GetInitialProfileID() {
+  return window['go']['main']['App']['GetInitialProfileID']();
+}
+
 export function GetKnownHosts() {
   return window['go']['main']['App']['GetKnownHosts']();
 }
@@ -152,6 +156,10 @@ export function ListTransfers() {
 
 export function OpenLocalFile(arg1) {
   return window['go']['main']['App']['OpenLocalFile'](arg1);
+}
+
+export function OpenNewWindow(arg1) {
+  return window['go']['main']['App']['OpenNewWindow'](arg1);
 }
 
 export function ParseSSHConfig(arg1) {

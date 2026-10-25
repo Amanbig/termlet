@@ -11,6 +11,7 @@ import {
   ChevronRight,
   FolderDown,
   RotateCw,
+  ExternalLink,
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -33,6 +34,7 @@ interface ConnectionSidebarProps {
   onDisconnectSession: (sessionId: string) => void;
   onReconnectSession?: (sessionId: string) => void;
   onImportSSHConfig?: () => void;
+  onOpenInNewWindow?: (profileId: string) => void;
 }
 
 export const ConnectionSidebar: React.FC<ConnectionSidebarProps> = ({
@@ -47,6 +49,7 @@ export const ConnectionSidebar: React.FC<ConnectionSidebarProps> = ({
   onDisconnectSession,
   onReconnectSession,
   onImportSSHConfig,
+  onOpenInNewWindow,
 }) => {
   return (
     <div className="w-full bg-zinc-50 dark:bg-zinc-950 border-r border-zinc-200 dark:border-zinc-800/80 flex flex-col h-full select-none">
@@ -237,6 +240,11 @@ export const ConnectionSidebar: React.FC<ConnectionSidebarProps> = ({
                           <span className="text-xs">•••</span>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-200 text-xs shadow-lg">
+                          {onOpenInNewWindow && (
+                            <DropdownMenuItem onClick={() => onOpenInNewWindow(profile.id)}>
+                              <ExternalLink className="w-3.5 h-3.5 mr-2 text-zinc-500" /> Open in New Window
+                            </DropdownMenuItem>
+                          )}
                           <DropdownMenuItem onClick={() => onEditProfile(profile)}>
                             <Edit className="w-3.5 h-3.5 mr-2" /> Edit Profile
                           </DropdownMenuItem>

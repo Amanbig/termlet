@@ -33,13 +33,14 @@ var embeddedReleaseNotes string
 
 // App is the main application bridge between Wails frontend and Go backend.
 type App struct {
-	ctx          context.Context
-	connMgr      *connections.Manager
-	profileStore *storage.ProfileStorage
-	secretStore  *storage.SecretStorage
-	updater      *updater.Updater
-	tunnelMgr    *tunnel.Manager
-	transferMgr  *transfer.Manager
+	ctx              context.Context
+	initialProfileID string
+	connMgr          *connections.Manager
+	profileStore     *storage.ProfileStorage
+	secretStore      *storage.SecretStorage
+	updater          *updater.Updater
+	tunnelMgr        *tunnel.Manager
+	transferMgr      *transfer.Manager
 }
 
 // ConnectResponse wraps the outcome of a Connect request.
@@ -51,7 +52,7 @@ type ConnectResponse struct {
 }
 
 // NewApp creates a new App application struct.
-func NewApp() *App {
+func NewApp(initialProfileID string) *App {
 	profileStore, err := storage.NewProfileStorage()
 	if err != nil {
 		fmt.Printf("warning: failed to init profile storage: %v\n", err)
@@ -68,11 +69,12 @@ func NewApp() *App {
 	tunnelMgr := tunnel.NewManager()
 
 	app := &App{
-		profileStore: profileStore,
-		secretStore:  secretStore,
-		connMgr:      connMgr,
-		updater:      upd,
-		tunnelMgr:    tunnelMgr,
+		initialProfileID: initialProfileID,
+		profileStore:     profileStore,
+		secretStore:      secretStore,
+		connMgr:          connMgr,
+		updater:          upd,
+		tunnelMgr:        tunnelMgr,
 	}
 
 	app.transferMgr = transfer.NewManager(func(eventName string, data ...interface{}) {
@@ -559,6 +561,40 @@ func (a *App) SelectPrivateKeyFile() (string, error) {
 		return "", fmt.Errorf("failed to open file dialog: %w", err)
 	}
 	return selectedFile, nil
+}
+
+// GetInitialProfileID returns the profile ID passed via CLI flag when starting this window, if any.
+func (a *App) GetInitialProfileID() string {
+	return a.initialProfileID
+}
+
+// OpenNewWindow spawns a new native instance of Termlet, optionally auto-connecting to profileID.
+func (a *App) OpenNewWindow(profileID string) error {
+	var cmd *exec.Cmd
+
+	// If running inside a Snap environment, use snap run to invoke properly with runtime wrappers
+	if snapName := os.Getenv("SNAP_NAME"); snapName != "" {
+		args := []string{"run", snapName}
+		if profileID != "" {
+			args = append(args, "--profile", profileID)
+		}
+		cmd = exec.Command("snap", args...)
+	} else {
+		execPath, err := os.Executable()
+		if err != nil {
+			return fmt.Errorf("failed to determine executable path: %w", err)
+		}
+		if realPath, err := filepath.EvalSymlinks(execPath); err == nil {
+			execPath = realPath
+		}
+		var args []string
+		if profileID != "" {
+			args = append(args, "--profile", profileID)
+		}
+		cmd = exec.Command(execPath, args...)
+	}
+
+	return cmd.Start()
 }
 
 // UploadFileContent writes base64-encoded file data into a remote directory.

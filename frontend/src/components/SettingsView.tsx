@@ -602,6 +602,24 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   />
                 </div>
 
+                {/* Multi-Window for Multiple Connections */}
+                <div className="flex items-center justify-between border-t border-zinc-100 dark:border-zinc-800/60 pt-3">
+                  <div>
+                    <Label className="text-xs font-semibold text-zinc-900 dark:text-zinc-200">
+                      Open Connections in Separate Windows
+                    </Label>
+                    <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                      When already connected, connecting to another profile automatically opens in a new native window
+                    </p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={settings.openNewWindowForMultipleConnections ?? false}
+                    onChange={(e) => onUpdateSettings({ openNewWindowForMultipleConnections: e.target.checked })}
+                    className="w-4 h-4 rounded border-zinc-300 dark:border-zinc-700 accent-blue-600 cursor-pointer"
+                  />
+                </div>
+
                 {/* SSH Host Keys & Security */}
                 <div className="flex items-center justify-between border-t border-zinc-100 dark:border-zinc-800/60 pt-3">
                   <div>

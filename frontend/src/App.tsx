@@ -9,6 +9,8 @@ import {
   Reconnect,
   CheckForUpdates,
   GetAppVersion,
+  GetInitialProfileID,
+  OpenNewWindow,
 } from '../wailsjs/go/main/App';
 import { EventsOn } from '../wailsjs/runtime/runtime';
 import { updater, models } from '../wailsjs/go/models';
@@ -165,9 +167,22 @@ export function App() {
 
   const currentSession = activeSessions.find((s) => s.id === currentSessionId) || null;
 
-  // Global Shortcut: Ctrl+P / Cmd+P for Quick Open and Ctrl+` for Remote Terminal
+  const handleOpenNewWindow = useCallback(async (profileId = '') => {
+    try {
+      await OpenNewWindow(profileId);
+    } catch (err: any) {
+      toast.error(`Failed to open new window: ${err?.message || err}`);
+    }
+  }, []);
+
+  // Global Shortcut: Ctrl+P / Cmd+P for Quick Open and Ctrl+` for Remote Terminal, Ctrl+Shift+N for New Window
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'n') {
+        e.preventDefault();
+        handleOpenNewWindow('');
+      }
+
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'p' && !e.shiftKey) {
         e.preventDefault();
         if (currentSessionId) {
@@ -217,6 +232,21 @@ export function App() {
   useEffect(() => {
     refreshProfiles();
     refreshSessions();
+
+    // Check if window was launched targeting a specific profile via CLI flag
+    GetInitialProfileID().then(async (initId) => {
+      if (initId) {
+        try {
+          const profileList = await ListProfiles();
+          const target = profileList?.find((p) => p.id === initId);
+          if (target) {
+            handleConnectProfile(target);
+          }
+        } catch (e) {
+          console.error('Failed to auto-connect to initial profile:', e);
+        }
+      }
+    }).catch(() => {});
   }, [refreshProfiles, refreshSessions]);
 
   const handleConnected = (sessionId: string) => {
@@ -227,6 +257,20 @@ export function App() {
   };
 
   const handleConnectProfile = async (profile: Profile) => {
+    // If multi-window setting is enabled and another session is already connected:
+    if (settings.openNewWindowForMultipleConnections && activeSessions.length > 0) {
+      const existing = activeSessions.find((s) => s.profile_id === profile.id);
+      if (existing) {
+        setCurrentSessionId(existing.id);
+        setActiveActivityView('explorer');
+        setSidebarOpen(true);
+        return;
+      }
+      toast.info(`Opening ${profile.name} in a new window...`);
+      handleOpenNewWindow(profile.id);
+      return;
+    }
+
     // Check if session already active for this profile
     const existing = activeSessions.find((s) => s.profile_id === profile.id);
     if (existing) {
@@ -578,6 +622,7 @@ export function App() {
           setSidebarOpen(true);
         }}
         onQuickOpen={() => setQuickOpenOpen(true)}
+        onNewWindow={() => handleOpenNewWindow('')}
       />
 
       {/* Reconnect Banner if active session is dropped */}
@@ -678,6 +723,7 @@ export function App() {
                     onDisconnectSession={handleDisconnect}
                     onReconnectSession={handleReconnectSession}
                     onImportSSHConfig={() => setImportSSHConfigOpen(true)}
+                    onOpenInNewWindow={(id) => handleOpenNewWindow(id)}
                   />
                 </div>
               </ErrorBoundary>

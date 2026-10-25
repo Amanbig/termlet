@@ -23,6 +23,7 @@ export interface AppSettings {
   wordWrap: boolean;
   confirmDelete: boolean;
   defaultPort: number;
+  openNewWindowForMultipleConnections?: boolean;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -34,4 +35,5 @@ export const DEFAULT_SETTINGS: AppSettings = {
   wordWrap: false,
   confirmDelete: true,
   defaultPort: 22,
+  openNewWindowForMultipleConnections: false,
 };

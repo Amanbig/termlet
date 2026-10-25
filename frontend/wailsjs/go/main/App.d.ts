@@ -56,6 +56,8 @@ export function GetAppVersion():Promise<string>;
 
 export function GetDefaultSSHConfigPath():Promise<string>;
 
+export function GetInitialProfileID():Promise<string>;
+
 export function GetKnownHosts():Promise<Array<models.KnownHostEntry>>;
 
 export function GetProfileSecret(arg1:string):Promise<string>;
@@ -83,6 +85,8 @@ export function ListRemoteFiles(arg1:string,arg2:string):Promise<Array<models.Re
 export function ListTransfers():Promise<Array<transfer.Item>>;
 
 export function OpenLocalFile(arg1:string):Promise<void>;
+
+export function OpenNewWindow(arg1:string):Promise<void>;
 
 export function ParseSSHConfig(arg1:string):Promise<Array<models.Profile>>;
 

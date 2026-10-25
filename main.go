@@ -4,6 +4,7 @@ import (
 	"embed"
 	"os"
 	"runtime/debug"
+	"strings"
 	"time"
 
 	"github.com/wailsapp/wails/v2"
@@ -33,6 +34,20 @@ var assets embed.FS
 var appIcon []byte
 
 func main() {
+	// Parse CLI flags for initial profile connection
+	var initialProfileID string
+	for i := 1; i < len(os.Args); i++ {
+		arg := os.Args[i]
+		if (arg == "--profile" || arg == "-p" || arg == "--connect") && i+1 < len(os.Args) {
+			initialProfileID = os.Args[i+1]
+			i++
+		} else if strings.HasPrefix(arg, "--profile=") {
+			initialProfileID = strings.TrimPrefix(arg, "--profile=")
+		} else if strings.HasPrefix(arg, "--connect=") {
+			initialProfileID = strings.TrimPrefix(arg, "--connect=")
+		}
+	}
+
 	// Automatically register icon and desktop entry on Linux for standalone desktop binaries
 	installDesktopIntegration(appIcon)
 
@@ -46,7 +61,7 @@ func main() {
 	}()
 
 	// Create an instance of the app structure
-	app := NewApp()
+	app := NewApp(initialProfileID)
 
 	// Create application with options
 	err := wails.Run(&options.App{

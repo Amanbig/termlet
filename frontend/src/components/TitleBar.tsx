@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Minus, Square, X, Server, Terminal, Settings as SettingsIcon, Search } from 'lucide-react';
+import { Minus, Square, X, Server, Terminal, Settings as SettingsIcon, Search, AppWindow } from 'lucide-react';
 import {
   WindowMinimise,
   WindowToggleMaximise,
@@ -17,6 +17,7 @@ interface TitleBarProps {
   onNewConnection: () => void;
   onOpenProfiles: () => void;
   onQuickOpen?: () => void;
+  onNewWindow?: () => void;
 }
 
 function RestoreIcon({ className = 'w-3 h-3' }: { className?: string }) {
@@ -36,6 +37,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({
   onNewConnection,
   onOpenProfiles,
   onQuickOpen,
+  onNewWindow,
 }) => {
   const [isMaximised, setIsMaximised] = useState(false);
 
@@ -179,6 +181,18 @@ export const TitleBar: React.FC<TitleBarProps> = ({
 
       {/* Right: Window Controls */}
       <div className="flex items-center h-full shrink-0 wails-no-drag">
+        {/* New Window Shortcut */}
+        {onNewWindow && (
+          <button
+            type="button"
+            onClick={onNewWindow}
+            title="New Window (Ctrl+Shift+N)"
+            className="h-full px-2.5 flex items-center justify-center text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-200/70 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+          >
+            <AppWindow className="w-3.5 h-3.5" />
+          </button>
+        )}
+
         {/* Settings Shortcut */}
         <button
           type="button"

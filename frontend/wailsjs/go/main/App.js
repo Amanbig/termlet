@@ -202,6 +202,10 @@ export function SearchRemoteFiles(arg1, arg2, arg3, arg4) {
   return window['go']['main']['App']['SearchRemoteFiles'](arg1, arg2, arg3, arg4);
 }
 
+export function SelectPrivateKeyFile() {
+  return window['go']['main']['App']['SelectPrivateKeyFile']();
+}
+
 export function SetRemoteCwd(arg1, arg2, arg3) {
   return window['go']['main']['App']['SetRemoteCwd'](arg1, arg2, arg3);
 }

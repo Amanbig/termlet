@@ -108,6 +108,8 @@ export function SaveRemoteFile(arg1:string,arg2:string,arg3:string,arg4:number):
 
 export function SearchRemoteFiles(arg1:string,arg2:string,arg3:string,arg4:number):Promise<Array<models.RemoteFile>>;
 
+export function SelectPrivateKeyFile():Promise<string>;
+
 export function SetRemoteCwd(arg1:string,arg2:string,arg3:string):Promise<void>;
 
 export function StartPortForward(arg1:string,arg2:number,arg3:string,arg4:number,arg5:string):Promise<tunnel.TunnelInfo>;

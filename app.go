@@ -523,6 +523,44 @@ func (a *App) DownloadRemotePath(sessionID string, remotePath string, isDir bool
 	return localPath, nil
 }
 
+// SelectPrivateKeyFile opens a native OS file picker allowing the user to select an SSH private key file from disk.
+func (a *App) SelectPrivateKeyFile() (string, error) {
+	ctx := a.ctx
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	homeDir, _ := os.UserHomeDir()
+	defaultDir := ""
+	if homeDir != "" {
+		sshDir := filepath.Join(homeDir, ".ssh")
+		if info, err := os.Stat(sshDir); err == nil && info.IsDir() {
+			defaultDir = sshDir
+		} else {
+			defaultDir = homeDir
+		}
+	}
+
+	selectedFile, err := wailsRuntime.OpenFileDialog(ctx, wailsRuntime.OpenDialogOptions{
+		Title:            "Select SSH Private Key File",
+		DefaultDirectory: defaultDir,
+		Filters: []wailsRuntime.FileFilter{
+			{
+				DisplayName: "All Files (*)",
+				Pattern:     "*",
+			},
+			{
+				DisplayName: "SSH & PEM Key Files (*.pem, *.key, id_*)",
+				Pattern:     "*.pem;*.key;id_*",
+			},
+		},
+	})
+	if err != nil {
+		return "", fmt.Errorf("failed to open file dialog: %w", err)
+	}
+	return selectedFile, nil
+}
+
 // UploadFileContent writes base64-encoded file data into a remote directory.
 func (a *App) UploadFileContent(sessionID string, remoteDir string, fileName string, base64Content string) error {
 	sftpCl, err := a.getSFTPClient(sessionID)

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Profile, HostKeyPrompt } from '../types/remote';
-import { Connect, SaveProfile, GetProfileSecret } from '../../wailsjs/go/main/App';
+import { Connect, SaveProfile, GetProfileSecret, SelectPrivateKeyFile } from '../../wailsjs/go/main/App';
 import {
   Dialog,
   DialogContent,
@@ -13,7 +13,7 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/tabs';
-import { ShieldAlert, Server, Key, KeyRound, Lock, Loader2, Check, AlertTriangle, ChevronDown, ChevronUp, FolderDown } from 'lucide-react';
+import { ShieldAlert, Server, Key, KeyRound, Lock, Loader2, Check, AlertTriangle, ChevronDown, ChevronUp, FolderDown, FolderOpen } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatErrorMessage, FormattedError } from '../utils/errors';
 import { SSHKeyModal } from './SSHKeyModal';
@@ -92,6 +92,17 @@ export const ConnectDialog: React.FC<ConnectDialogProps> = ({
     }
     setHostKeyPrompt(initialHostKeyPrompt || null);
   }, [initialProfile, initialHostKeyPrompt, open]);
+
+  const handleBrowseKeyFile = async () => {
+    try {
+      const selected = await SelectPrivateKeyFile();
+      if (selected) {
+        setKeyPath(selected);
+      }
+    } catch (err: any) {
+      console.error('Failed to open key file dialog:', err);
+    }
+  };
 
   const handleSubmit = async (trustKey = false) => {
     if (!host.trim() || !username.trim()) {
@@ -287,12 +298,25 @@ export const ConnectDialog: React.FC<ConnectDialogProps> = ({
                         Pick / Generate Key...
                       </button>
                     </div>
-                    <Input
-                      placeholder="/home/user/.ssh/id_ed25519"
-                      value={keyPath}
-                      onChange={(e) => setKeyPath(e.target.value)}
-                      className="bg-zinc-50 dark:bg-zinc-900 border-zinc-300 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 text-xs h-8"
-                    />
+                    <div className="flex items-center gap-1.5">
+                      <Input
+                        placeholder="/home/user/.ssh/id_ed25519"
+                        value={keyPath}
+                        onChange={(e) => setKeyPath(e.target.value)}
+                        className="bg-zinc-50 dark:bg-zinc-900 border-zinc-300 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 text-xs h-8 flex-1"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleBrowseKeyFile}
+                        className="h-8 text-xs px-2.5 shrink-0 gap-1.5 cursor-pointer bg-zinc-50 dark:bg-zinc-900 hover:bg-zinc-100 dark:hover:bg-zinc-800 border-zinc-300 dark:border-zinc-800"
+                        title="Browse files on your computer"
+                      >
+                        <FolderOpen className="w-3.5 h-3.5 text-zinc-500" />
+                        <span>Browse...</span>
+                      </Button>
+                    </div>
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs text-zinc-600 dark:text-zinc-400">Passphrase (if encrypted)</Label>

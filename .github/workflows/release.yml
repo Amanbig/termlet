@@ -163,9 +163,41 @@ jobs:
             termlet-*.*
           if-no-files-found: error
 
+  snap:
+    name: Build & Publish Snap (Linux)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v7
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Build Snap Package
+        id: snapcraft
+        uses: snapcore/action-build@v1
+        with:
+          path: .
+
+      - name: Publish Snap to Snap Store
+        if: startsWith(github.ref, 'refs/tags/v') && secrets.SNAPCRAFT_STORE_CREDENTIALS != ''
+        uses: snapcore/action-publish@v1
+        env:
+          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
+        with:
+          snap: ${{ steps.snapcraft.outputs.snap }}
+          release: candidate,stable
+
+      - name: Upload Snap Package Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: termlet-snap-amd64
+          path: ${{ steps.snapcraft.outputs.snap }}
+          if-no-files-found: error
+
   release:
     name: Publish GitHub Release
-    needs: build
+    needs: [build, snap]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
     permissions:

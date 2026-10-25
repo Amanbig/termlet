@@ -74,6 +74,21 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
   const [isMaximized, setIsMaximized] = useState(false);
   const [copied, setCopied] = useState(false);
 
+  // Terminal drag-to-resize height (persisted in localStorage)
+  const [height, setHeight] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('termlet_terminal_height');
+      if (saved) {
+        const val = parseInt(saved, 10);
+        if (!isNaN(val) && val >= 120 && val <= 1600) return val;
+      }
+    } catch {}
+    return 320;
+  });
+  const [isDragging, setIsDragging] = useState(false);
+  const preMaximizedHeightRef = useRef<number>(320);
+  const isDraggingRef = useRef(false);
+
   const terminalScrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const drawerRef = useRef<HTMLDivElement>(null);
@@ -327,6 +342,72 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
     }
   };
 
+  const handleToggleMaximize = useCallback(() => {
+    setIsMaximized((prev) => {
+      if (!prev) {
+        preMaximizedHeightRef.current = height;
+        return true;
+      }
+      return false;
+    });
+  }, [height]);
+
+  const handleMouseDownResize = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      isDraggingRef.current = true;
+      setIsDragging(true);
+
+      const startY = e.clientY;
+      const startHeight = drawerRef.current ? drawerRef.current.clientHeight : height;
+
+      if (isMaximized) {
+        setIsMaximized(false);
+      }
+
+      document.body.style.cursor = 'row-resize';
+      document.body.style.userSelect = 'none';
+
+      const handleMouseMove = (moveEvent: MouseEvent) => {
+        if (!isDraggingRef.current) return;
+        const deltaY = startY - moveEvent.clientY;
+        const parentHeight =
+          drawerRef.current?.parentElement?.clientHeight || window.innerHeight;
+        const maxAllowed = Math.max(180, parentHeight - 50);
+        const minAllowed = 100;
+        const newH = Math.max(minAllowed, Math.min(startHeight + deltaY, maxAllowed));
+
+        setHeight(newH);
+      };
+
+      const handleMouseUp = (upEvent: MouseEvent) => {
+        isDraggingRef.current = false;
+        setIsDragging(false);
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+
+        window.removeEventListener('mousemove', handleMouseMove);
+        window.removeEventListener('mouseup', handleMouseUp);
+
+        const deltaY = startY - upEvent.clientY;
+        const parentHeight =
+          drawerRef.current?.parentElement?.clientHeight || window.innerHeight;
+        const maxAllowed = Math.max(180, parentHeight - 50);
+        const minAllowed = 100;
+        const finalH = Math.max(minAllowed, Math.min(startHeight + deltaY, maxAllowed));
+
+        setHeight(finalH);
+        try {
+          localStorage.setItem('termlet_terminal_height', String(finalH));
+        } catch {}
+      };
+
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+    },
+    [height, isMaximized]
+  );
+
   const handleCopyAll = () => {
     const text = history
       .map((h) => {
@@ -347,10 +428,27 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
   return (
     <div
       ref={drawerRef}
-      className={`absolute bottom-0 left-0 right-0 z-30 flex flex-col bg-zinc-950/95 dark:bg-zinc-950/98 text-zinc-100 border-t border-zinc-800 shadow-2xl backdrop-blur-md transition-all duration-200 select-text ${
-        isMaximized ? 'h-[85%]' : 'h-80 sm:h-96 max-h-[85%]'
-      }`}
+      style={{
+        height: isMaximized ? '85%' : `${height}px`,
+        transition: isDragging ? 'none' : 'height 150ms cubic-bezier(0.16, 1, 0.3, 1)',
+      }}
+      className="absolute bottom-0 left-0 right-0 z-30 flex flex-col bg-zinc-950/95 dark:bg-zinc-950/98 text-zinc-100 border-t border-zinc-800 shadow-2xl backdrop-blur-md select-text"
     >
+      {/* Resizable Top Border Handle (VS Code style drag-to-resize) */}
+      <div
+        onMouseDown={handleMouseDownResize}
+        onDoubleClick={handleToggleMaximize}
+        className="absolute -top-1.5 left-0 right-0 h-3 cursor-row-resize z-40 group flex items-center justify-center select-none"
+        title="Drag to resize, double-click to toggle maximize"
+      >
+        <div
+          className={`w-full h-0.5 transition-colors ${
+            isDragging
+              ? 'bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.8)]'
+              : 'bg-transparent group-hover:bg-blue-500/70'
+          }`}
+        />
+      </div>
       {/* Header Bar */}
       <div className="flex items-center justify-between px-3 py-1.5 bg-zinc-900 border-b border-zinc-800 shrink-0 select-none">
         <div className="flex items-center gap-2.5 min-w-0">
@@ -416,7 +514,7 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
           </button>
 
           <button
-            onClick={() => setIsMaximized((prev) => !prev)}
+            onClick={handleToggleMaximize}
             className="p-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors cursor-pointer"
             title={isMaximized ? 'Restore height' : 'Maximize terminal'}
           >

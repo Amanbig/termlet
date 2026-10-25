@@ -11,13 +11,12 @@
 
 <p align="center">
   <a href="https://github.com/Amanbig/termlet/releases/latest"><img src="https://img.shields.io/github/v/release/Amanbig/termlet?label=release" alt="Latest release" /></a>
+  <a href="https://snapcraft.io/termlet"><img src="https://snapcraft.io/termlet/badge.svg" alt="Snap Status" /></a>
   <a href="https://github.com/Amanbig/termlet/actions/workflows/ci.yml"><img src="https://github.com/Amanbig/termlet/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache_2.0-blue.svg" alt="License: Apache 2.0" /></a>
   <a href="https://github.com/Amanbig/termlet/issues"><img src="https://img.shields.io/github/issues/Amanbig/termlet" alt="Open issues" /></a>
   <img src="https://img.shields.io/badge/Platform-Linux%20%7C%20Windows%20%7C%20macOS-lightgrey" alt="Platforms" />
 </p>
-
-[![Get it from the Snap Store](https://snapcraft.io/en/dark/install.svg)](https://snapcraft.io/termlet)
 
 <p align="center">
   <a href="#install">Install</a> ·
@@ -49,11 +48,22 @@ Built with [Wails v2](https://wails.io) (Go) and React 19 + TypeScript, so it sh
 
 ## Install
 
+### Snap Store (Linux)
+
+Install directly from the Ubuntu Snap Store:
+
+```bash
+sudo snap install termlet
+```
+
+### GitHub Releases
+
 Download the latest build for your platform from the [Releases page](https://github.com/Amanbig/termlet/releases/latest):
 
 | Platform | Packages |
 | :--- | :--- |
-| **Linux (amd64)** | `.deb`, `.rpm`, `.tar.gz` |
+| **Linux (Snap)** | `sudo snap install termlet` |
+| **Linux (amd64)** | `.deb`, `.rpm`, `.tar.gz`, `.snap` |
 | **Windows (amd64)** | Installer `.exe`, portable `.zip` |
 | **macOS (Universal)** | `.dmg`, `.zip` |
 

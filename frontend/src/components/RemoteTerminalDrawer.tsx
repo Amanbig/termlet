@@ -1,8 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Terminal,
-  ChevronUp,
-  ChevronDown,
   Maximize2,
   Minimize2,
   X,
@@ -13,7 +11,6 @@ import {
   Loader2,
   AlertCircle,
   Square,
-  CornerDownLeft,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -202,15 +199,13 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
           document.activeElement === inputRef.current
         ) {
           e.preventDefault();
-          if (commandInput) {
-            appendHistory({
-              type: 'cmd',
-              text: `${commandInput}^C`,
-              cwd,
-              timestamp: Date.now(),
-            });
-            setCommandInput('');
-          }
+          appendHistory({
+            type: 'cmd',
+            text: commandInput ? `${commandInput}^C` : '^C',
+            cwd,
+            timestamp: Date.now(),
+          });
+          setCommandInput('');
           setTimeout(() => inputRef.current?.focus({ preventScroll: true }), 30);
         }
       }
@@ -222,8 +217,20 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
 
   const handleRunCommand = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
+    if (executing || !currentSession) return;
     const cmdStr = commandInput.trim();
-    if (!cmdStr || executing || !currentSession) return;
+
+    if (!cmdStr) {
+      appendHistory({
+        type: 'cmd',
+        text: '',
+        cwd,
+        timestamp: Date.now(),
+      });
+      setCommandInput('');
+      setHistoryIndex(-1);
+      return;
+    }
 
     if (cmdStr.toLowerCase() === 'clear') {
       setHistory([]);
@@ -323,7 +330,9 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
   const handleCopyAll = () => {
     const text = history
       .map((h) => {
-        if (h.type === 'cmd') return `$ ${h.text}`;
+        if (h.type === 'cmd') {
+          return `${currentSession ? `${currentSession.username}@${currentSession.host}:` : ''}${shortenPath(h.cwd || '~')}$ ${h.text}`;
+        }
         return h.text;
       })
       .join('\n');
@@ -428,11 +437,16 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
         </div>
       </div>
 
-      {/* Terminal Output Area */}
+      {/* Terminal Output & Inline Command Stream */}
       <div
         ref={terminalScrollRef}
-        onClick={() => inputRef.current?.focus({ preventScroll: true })}
-        className="flex-1 overflow-y-auto px-4 py-2 font-mono text-xs leading-relaxed space-y-1.5 cursor-text divide-y-0"
+        onClick={() => {
+          const selection = window.getSelection()?.toString();
+          if (!selection) {
+            inputRef.current?.focus({ preventScroll: true });
+          }
+        }}
+        className="flex-1 overflow-y-auto px-4 py-2 pb-5 font-mono text-xs leading-relaxed space-y-1.5 cursor-text divide-y-0"
       >
         {!currentSession && (
           <div className="flex items-center gap-2 text-zinc-500 py-4">
@@ -456,7 +470,10 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
           if (item.type === 'cmd') {
             return (
               <div key={item.id} className="flex items-start gap-1.5 text-zinc-200 pt-1">
-                <span className="text-emerald-400 font-bold select-none shrink-0">$</span>
+                <span className="text-emerald-400 font-bold select-none shrink-0">
+                  {currentSession ? `${currentSession.username}@${currentSession.host}` : 'ssh'}:
+                  <span className="text-blue-400 font-normal">{shortenPath(item.cwd || '~')}</span>$
+                </span>
                 <span className="text-zinc-100 font-semibold select-all break-all">
                   {item.text}
                 </span>
@@ -490,53 +507,38 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
         })}
 
         {executing && (
-          <div className="flex items-center gap-2 text-amber-400/80 py-1 text-[11px] pl-3">
+          <div className="flex items-center gap-2 text-amber-400/90 py-1 text-[11px] pl-1">
             <Loader2 className="w-3 h-3 animate-spin" />
             <span className="italic">Running remote command...</span>
           </div>
         )}
+
+        {/* Active Inline Command Prompt */}
+        {currentSession && !executing && (
+          <form
+            onSubmit={handleRunCommand}
+            className="flex items-start gap-1.5 text-zinc-200 pt-1"
+          >
+            <span className="text-emerald-400 font-bold select-none shrink-0">
+              {currentSession.username}@{currentSession.host}:
+              <span className="text-blue-400 font-normal">{shortenPath(cwd)}</span>$
+            </span>
+            <input
+              ref={inputRef}
+              type="text"
+              value={commandInput}
+              onChange={(e) => setCommandInput(e.target.value)}
+              onKeyDown={handleKeyDownInput}
+              className="flex-1 min-w-[60px] bg-transparent border-0 outline-none text-zinc-100 font-mono text-xs p-0 m-0 shadow-none focus:outline-none focus:ring-0 focus:border-none caret-emerald-400"
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="off"
+              spellCheck="false"
+              autoFocus
+            />
+          </form>
+        )}
       </div>
-
-      {/* Terminal Interactive Input Line */}
-      <form
-        onSubmit={handleRunCommand}
-        className="flex items-center gap-2 px-3 py-1.5 bg-zinc-900/90 border-t border-zinc-800/80 shrink-0 font-mono text-xs"
-      >
-        <span className="text-emerald-400 font-bold shrink-0 select-none">
-          {currentSession ? `${currentSession.username}@${currentSession.host}` : 'ssh'}:
-          <span className="text-blue-400 font-normal">{shortenPath(cwd)}</span>$
-        </span>
-
-        <input
-          ref={inputRef}
-          type="text"
-          value={commandInput}
-          onChange={(e) => setCommandInput(e.target.value)}
-          onKeyDown={handleKeyDownInput}
-          disabled={!currentSession || executing}
-          placeholder={
-            !currentSession
-              ? 'Connect to a server to execute commands...'
-              : executing
-              ? 'Executing command (press Ctrl+C to cancel)...'
-              : 'Enter command (e.g. ls, docker ps, top, git status)...'
-          }
-          className="flex-1 bg-transparent border-none outline-none text-zinc-100 placeholder-zinc-600 text-xs font-mono disabled:opacity-50 caret-emerald-400"
-          autoComplete="off"
-          autoCorrect="off"
-          autoCapitalize="off"
-          spellCheck="false"
-        />
-
-        <button
-          type="submit"
-          disabled={!commandInput.trim() || executing || !currentSession}
-          className="p-1 rounded text-zinc-400 hover:text-emerald-400 disabled:opacity-30 disabled:hover:text-zinc-400 cursor-pointer transition-colors"
-          title="Run Command (Enter)"
-        >
-          <CornerDownLeft className="w-3.5 h-3.5" />
-        </button>
-      </form>
     </div>
   );
 };

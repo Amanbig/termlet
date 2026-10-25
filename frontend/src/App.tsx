@@ -56,7 +56,7 @@ export function App() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [activeSessions, setActiveSessions] = useState<SessionSummary[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
-  const [activeActivityView, setActiveActivityView] = useState<ActivityView>('explorer');
+  const [activeActivityView, setActiveActivityView] = useState<ActivityView>('connections');
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   const [connectDialogOpen, setConnectDialogOpen] = useState(false);

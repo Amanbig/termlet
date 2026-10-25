@@ -17,6 +17,8 @@
   <img src="https://img.shields.io/badge/Platform-Linux%20%7C%20Windows%20%7C%20macOS-lightgrey" alt="Platforms" />
 </p>
 
+[![Get it from the Snap Store](https://snapcraft.io/en/dark/install.svg)](https://snapcraft.io/termlet)
+
 <p align="center">
   <a href="#install">Install</a> ·
   <a href="#features">Features</a> ·

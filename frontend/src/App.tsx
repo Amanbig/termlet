@@ -1019,7 +1019,7 @@ export function App() {
               }}
               className="px-3 py-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-semibold rounded-lg shadow-sm cursor-pointer transition-all"
             >
-              Update in Settings
+              {updateInfo?.installType === 'snap' ? 'View in Settings' : 'Update in Settings'}
             </button>
           </div>
         </div>

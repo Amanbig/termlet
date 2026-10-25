@@ -115,6 +115,11 @@ func setProgress(p DownloadProgress) {
 
 // DetectInstallationType detects how Termlet is installed on the host system.
 func DetectInstallationType() string {
+	// 0. Check if running inside a Snap environment
+	if os.Getenv("SNAP") != "" || os.Getenv("SNAP_NAME") != "" {
+		return "snap"
+	}
+
 	if runtime.GOOS == "linux" {
 		// 1. Check if dpkg manages termlet
 		if _, err := exec.LookPath("dpkg"); err == nil {
@@ -248,6 +253,13 @@ func CheckForUpdate(ctx context.Context) (*UpdateInfo, error) {
 
 // DownloadAndInstallUpdate downloads the matching archive, extracts the binary, and updates the executable in-place.
 func DownloadAndInstallUpdate(ctx context.Context, downloadURL, assetFileName string) error {
+	installType := DetectInstallationType()
+	if installType == "snap" {
+		err := errors.New("Termlet is installed via Snap. Updates are managed automatically by the Snap Store (or run 'sudo snap refresh termlet').")
+		setProgress(DownloadProgress{Status: "error", Error: err.Error()})
+		return err
+	}
+
 	if downloadURL == "" {
 		return errors.New("missing download url")
 	}

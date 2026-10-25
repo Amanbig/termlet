@@ -749,13 +749,23 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                             )}
                           </div>
                           <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">
-                            Installed: v{appVersion.replace(/^v/, '')} &bull; Latest release ready to install
+                            Installed: v{appVersion.replace(/^v/, '')} &bull;{' '}
+                            {activeUpdateInfo.installType === 'snap'
+                              ? 'Snap Store updates automatically in the background'
+                              : 'Latest release ready to install'}
                           </p>
                         </div>
                       </div>
 
                       <div className="flex items-center gap-2 shrink-0">
-                        {installState === 'ready' ? (
+                        {activeUpdateInfo.installType === 'snap' ? (
+                          <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/60 text-xs text-blue-700 dark:text-blue-300">
+                            <span>Managed by Snap Store &bull; run</span>
+                            <code className="font-mono font-semibold bg-white dark:bg-zinc-900 px-1 py-0.5 rounded border border-blue-200 dark:border-blue-800 text-[11px]">
+                              snap refresh termlet
+                            </code>
+                          </div>
+                        ) : installState === 'ready' ? (
                           <Button
                             size="sm"
                             onClick={handleRestartNow}
@@ -868,7 +878,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   <div className="p-3.5 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/50 flex items-center gap-2.5 text-xs text-emerald-800 dark:text-emerald-300">
                     <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
                     <span className="font-medium">
-                      You are running the latest official release of Termlet (v{appVersion.replace(/^v/, '')}).
+                      You are running the latest official release of Termlet (v{appVersion.replace(/^v/, '')}){activeUpdateInfo?.installType === 'snap' ? ' (Snap package)' : ''}.
                     </span>
                   </div>
                 ) : null}

@@ -347,8 +347,8 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
   return (
     <div
       ref={drawerRef}
-      className={`fixed bottom-6 left-0 right-0 z-30 flex flex-col bg-zinc-950/95 dark:bg-zinc-950/98 text-zinc-100 border-t border-zinc-800 shadow-2xl backdrop-blur-md transition-all duration-200 select-text ${
-        isMaximized ? 'h-[75vh]' : 'h-80 sm:h-96'
+      className={`absolute bottom-0 left-0 right-0 z-30 flex flex-col bg-zinc-950/95 dark:bg-zinc-950/98 text-zinc-100 border-t border-zinc-800 shadow-2xl backdrop-blur-md transition-all duration-200 select-text ${
+        isMaximized ? 'h-[85%]' : 'h-80 sm:h-96 max-h-[85%]'
       }`}
     >
       {/* Header Bar */}

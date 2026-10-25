@@ -597,7 +597,7 @@ export function App() {
         )}
 
         {/* 3. Main Center Area: Welcome Screen, Settings Tab, or Code Workspace */}
-        <div className="flex-1 flex flex-col h-full min-w-0 bg-zinc-50 dark:bg-zinc-950 overflow-hidden">
+        <div className="flex-1 flex flex-col h-full min-w-0 bg-zinc-50 dark:bg-zinc-950 overflow-hidden relative">
           <ErrorBoundary fallbackTitle="An unexpected view error occurred">
             {showWelcome ? (
               <WelcomeScreen
@@ -680,6 +680,13 @@ export function App() {
               </div>
             )}
           </ErrorBoundary>
+
+          {/* Remote Interactive SSH Terminal Drawer (Scoped to Workspace/Tab area) */}
+          <RemoteTerminalDrawer
+            isOpen={terminalDrawerOpen}
+            onClose={() => setTerminalDrawerOpen(false)}
+            currentSession={currentSession}
+          />
         </div>
       </div>
 
@@ -880,13 +887,6 @@ export function App() {
         isOpen={transferDrawerOpen}
         onClose={() => setTransferDrawerOpen(false)}
         onActiveCountChange={setActiveTransfersCount}
-      />
-
-      {/* Remote Interactive SSH Terminal Drawer */}
-      <RemoteTerminalDrawer
-        isOpen={terminalDrawerOpen}
-        onClose={() => setTerminalDrawerOpen(false)}
-        currentSession={currentSession}
       />
 
       {/* Non-intrusive Update Toast Notification */}

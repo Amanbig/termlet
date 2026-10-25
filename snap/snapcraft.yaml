@@ -6,7 +6,7 @@ description: |
   Termlet is a fast, lightweight desktop SSH client featuring a built-in
   SFTP dual-pane file manager, remote code editor, local port forwarding,
   and interactive multi-tab remote terminal drawer.
-icon: snap/gui/termlet.png
+icon: gui/termlet.png
 
 grade: stable
 confinement: strict
@@ -19,7 +19,7 @@ platforms:
 apps:
   termlet:
     command: bin/termlet
-    desktop: snap/gui/termlet.desktop
+    desktop: gui/termlet.desktop
     extensions: [gnome]
     environment:
       WEBKIT_DISABLE_DMABUF_RENDERER: "1"

@@ -248,12 +248,17 @@ export function App() {
           const target = profileList?.find((p) => p.id === initId);
           if (target) {
             handleConnectProfile(target);
+          } else {
+            console.warn(`Initial profile with ID "${initId}" not found.`);
           }
-        } catch (e) {
+        } catch (e: any) {
           console.error('Failed to auto-connect to initial profile:', e);
+          toast.error('Failed to load connection profile for this window');
         }
       }
-    }).catch(() => {});
+    }).catch((err) => {
+      console.error('Failed to get initial profile ID:', err);
+    });
   }, []);
 
   const handleConnected = (sessionId: string) => {
@@ -315,12 +320,22 @@ export function App() {
           setActiveActivityView('explorer');
           setSidebarOpen(true);
         } else {
-          // Needs credentials
+          const err = resp.error || '';
+          const isCredRequired =
+            err.includes('password is required') ||
+            err.includes('passphrase') ||
+            err.includes('no valid authentication method');
+
+          if (!isCredRequired && err) {
+            toast.error(`Connection failed: ${err}`);
+          }
+
           setEditingProfile(profile);
           setPendingHostKeyPrompt(null);
           setConnectDialogOpen(true);
         }
-      } catch {
+      } catch (err: any) {
+        toast.error(`Connection error: ${err?.message || err}`);
         setEditingProfile(profile);
         setPendingHostKeyPrompt(null);
         setConnectDialogOpen(true);

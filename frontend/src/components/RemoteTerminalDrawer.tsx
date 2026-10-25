@@ -13,6 +13,8 @@ import {
   Square,
   Plus,
   CopyPlus,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -104,6 +106,8 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
   const terminalScrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const drawerRef = useRef<HTMLDivElement>(null);
+  const tabsContainerRef = useRef<HTMLDivElement>(null);
+  const activeTabButtonRef = useRef<HTMLDivElement>(null);
   const prevSessionIdRef = useRef<string | null>(null);
   const isCancelledRef = useRef<Record<string, boolean>>({});
   const nextTabNumRef = useRef<number>(1);
@@ -181,6 +185,30 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
       return () => clearTimeout(timer);
     }
   }, [isOpen, activeTabId, activeTab?.executing]);
+
+  // Ensure active tab is visible in tab bar
+  useEffect(() => {
+    if (activeTabButtonRef.current) {
+      activeTabButtonRef.current.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest',
+        inline: 'nearest',
+      });
+    }
+  }, [activeTabId]);
+
+  const handleTabsWheel = (e: React.WheelEvent<HTMLDivElement>) => {
+    if (e.deltaY !== 0 && tabsContainerRef.current) {
+      tabsContainerRef.current.scrollLeft += e.deltaY;
+    }
+  };
+
+  const handleScrollTabs = (direction: 'left' | 'right') => {
+    if (tabsContainerRef.current) {
+      const offset = direction === 'left' ? -160 : 160;
+      tabsContainerRef.current.scrollBy({ left: offset, behavior: 'smooth' });
+    }
+  };
 
   const shortenPath = (path: string) => {
     if (!path) return '~';
@@ -871,91 +899,118 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
 
       {/* Header Bar with Terminal Tabs */}
       <div className="flex items-center justify-between px-2 py-1 bg-zinc-900 border-b border-zinc-800 shrink-0 select-none gap-2 min-h-[34px]">
-        {/* Left: Terminal Tab Strip & New Tab Button */}
-        <div className="flex items-center gap-1 min-w-0 overflow-x-auto scrollbar-none py-0.5">
-          {tabs.map((tab) => {
-            const isActive = tab.id === activeTabId;
-            return (
-              <div
-                key={tab.id}
-                onClick={() => {
-                  setActiveTabId(tab.id);
-                  setTimeout(() => inputRef.current?.focus({ preventScroll: true }), 40);
-                }}
-                className={`group flex items-center gap-1.5 px-2.5 py-1 rounded text-xs cursor-pointer transition-colors shrink-0 ${
-                  isActive
-                    ? 'bg-zinc-800/90 text-zinc-100 font-semibold border border-zinc-700/70 shadow-xs'
-                    : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50'
-                }`}
-                title={`${tab.title} (${tab.cwd})`}
-              >
-                <Terminal className={`w-3 h-3 ${isActive ? 'text-emerald-400' : 'text-zinc-500'}`} />
-                {editingTabId === tab.id ? (
-                  <input
-                    type="text"
-                    value={editingTitle}
-                    autoFocus
-                    onChange={(e) => setEditingTitle(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.stopPropagation();
-                        handleSaveRenameTab(tab.id);
-                      } else if (e.key === 'Escape') {
-                        e.stopPropagation();
-                        setEditingTabId(null);
-                      }
-                    }}
-                    onBlur={() => handleSaveRenameTab(tab.id)}
-                    onClick={(e) => e.stopPropagation()}
-                    className="bg-zinc-950 border border-blue-500 rounded px-1 py-0 text-xs text-zinc-100 outline-none w-20"
-                  />
-                ) : (
-                  <span
-                    onDoubleClick={(e) => handleStartRenameTab(e, tab)}
-                    className="truncate max-w-[120px]"
-                    title="Double-click to rename"
-                  >
-                    {tab.title}
-                  </span>
-                )}
+        {/* Left: Terminal Tab Strip with Horizontal Mouse-Wheel Scrolling & Action Buttons */}
+        <div className="flex items-center gap-0.5 min-w-0 flex-1 overflow-hidden">
+          {tabs.length > 3 && (
+            <button
+              onClick={() => handleScrollTabs('left')}
+              className="p-1 rounded hover:bg-zinc-800 text-zinc-500 hover:text-zinc-200 shrink-0 transition-colors cursor-pointer"
+              title="Scroll tabs left"
+            >
+              <ChevronLeft className="w-3 h-3" />
+            </button>
+          )}
 
-                {tab.executing && (
-                  <span
-                    className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse shrink-0"
-                    title="Running remote command"
-                  />
-                )}
-
-                {tabs.length > 1 && (
-                  <button
-                    onClick={(e) => handleCloseTab(e, tab.id)}
-                    className="p-0.5 rounded hover:bg-zinc-700 text-zinc-500 hover:text-zinc-200 opacity-60 group-hover:opacity-100 transition-opacity ml-0.5 cursor-pointer"
-                    title="Close Terminal"
-                  >
-                    <X className="w-2.5 h-2.5" />
-                  </button>
-                )}
-              </div>
-            );
-          })}
-
-          {/* New Terminal Tab Button */}
-          <button
-            onClick={handleNewTab}
-            className="flex items-center gap-1 px-1.5 py-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-zinc-100 text-xs transition-colors cursor-pointer shrink-0"
-            title="New Terminal Tab (Ctrl+Shift+`)"
+          <div
+            ref={tabsContainerRef}
+            onWheel={handleTabsWheel}
+            className="flex items-center gap-1 min-w-0 overflow-x-auto scrollbar-none py-0.5 scroll-smooth"
           >
-            <Plus className="w-3.5 h-3.5" />
-          </button>
+            {tabs.map((tab) => {
+              const isActive = tab.id === activeTabId;
+              return (
+                <div
+                  key={tab.id}
+                  ref={isActive ? activeTabButtonRef : undefined}
+                  onClick={() => {
+                    setActiveTabId(tab.id);
+                    setTimeout(() => inputRef.current?.focus({ preventScroll: true }), 40);
+                  }}
+                  className={`group flex items-center gap-1.5 px-2.5 py-1 rounded text-xs cursor-pointer transition-colors shrink-0 ${
+                    isActive
+                      ? 'bg-zinc-800/90 text-zinc-100 font-semibold border border-zinc-700/70 shadow-xs'
+                      : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50'
+                  }`}
+                  title={`${tab.title} (${tab.cwd})`}
+                >
+                  <Terminal className={`w-3 h-3 ${isActive ? 'text-emerald-400' : 'text-zinc-500'}`} />
+                  {editingTabId === tab.id ? (
+                    <input
+                      type="text"
+                      value={editingTitle}
+                      autoFocus
+                      onChange={(e) => setEditingTitle(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.stopPropagation();
+                          handleSaveRenameTab(tab.id);
+                        } else if (e.key === 'Escape') {
+                          e.stopPropagation();
+                          setEditingTabId(null);
+                        }
+                      }}
+                      onBlur={() => handleSaveRenameTab(tab.id)}
+                      onClick={(e) => e.stopPropagation()}
+                      className="bg-zinc-950 border border-blue-500 rounded px-1 py-0 text-xs text-zinc-100 outline-none w-20"
+                    />
+                  ) : (
+                    <span
+                      onDoubleClick={(e) => handleStartRenameTab(e, tab)}
+                      className="truncate max-w-[120px]"
+                      title="Double-click to rename"
+                    >
+                      {tab.title}
+                    </span>
+                  )}
 
-          {/* Duplicate Active Tab Button */}
-          <button
-            onClick={() => handleDuplicateTab(activeTab?.id)}
-            className="flex items-center gap-1 px-1.5 py-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-zinc-100 text-xs transition-colors cursor-pointer shrink-0"
-            title="Duplicate Active Tab in Current CWD"
-          >
-            <CopyPlus className="w-3.5 h-3.5" />
-          </button>
+                  {tab.executing && (
+                    <span
+                      className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse shrink-0"
+                      title="Running remote command"
+                    />
+                  )}
+
+                  {tabs.length > 1 && (
+                    <button
+                      onClick={(e) => handleCloseTab(e, tab.id)}
+                      className="p-0.5 rounded hover:bg-zinc-700 text-zinc-500 hover:text-zinc-200 opacity-60 group-hover:opacity-100 transition-opacity ml-0.5 cursor-pointer"
+                      title="Close Terminal"
+                    >
+                      <X className="w-2.5 h-2.5" />
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+
+            {/* New Terminal Tab Button */}
+            <button
+              onClick={handleNewTab}
+              className="flex items-center gap-1 px-1.5 py-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-zinc-100 text-xs transition-colors cursor-pointer shrink-0"
+              title="New Terminal Tab (Ctrl+Shift+`)"
+            >
+              <Plus className="w-3.5 h-3.5" />
+            </button>
+
+            {/* Duplicate Active Tab Button */}
+            <button
+              onClick={() => handleDuplicateTab(activeTab?.id)}
+              className="flex items-center gap-1 px-1.5 py-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-zinc-100 text-xs transition-colors cursor-pointer shrink-0"
+              title="Duplicate Active Tab in Current CWD"
+            >
+              <CopyPlus className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          {tabs.length > 3 && (
+            <button
+              onClick={() => handleScrollTabs('right')}
+              className="p-1 rounded hover:bg-zinc-800 text-zinc-500 hover:text-zinc-200 shrink-0 transition-colors cursor-pointer"
+              title="Scroll tabs right"
+            >
+              <ChevronRight className="w-3 h-3" />
+            </button>
+          )}
         </div>
 
         {/* Right: Active Session Info & Action Controls */}

@@ -166,6 +166,8 @@ jobs:
   snap:
     name: Build & Publish Snap (Linux)
     runs-on: ubuntu-latest
+    env:
+      SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v7
@@ -180,7 +182,7 @@ jobs:
           path: .
 
       - name: Publish Snap to Snap Store
-        if: startsWith(github.ref, 'refs/tags/v') && secrets.SNAPCRAFT_STORE_CREDENTIALS != ''
+        if: startsWith(github.ref, 'refs/tags/v') && env.SNAPCRAFT_STORE_CREDENTIALS != ''
         uses: snapcore/action-publish@v1
         env:
           SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}

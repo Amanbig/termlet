@@ -18,6 +18,12 @@ func CreatePasswordAuth(password string) ssh.AuthMethod {
 func CreatePrivateKeyAuth(keyPath string, passphrase string) (ssh.AuthMethod, error) {
 	keyBytes, err := os.ReadFile(keyPath)
 	if err != nil {
+		if os.IsPermission(err) {
+			if os.Getenv("SNAP") != "" {
+				return nil, fmt.Errorf("failed to read private key file: %w (Snap sandbox restriction: run 'sudo snap connect termlet:ssh-keys' to grant ~/.ssh access)", err)
+			}
+			return nil, fmt.Errorf("failed to read private key file: %w (check file permissions with 'chmod 600 %s')", err, keyPath)
+		}
 		return nil, fmt.Errorf("failed to read private key file: %w", err)
 	}
 

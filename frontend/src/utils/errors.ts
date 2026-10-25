@@ -135,6 +135,22 @@ export function formatErrorMessage(err: unknown, context?: string): FormattedErr
     };
   }
 
+  // 7b. Local Private Key Access Denied (e.g. Snap sandbox or file mode)
+  if (
+    lower.includes('failed to read private key') ||
+    (lower.includes('private key') && lower.includes('permission denied'))
+  ) {
+    const isSnap = lower.includes('snap') || lower.includes('.ssh');
+    return {
+      title: 'Private Key Access Denied',
+      message: 'Termlet was denied permission to read your local SSH private key.',
+      hint: isSnap
+        ? 'Snap sandboxing restricts ~/.ssh by default. Run: sudo snap connect termlet:ssh-keys'
+        : 'Check local file permissions (e.g. chmod 600 <key_file>) to ensure your user has read access.',
+      raw,
+    };
+  }
+
   // 8. SFTP Permission Denied
   if (
     lower.includes('sftp: "permission denied"') ||

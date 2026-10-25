@@ -54,6 +54,7 @@ Install directly from the Ubuntu Snap Store:
 
 ```bash
 sudo snap install termlet
+sudo snap connect termlet:ssh-keys  # Grants access to ~/.ssh private keys
 ```
 
 ### GitHub Releases

@@ -10,7 +10,8 @@ For the active release currently being compiled or deployed, refer to the root [
 
 | Version | Release Date / Milestone | Highlights | Release Notes |
 | :--- | :--- | :--- | :---: |
-| **v0.8.0** | *Current* | Interactive Remote SSH Command Runner & Terminal Drawer, stateful remote CWD tracking (`cd` persistence), live SFTP tree synchronization, interactive TTY interception & tips, and instant Ctrl+C cancellation | [v0.8.0.md](v0.8.0.md) |
+| **v0.9.0** | *Current* | Multi-tab line-based terminal emulator, multi-line command continuation (`\` & Shift+Enter), VS Code drag-to-resize drawer & sidepanel, unified panel width, ActivityBar reorder, tab rename/duplicate, and stable port list | [v0.9.0.md](v0.9.0.md) |
+| **v0.8.0** | Minor Release | Interactive Remote SSH Command Runner & Terminal Drawer, stateful remote CWD tracking (`cd` persistence), live SFTP tree synchronization, interactive TTY interception & tips, and instant Ctrl+C cancellation | [v0.8.0.md](v0.8.0.md) |
 | **v0.7.8** | Minor Release | In-app SSH Key Pair Generator (Ed25519, RSA, ECDSA), AES-256 passphrase encryption, OpenSSH Drunken Bishop randomart, dedicated SSH Keys tab (`termlet://ssh-keys`), and 1-click remote server deploy (`ssh-copy-id`) | [v0.7.8.md](v0.7.8.md) |
 | **v0.7.7** | Patch Release | SSH Host Key Verification & MitM protection, interactive Trust On First Use modal, dedicated Known Hosts manager tab (`termlet://known-hosts`), hashed hostname privacy support, and TypeScript 7.0 & bundler resolution migration | [v0.7.7.md](v0.7.7.md) |
 | **v0.7.6** | Patch Release | SFTP Transfer Queue & Live Progress Drawer, proactive SSH Keep-Alive & Auto-Reconnect engine, instant 0ms workspace search caching, non-blocking SFTP I/O, file tree context menu fix, and Vite 8 build speedups | [v0.7.6.md](v0.7.6.md) |

@@ -2,4 +2,4 @@ package version
 
 // Version is the current version of Termlet.
 // Can be overridden at build time via -ldflags "-X termlet/internal/version.Version=vX.Y.Z".
-var Version = "0.8.0"
+var Version = "0.9.0"

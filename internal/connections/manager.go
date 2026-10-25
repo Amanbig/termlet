@@ -251,17 +251,17 @@ func (m *Manager) CloseAll() {
 	}
 }
 
-// ExecCommand executes a command on the remote server for the given session.
-func (m *Manager) ExecCommand(ctx context.Context, sessionID string, command string) (*models.RemoteExecResult, error) {
+// ExecCommand executes a command on the remote server for the given session and terminal tab.
+func (m *Manager) ExecCommand(ctx context.Context, sessionID string, terminalID string, command string) (*models.RemoteExecResult, error) {
 	sess, err := m.GetSession(sessionID)
 	if err != nil {
 		return nil, err
 	}
-	return sess.ExecCommand(ctx, command)
+	return sess.ExecCommand(ctx, command, terminalID)
 }
 
-// CancelCommand terminates the active command for the given session.
-func (m *Manager) CancelCommand(sessionID string) error {
+// CancelCommand terminates the active command for the given session and terminal tab.
+func (m *Manager) CancelCommand(sessionID string, terminalID string) error {
 	m.mu.RLock()
 	sess, exists := m.sessions[sessionID]
 	m.mu.RUnlock()
@@ -270,25 +270,39 @@ func (m *Manager) CancelCommand(sessionID string) error {
 		return fmt.Errorf("session not found: %s", sessionID)
 	}
 
-	sess.CancelCommand()
+	sess.CancelCommand(terminalID)
 	return nil
 }
 
-// GetRemoteCwd retrieves the remote working directory for the session.
-func (m *Manager) GetRemoteCwd(sessionID string) (string, error) {
+// GetRemoteCwd retrieves the remote working directory for the session and terminal tab.
+func (m *Manager) GetRemoteCwd(sessionID string, terminalID string) (string, error) {
 	sess, err := m.GetSession(sessionID)
 	if err != nil {
 		return "", err
 	}
-	return sess.GetRemoteCwd(), nil
+	return sess.GetRemoteCwd(terminalID), nil
 }
 
-// SetRemoteCwd updates the remote working directory for the session.
-func (m *Manager) SetRemoteCwd(sessionID string, cwd string) error {
+// SetRemoteCwd updates the remote working directory for the session and terminal tab.
+func (m *Manager) SetRemoteCwd(sessionID string, terminalID string, cwd string) error {
 	sess, err := m.GetSession(sessionID)
 	if err != nil {
 		return err
 	}
-	sess.SetRemoteCwd(cwd)
+	sess.SetRemoteCwd(cwd, terminalID)
+	return nil
+}
+
+// CloseTerminal terminates and cleans up an individual terminal instance.
+func (m *Manager) CloseTerminal(sessionID string, terminalID string) error {
+	m.mu.RLock()
+	sess, exists := m.sessions[sessionID]
+	m.mu.RUnlock()
+
+	if !exists {
+		return nil
+	}
+
+	sess.CloseTerminal(terminalID)
 	return nil
 }

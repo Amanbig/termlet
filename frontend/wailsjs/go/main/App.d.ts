@@ -8,7 +8,7 @@ import {connections} from '../models';
 import {transfer} from '../models';
 import {sftpclient} from '../models';
 
-export function CancelRemoteCommand(arg1:string):Promise<void>;
+export function CancelRemoteCommand(arg1:string,arg2:string):Promise<void>;
 
 export function CancelTransfer(arg1:string):Promise<void>;
 
@@ -25,6 +25,8 @@ export function ChmodRemotePath(arg1:string,arg2:string,arg3:number,arg4:boolean
 export function ClearFinishedTransfers():Promise<void>;
 
 export function ClearKnownHosts(arg1:string):Promise<void>;
+
+export function CloseTerminal(arg1:string,arg2:string):Promise<void>;
 
 export function Connect(arg1:models.Profile,arg2:string,arg3:boolean):Promise<main.ConnectResponse>;
 
@@ -46,7 +48,7 @@ export function DownloadAndApplyUpdate(arg1:string,arg2:string):Promise<void>;
 
 export function DownloadRemotePath(arg1:string,arg2:string,arg3:boolean):Promise<string>;
 
-export function ExecRemoteCommand(arg1:string,arg2:string):Promise<models.RemoteExecResult>;
+export function ExecRemoteCommand(arg1:string,arg2:string,arg3:string):Promise<models.RemoteExecResult>;
 
 export function GenerateSSHKey(arg1:models.GenerateSSHKeyRequest):Promise<models.GeneratedSSHKey>;
 
@@ -60,7 +62,7 @@ export function GetProfileSecret(arg1:string):Promise<string>;
 
 export function GetReleaseNotes():Promise<string>;
 
-export function GetRemoteCwd(arg1:string):Promise<string>;
+export function GetRemoteCwd(arg1:string,arg2:string):Promise<string>;
 
 export function GetUpdateProgress():Promise<updater.DownloadProgress>;
 
@@ -106,7 +108,7 @@ export function SaveRemoteFile(arg1:string,arg2:string,arg3:string,arg4:number):
 
 export function SearchRemoteFiles(arg1:string,arg2:string,arg3:string,arg4:number):Promise<Array<models.RemoteFile>>;
 
-export function SetRemoteCwd(arg1:string,arg2:string):Promise<void>;
+export function SetRemoteCwd(arg1:string,arg2:string,arg3:string):Promise<void>;
 
 export function StartPortForward(arg1:string,arg2:number,arg3:string,arg4:number,arg5:string):Promise<tunnel.TunnelInfo>;
 

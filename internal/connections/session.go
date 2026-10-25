@@ -32,6 +32,13 @@ var interactiveCommands = map[string]string{
 	"watch": "interactive display monitor",
 }
 
+// TerminalInstance represents an independent terminal tab/instance on a remote session.
+type TerminalInstance struct {
+	mu         sync.Mutex
+	Cwd        string
+	ActiveSess *ssh.Session
+}
+
 // Session represents an active connection to an SSH server with an SFTP subsystem.
 type Session struct {
 	mu              sync.RWMutex
@@ -47,11 +54,9 @@ type Session struct {
 	cancelKeepAlive context.CancelFunc
 	onDisconnect    DisconnectCallback
 
-	// Terminal execution fields
-	remoteCwdMu   sync.RWMutex
-	remoteCwd     string
-	activeCmdMu   sync.Mutex
-	activeSSHSess *ssh.Session
+	// Multi-terminal execution tracking
+	terminals   map[string]*TerminalInstance
+	terminalsMu sync.RWMutex
 }
 
 // SessionSummary provides a view of an active session suitable for UI presentation.
@@ -76,59 +81,145 @@ func NewSession(id string, profile Profile, sshClient *ssh.Client, sftpClient *s
 	if startDir == "" || startDir == "." {
 		startDir = "~"
 	}
-	return &Session{
+	s := &Session{
 		ID:          id,
 		Profile:     profile,
 		SSH:         sshClient,
 		SFTP:        sftpClient,
 		ConnectedAt: now,
 		LastActive:  now,
-		remoteCwd:   startDir,
+		terminals:   make(map[string]*TerminalInstance),
 	}
+	s.terminals["default"] = &TerminalInstance{
+		Cwd: startDir,
+	}
+	return s
 }
 
-// GetRemoteCwd returns the tracked remote working directory for the session.
-func (s *Session) GetRemoteCwd() string {
-	s.remoteCwdMu.RLock()
-	defer s.remoteCwdMu.RUnlock()
-	if s.remoteCwd == "" {
+func (s *Session) getOrCreateTerminal(termID string) *TerminalInstance {
+	if termID == "" {
+		termID = "default"
+	}
+	s.terminalsMu.Lock()
+	defer s.terminalsMu.Unlock()
+	if s.terminals == nil {
+		s.terminals = make(map[string]*TerminalInstance)
+	}
+	if term, exists := s.terminals[termID]; exists && term != nil {
+		return term
+	}
+	startDir := s.Profile.StartDirectory
+	if startDir == "" || startDir == "." {
+		startDir = "~"
+	}
+	term := &TerminalInstance{
+		Cwd: startDir,
+	}
+	s.terminals[termID] = term
+	return term
+}
+
+// GetRemoteCwd returns the tracked remote working directory for a given terminal.
+func (s *Session) GetRemoteCwd(termIDs ...string) string {
+	termID := "default"
+	if len(termIDs) > 0 && termIDs[0] != "" {
+		termID = termIDs[0]
+	}
+	term := s.getOrCreateTerminal(termID)
+	term.mu.Lock()
+	defer term.mu.Unlock()
+	if term.Cwd == "" {
 		return "~"
 	}
-	return s.remoteCwd
+	return term.Cwd
 }
 
-// SetRemoteCwd explicitly updates the remote working directory.
-func (s *Session) SetRemoteCwd(cwd string) {
-	s.remoteCwdMu.Lock()
-	defer s.remoteCwdMu.Unlock()
-	s.remoteCwd = strings.TrimSpace(cwd)
-}
-
-// CancelCommand cancels the currently executing command if one is in flight.
-func (s *Session) CancelCommand() bool {
-	s.activeCmdMu.Lock()
-	defer s.activeCmdMu.Unlock()
-	if s.activeSSHSess != nil {
-		_ = s.activeSSHSess.Close()
-		s.activeSSHSess = nil
-		return true
+// SetRemoteCwd explicitly updates the remote working directory for a given terminal.
+func (s *Session) SetRemoteCwd(cwd string, termIDs ...string) {
+	termID := "default"
+	if len(termIDs) > 0 && termIDs[0] != "" {
+		termID = termIDs[0]
 	}
-	return false
+	term := s.getOrCreateTerminal(termID)
+	term.mu.Lock()
+	defer term.mu.Unlock()
+	term.Cwd = strings.TrimSpace(cwd)
+}
+
+// CancelCommand cancels the currently executing command for a given terminal (or all terminals).
+func (s *Session) CancelCommand(termIDs ...string) bool {
+	termID := ""
+	if len(termIDs) > 0 {
+		termID = termIDs[0]
+	}
+	if termID != "" {
+		s.terminalsMu.RLock()
+		term, exists := s.terminals[termID]
+		s.terminalsMu.RUnlock()
+		if exists && term != nil {
+			term.mu.Lock()
+			defer term.mu.Unlock()
+			if term.ActiveSess != nil {
+				_ = term.ActiveSess.Close()
+				term.ActiveSess = nil
+				return true
+			}
+		}
+		return false
+	}
+
+	cancelled := false
+	s.terminalsMu.RLock()
+	defer s.terminalsMu.RUnlock()
+	for _, term := range s.terminals {
+		term.mu.Lock()
+		if term.ActiveSess != nil {
+			_ = term.ActiveSess.Close()
+			term.ActiveSess = nil
+			cancelled = true
+		}
+		term.mu.Unlock()
+	}
+	return cancelled
+}
+
+// CloseTerminal terminates and cleans up an individual terminal instance.
+func (s *Session) CloseTerminal(termID string) {
+	if termID == "" || termID == "default" {
+		return
+	}
+	s.terminalsMu.Lock()
+	defer s.terminalsMu.Unlock()
+	if term, exists := s.terminals[termID]; exists && term != nil {
+		term.mu.Lock()
+		if term.ActiveSess != nil {
+			_ = term.ActiveSess.Close()
+			term.ActiveSess = nil
+		}
+		term.mu.Unlock()
+		delete(s.terminals, termID)
+	}
 }
 
 // ExecCommand executes a shell command on the remote SSH server while maintaining stateful cwd.
-func (s *Session) ExecCommand(ctx context.Context, command string) (*models.RemoteExecResult, error) {
+func (s *Session) ExecCommand(ctx context.Context, command string, termIDs ...string) (*models.RemoteExecResult, error) {
+	termID := "default"
+	if len(termIDs) > 0 && termIDs[0] != "" {
+		termID = termIDs[0]
+	}
+	term := s.getOrCreateTerminal(termID)
+
 	trimmed := strings.TrimSpace(command)
 	if trimmed == "" {
 		return &models.RemoteExecResult{
-			Cwd:      s.GetRemoteCwd(),
+			Cwd:      s.GetRemoteCwd(termID),
 			ExitCode: 0,
 		}, nil
 	}
 
 	if trimmed == "clear" {
 		return &models.RemoteExecResult{
-			Cwd:      s.GetRemoteCwd(),
+			Cwd:      s.GetRemoteCwd(termID),
 			ExitCode: 0,
 		}, nil
 	}
@@ -138,7 +229,7 @@ func (s *Session) ExecCommand(ctx context.Context, command string) (*models.Remo
 	if len(fields) > 0 {
 		baseCmd := strings.ToLower(filepath.Base(fields[0]))
 		if desc, isInteractive := interactiveCommands[baseCmd]; isInteractive {
-			currentCwd := s.GetRemoteCwd()
+			currentCwd := s.GetRemoteCwd(termID)
 			arg := ""
 			if len(fields) > 1 {
 				arg = fields[1]
@@ -183,14 +274,14 @@ func (s *Session) ExecCommand(ctx context.Context, command string) (*models.Remo
 	}
 	defer sshSess.Close()
 
-	s.activeCmdMu.Lock()
-	s.activeSSHSess = sshSess
-	s.activeCmdMu.Unlock()
+	term.mu.Lock()
+	term.ActiveSess = sshSess
+	term.mu.Unlock()
 
 	defer func() {
-		s.activeCmdMu.Lock()
-		s.activeSSHSess = nil
-		s.activeCmdMu.Unlock()
+		term.mu.Lock()
+		term.ActiveSess = nil
+		term.mu.Unlock()
 	}()
 
 	done := make(chan struct{})
@@ -204,7 +295,7 @@ func (s *Session) ExecCommand(ctx context.Context, command string) (*models.Remo
 		}
 	}()
 
-	currentCwd := s.GetRemoteCwd()
+	currentCwd := s.GetRemoteCwd(termID)
 	cdPrefix := ""
 	if currentCwd != "" && currentCwd != "~" {
 		cdPrefix = fmt.Sprintf("cd %q 2>/dev/null || cd ~;\n", currentCwd)
@@ -229,7 +320,7 @@ func (s *Session) ExecCommand(ctx context.Context, command string) (*models.Remo
 			extractedCwd := strings.TrimSpace(lines[0])
 			if extractedCwd != "" {
 				newCwd = extractedCwd
-				s.SetRemoteCwd(newCwd)
+				s.SetRemoteCwd(newCwd, termID)
 			}
 		}
 	}
@@ -409,6 +500,8 @@ func (s *Session) UpdateConnection(sshClient *ssh.Client, sftpClient *sftpclient
 
 // Close safely shuts down the SFTP and SSH clients cleanly.
 func (s *Session) Close() error {
+	s.CancelCommand()
+
 	s.mu.Lock()
 	if s.closed {
 		s.mu.Unlock()

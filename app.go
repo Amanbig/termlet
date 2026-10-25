@@ -584,30 +584,24 @@ func (a *App) GetInitialProfileID() string {
 
 // OpenNewWindow spawns a new native instance of Termlet, optionally auto-connecting to profileID.
 func (a *App) OpenNewWindow(profileID string) error {
-	var cmd *exec.Cmd
-
-	// If running inside a Snap environment, use snap run to invoke properly with runtime wrappers
-	if snapName := os.Getenv("SNAP_NAME"); snapName != "" {
-		args := []string{"run", snapName}
-		if profileID != "" {
-			args = append(args, "--profile", profileID)
-		}
-		cmd = exec.Command("snap", args...)
-	} else {
-		execPath, err := os.Executable()
-		if err != nil {
+	execPath, err := os.Executable()
+	if err != nil {
+		if snap := os.Getenv("SNAP"); snap != "" {
+			execPath = filepath.Join(snap, "bin", "termlet")
+		} else {
 			return fmt.Errorf("failed to determine executable path: %w", err)
 		}
-		if realPath, err := filepath.EvalSymlinks(execPath); err == nil {
-			execPath = realPath
-		}
-		var args []string
-		if profileID != "" {
-			args = append(args, "--profile", profileID)
-		}
-		cmd = exec.Command(execPath, args...)
+	} else if realPath, err := filepath.EvalSymlinks(execPath); err == nil {
+		execPath = realPath
 	}
 
+	var args []string
+	if profileID != "" {
+		args = append(args, "--profile", profileID)
+	}
+
+	cmd := exec.Command(execPath, args...)
+	cmd.Env = os.Environ()
 	return cmd.Start()
 }
 

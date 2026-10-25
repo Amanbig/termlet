@@ -12,6 +12,7 @@ import {
   AlertCircle,
   Square,
   Plus,
+  CopyPlus,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -37,6 +38,7 @@ interface HistoryEntry {
   cwd?: string;
   timestamp?: number;
   exitCode?: number;
+  isContinuation?: boolean;
 }
 
 export interface TerminalTab {
@@ -45,6 +47,7 @@ export interface TerminalTab {
   cwd: string;
   history: HistoryEntry[];
   commandInput: string;
+  continuationLines: string[];
   executing: boolean;
   cmdHistory: string[];
   historyIndex: number;
@@ -104,6 +107,8 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
   const prevSessionIdRef = useRef<string | null>(null);
   const isCancelledRef = useRef<Record<string, boolean>>({});
   const nextTabNumRef = useRef<number>(1);
+  const [editingTabId, setEditingTabId] = useState<string | null>(null);
+  const [editingTitle, setEditingTitle] = useState('');
 
   // Derive active tab
   const activeTab = tabs.find((t) => t.id === activeTabId) || tabs[0] || null;
@@ -138,6 +143,7 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
           },
         ],
         commandInput: '',
+        continuationLines: [],
         executing: false,
         cmdHistory: [],
         historyIndex: -1,
@@ -205,6 +211,7 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
         },
       ],
       commandInput: '',
+      continuationLines: [],
       executing: false,
       cmdHistory: [],
       historyIndex: -1,
@@ -216,10 +223,63 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
     setTimeout(() => inputRef.current?.focus({ preventScroll: true }), 40);
   }, [currentSession, activeTab]);
 
+  // Duplicate an existing terminal tab in its current directory
+  const handleDuplicateTab = useCallback(
+    (sourceTabId?: string) => {
+      if (!currentSession) return;
+      const src = tabs.find((t) => t.id === sourceTabId) || activeTab;
+      const tabNum = nextTabNumRef.current++;
+      const newId = `term-${tabNum}`;
+      const startDir = src ? src.cwd : (currentSession.start_directory || '~');
+
+      const newTab: TerminalTab = {
+        id: newId,
+        title: src ? `${src.title} (copy)` : `Terminal ${tabNum}`,
+        cwd: startDir,
+        history: [
+          {
+            id: 'welcome-' + Date.now(),
+            type: 'system',
+            text: `Terminal duplicated from ${src?.title || 'active tab'} in ${startDir}`,
+            timestamp: Date.now(),
+          },
+        ],
+        commandInput: '',
+        continuationLines: [],
+        executing: false,
+        cmdHistory: src ? [...src.cmdHistory] : [],
+        historyIndex: -1,
+      };
+
+      setTabs((prev) => [...prev, newTab]);
+      setActiveTabId(newId);
+      SetRemoteCwd(currentSession.id, newId, startDir).catch(() => {});
+      setTimeout(() => inputRef.current?.focus({ preventScroll: true }), 40);
+    },
+    [currentSession, tabs, activeTab]
+  );
+
+  // Tab renaming
+  const handleStartRenameTab = (e: React.MouseEvent, tab: TerminalTab) => {
+    e.stopPropagation();
+    setEditingTabId(tab.id);
+    setEditingTitle(tab.title);
+  };
+
+  const handleSaveRenameTab = (tabId: string) => {
+    const trimmed = editingTitle.trim();
+    if (trimmed) {
+      setTabs((prev) =>
+        prev.map((t) => (t.id === tabId ? { ...t, title: trimmed } : t))
+      );
+    }
+    setEditingTabId(null);
+  };
+
   // Close a terminal tab
   const handleCloseTab = useCallback(
-    (e: React.MouseEvent, tabId: string) => {
-      e.stopPropagation();
+    (e: React.MouseEvent | null, tabId: string) => {
+      if (e) e.stopPropagation();
       if (!currentSession) return;
 
       CloseTerminal(currentSession.id, tabId).catch(() => {});
@@ -253,6 +313,7 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
             ? {
                 ...t,
                 executing: false,
+                continuationLines: [],
                 history: [
                   ...t.history,
                   {
@@ -322,6 +383,7 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
                 return {
                   ...t,
                   commandInput: '',
+                  continuationLines: [],
                   history: [
                     ...t.history,
                     {
@@ -329,6 +391,7 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
                       type: 'cmd' as const,
                       text,
                       cwd: t.cwd,
+                      isContinuation: (t.continuationLines || []).length > 0,
                       timestamp: Date.now(),
                     },
                   ],
@@ -359,15 +422,30 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
     if (e) e.preventDefault();
     if (!activeTab || activeTab.executing || !currentSession) return;
     const tabId = activeTab.id;
-    const cmdStr = activeTab.commandInput.trim();
 
-    if (!cmdStr) {
+    const currentLine = activeTab.commandInput;
+    const contLines = activeTab.continuationLines || [];
+    const hasContinuation = contLines.length > 0;
+    const fullCommand = hasContinuation
+      ? [...contLines, currentLine].join('\n')
+      : currentLine;
+
+    const trimmed = fullCommand.trim();
+
+    // Check exit or logout command to close tab
+    if (trimmed === 'exit' || trimmed === 'logout') {
+      handleCloseTab(null, tabId);
+      return;
+    }
+
+    if (!trimmed) {
       setTabs((prev) =>
         prev.map((t) =>
           t.id === tabId
             ? {
                 ...t,
                 commandInput: '',
+                continuationLines: [],
                 historyIndex: -1,
                 history: [
                   ...t.history,
@@ -383,10 +461,11 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
             : t
         )
       );
+      setTimeout(() => inputRef.current?.focus({ preventScroll: true }), 30);
       return;
     }
 
-    if (cmdStr.toLowerCase() === 'clear') {
+    if (trimmed.toLowerCase() === 'clear') {
       setTabs((prev) =>
         prev.map((t) =>
           t.id === tabId
@@ -394,6 +473,7 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
                 ...t,
                 history: [],
                 commandInput: '',
+                continuationLines: [],
                 historyIndex: -1,
                 cmdHistory: [...t.cmdHistory, 'clear'].slice(-MAX_CMD_HISTORY),
               }
@@ -401,6 +481,46 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
         )
       );
       return;
+    }
+
+    // Build history entries for the command
+    const cmdHistoryEntries: HistoryEntry[] = [];
+    if (hasContinuation) {
+      cmdHistoryEntries.push({
+        id: 'h-' + Math.random().toString(36).slice(2),
+        type: 'cmd' as const,
+        text: contLines[0],
+        cwd: activeTab.cwd,
+        isContinuation: false,
+        timestamp: Date.now(),
+      });
+      for (let i = 1; i < contLines.length; i++) {
+        cmdHistoryEntries.push({
+          id: 'h-' + Math.random().toString(36).slice(2) + '-' + i,
+          type: 'cmd' as const,
+          text: contLines[i],
+          cwd: activeTab.cwd,
+          isContinuation: true,
+          timestamp: Date.now(),
+        });
+      }
+      cmdHistoryEntries.push({
+        id: 'h-' + Math.random().toString(36).slice(2) + '-final',
+        type: 'cmd' as const,
+        text: currentLine,
+        cwd: activeTab.cwd,
+        isContinuation: true,
+        timestamp: Date.now(),
+      });
+    } else {
+      cmdHistoryEntries.push({
+        id: 'h-' + Math.random().toString(36).slice(2),
+        type: 'cmd' as const,
+        text: trimmed,
+        cwd: activeTab.cwd,
+        isContinuation: false,
+        timestamp: Date.now(),
+      });
     }
 
     // Mark tab as executing and add command to history
@@ -411,17 +531,12 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
               ...t,
               executing: true,
               commandInput: '',
+              continuationLines: [],
               historyIndex: -1,
-              cmdHistory: [...t.cmdHistory, cmdStr].slice(-MAX_CMD_HISTORY),
+              cmdHistory: [...t.cmdHistory, fullCommand].slice(-MAX_CMD_HISTORY),
               history: [
                 ...t.history,
-                {
-                  id: 'h-' + Math.random().toString(36).slice(2),
-                  type: 'cmd' as const,
-                  text: cmdStr,
-                  cwd: t.cwd,
-                  timestamp: Date.now(),
-                },
+                ...cmdHistoryEntries,
               ].slice(-MAX_HISTORY_ENTRIES),
             }
           : t
@@ -429,7 +544,7 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
     );
 
     try {
-      const res = await ExecRemoteCommand(currentSession.id, tabId, cmdStr);
+      const res = await ExecRemoteCommand(currentSession.id, tabId, fullCommand);
       if (isCancelledRef.current[tabId]) {
         return;
       }
@@ -510,20 +625,101 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
     }
   };
 
+  const handlePasteInput = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const text = e.clipboardData.getData('text');
+    if (!text || !text.includes('\n')) return;
+
+    e.preventDefault();
+    const rawLines = text.split(/\r?\n/);
+    if (rawLines.length <= 1) return;
+
+    const firstLine = (activeTab?.commandInput || '') + rawLines[0];
+    const allLines = [firstLine, ...rawLines.slice(1)];
+    const prevLines = allLines.slice(0, -1);
+    const lastLine = allLines[allLines.length - 1];
+
+    setTabs((prev) =>
+      prev.map((t) => {
+        if (t.id !== activeTabId) return t;
+        return {
+          ...t,
+          continuationLines: [...(t.continuationLines || []), ...prevLines],
+          commandInput: lastLine,
+        };
+      })
+    );
+  };
+
   const handleKeyDownInput = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (!activeTab) return;
+
+    // Shift+Enter or trailing backslash \ continues command onto next line
+    if (e.key === 'Enter') {
+      const rawVal = activeTab.commandInput;
+      const isShift = e.shiftKey;
+      const endsWithBackslash = rawVal.trimEnd().endsWith('\\');
+
+      if (isShift || endsWithBackslash) {
+        e.preventDefault();
+        const lineToSave = rawVal;
+        setTabs((prev) =>
+          prev.map((t) => {
+            if (t.id !== activeTab.id) return t;
+            return {
+              ...t,
+              continuationLines: [...(t.continuationLines || []), lineToSave],
+              commandInput: '',
+            };
+          })
+        );
+        return;
+      }
+      return;
+    }
+
+    // Backspace on empty input pops previous continuation line
+    if (
+      e.key === 'Backspace' &&
+      activeTab.commandInput === '' &&
+      (activeTab.continuationLines || []).length > 0
+    ) {
+      e.preventDefault();
+      const lines = activeTab.continuationLines;
+      const lastLine = lines[lines.length - 1];
+      setTabs((prev) =>
+        prev.map((t) => {
+          if (t.id !== activeTab.id) return t;
+          return {
+            ...t,
+            continuationLines: t.continuationLines.slice(0, -1),
+            commandInput: lastLine,
+          };
+        })
+      );
+      return;
+    }
+
+    // Tab key: prevent focus loss from terminal input
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      return;
+    }
+
     if (e.key === 'ArrowUp') {
       e.preventDefault();
       if (activeTab.cmdHistory.length === 0) return;
       const nextIdx = activeTab.historyIndex + 1;
       if (nextIdx < activeTab.cmdHistory.length) {
+        const histCmd = activeTab.cmdHistory[activeTab.cmdHistory.length - 1 - nextIdx];
+        const lines = histCmd.split('\n');
         setTabs((prev) =>
           prev.map((t) =>
             t.id === activeTab.id
               ? {
                   ...t,
                   historyIndex: nextIdx,
-                  commandInput: t.cmdHistory[t.cmdHistory.length - 1 - nextIdx],
+                  continuationLines: lines.length > 1 ? lines.slice(0, -1) : [],
+                  commandInput: lines[lines.length - 1],
                 }
               : t
           )
@@ -533,13 +729,16 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
       e.preventDefault();
       if (activeTab.historyIndex > 0) {
         const nextIdx = activeTab.historyIndex - 1;
+        const histCmd = activeTab.cmdHistory[activeTab.cmdHistory.length - 1 - nextIdx];
+        const lines = histCmd.split('\n');
         setTabs((prev) =>
           prev.map((t) =>
             t.id === activeTab.id
               ? {
                   ...t,
                   historyIndex: nextIdx,
-                  commandInput: t.cmdHistory[t.cmdHistory.length - 1 - nextIdx],
+                  continuationLines: lines.length > 1 ? lines.slice(0, -1) : [],
+                  commandInput: lines[lines.length - 1],
                 }
               : t
           )
@@ -551,6 +750,7 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
               ? {
                   ...t,
                   historyIndex: -1,
+                  continuationLines: [],
                   commandInput: '',
                 }
               : t
@@ -690,7 +890,34 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
                 title={`${tab.title} (${tab.cwd})`}
               >
                 <Terminal className={`w-3 h-3 ${isActive ? 'text-emerald-400' : 'text-zinc-500'}`} />
-                <span className="truncate max-w-[120px]">{tab.title}</span>
+                {editingTabId === tab.id ? (
+                  <input
+                    type="text"
+                    value={editingTitle}
+                    autoFocus
+                    onChange={(e) => setEditingTitle(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.stopPropagation();
+                        handleSaveRenameTab(tab.id);
+                      } else if (e.key === 'Escape') {
+                        e.stopPropagation();
+                        setEditingTabId(null);
+                      }
+                    }}
+                    onBlur={() => handleSaveRenameTab(tab.id)}
+                    onClick={(e) => e.stopPropagation()}
+                    className="bg-zinc-950 border border-blue-500 rounded px-1 py-0 text-xs text-zinc-100 outline-none w-20"
+                  />
+                ) : (
+                  <span
+                    onDoubleClick={(e) => handleStartRenameTab(e, tab)}
+                    className="truncate max-w-[120px]"
+                    title="Double-click to rename"
+                  >
+                    {tab.title}
+                  </span>
+                )}
 
                 {tab.executing && (
                   <span
@@ -719,6 +946,15 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
             title="New Terminal Tab (Ctrl+Shift+`)"
           >
             <Plus className="w-3.5 h-3.5" />
+          </button>
+
+          {/* Duplicate Active Tab Button */}
+          <button
+            onClick={() => handleDuplicateTab(activeTab?.id)}
+            className="flex items-center gap-1 px-1.5 py-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-zinc-100 text-xs transition-colors cursor-pointer shrink-0"
+            title="Duplicate Active Tab in Current CWD"
+          >
+            <CopyPlus className="w-3.5 h-3.5" />
           </button>
         </div>
 
@@ -831,11 +1067,22 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
 
             if (item.type === 'cmd') {
               return (
-                <div key={item.id} className="flex items-start gap-1.5 text-zinc-200 pt-1">
-                  <span className="text-emerald-400 font-bold select-none shrink-0">
-                    {currentSession ? `${currentSession.username}@${currentSession.host}` : 'ssh'}:
-                    <span className="text-blue-400 font-normal">{shortenPath(item.cwd || '~')}</span>$
-                  </span>
+                <div
+                  key={item.id}
+                  className={`flex items-start gap-1.5 text-zinc-100 font-mono text-xs ${
+                    item.isContinuation ? 'pl-2' : 'pt-1'
+                  }`}
+                >
+                  {item.isContinuation ? (
+                    <span className="text-zinc-500 font-bold select-none shrink-0">
+                      &gt;
+                    </span>
+                  ) : (
+                    <span className="text-emerald-400 font-bold select-none shrink-0">
+                      {currentSession ? `${currentSession.username}@${currentSession.host}` : 'ssh'}:
+                      <span className="text-blue-400 font-normal">{shortenPath(item.cwd || '~')}</span>$
+                    </span>
+                  )}
                   <span className="text-zinc-100 font-semibold select-all break-all">
                     {item.text}
                   </span>
@@ -877,28 +1124,57 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
 
         {/* Active Inline Command Prompt */}
         {currentSession && activeTab && !activeTab.executing && (
-          <form
-            onSubmit={handleRunCommand}
-            className="flex items-start gap-1.5 text-zinc-200 pt-1"
-          >
-            <span className="text-emerald-400 font-bold select-none shrink-0">
-              {currentSession.username}@{currentSession.host}:
-              <span className="text-blue-400 font-normal">{shortenPath(activeTab.cwd)}</span>$
-            </span>
-            <input
-              ref={inputRef}
-              type="text"
-              value={activeTab.commandInput}
-              onChange={(e) => setCommandInput(e.target.value)}
-              onKeyDown={handleKeyDownInput}
-              className="flex-1 min-w-[60px] bg-transparent border-0 outline-none text-zinc-100 font-mono text-xs p-0 m-0 shadow-none focus:outline-none focus:ring-0 focus:border-none caret-emerald-400"
-              autoComplete="off"
-              autoCorrect="off"
-              autoCapitalize="off"
-              spellCheck="false"
-              autoFocus
-            />
-          </form>
+          <div className="flex flex-col gap-0.5 text-zinc-200 pt-1">
+            {activeTab.continuationLines.length > 0 && (
+              <>
+                <div className="flex items-start gap-1.5 text-zinc-100 font-mono text-xs">
+                  <span className="text-emerald-400 font-bold select-none shrink-0">
+                    {currentSession.username}@{currentSession.host}:
+                    <span className="text-blue-400 font-normal">{shortenPath(activeTab.cwd)}</span>$
+                  </span>
+                  <span className="text-zinc-100 select-all break-all">
+                    {activeTab.continuationLines[0]}
+                  </span>
+                </div>
+                {activeTab.continuationLines.slice(1).map((line, idx) => (
+                  <div key={idx} className="flex items-start gap-1.5 text-zinc-100 font-mono text-xs pl-2">
+                    <span className="text-zinc-500 font-bold select-none shrink-0">&gt;</span>
+                    <span className="text-zinc-100 select-all break-all">{line}</span>
+                  </div>
+                ))}
+              </>
+            )}
+
+            <form
+              onSubmit={handleRunCommand}
+              className={`flex items-start gap-1.5 text-zinc-200 ${
+                activeTab.continuationLines.length > 0 ? 'pl-2' : ''
+              }`}
+            >
+              {activeTab.continuationLines.length > 0 ? (
+                <span className="text-zinc-500 font-bold select-none shrink-0">&gt;</span>
+              ) : (
+                <span className="text-emerald-400 font-bold select-none shrink-0">
+                  {currentSession.username}@{currentSession.host}:
+                  <span className="text-blue-400 font-normal">{shortenPath(activeTab.cwd)}</span>$
+                </span>
+              )}
+              <input
+                ref={inputRef}
+                type="text"
+                value={activeTab.commandInput}
+                onChange={(e) => setCommandInput(e.target.value)}
+                onKeyDown={handleKeyDownInput}
+                onPaste={handlePasteInput}
+                className="flex-1 min-w-[60px] bg-transparent border-0 outline-none text-zinc-100 font-mono text-xs p-0 m-0 shadow-none focus:outline-none focus:ring-0 focus:border-none caret-emerald-400"
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck="false"
+                autoFocus
+              />
+            </form>
+          </div>
         )}
       </div>
     </div>

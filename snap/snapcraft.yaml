@@ -1,5 +1,5 @@
 name: termlet
-base: core22
+base: core24
 adopt-info: termlet
 summary: Modern Cross-Platform SSH Client, SFTP File Browser & Remote Editor
 description: |
@@ -11,8 +11,10 @@ icon: snap/gui/termlet.png
 grade: stable
 confinement: strict
 
-architectures:
-  - build-on: amd64
+platforms:
+  amd64:
+    build-on: [amd64]
+    build-for: [amd64]
 
 apps:
   termlet:

@@ -28,7 +28,59 @@ export const XTermTab: React.FC<XTermTabProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
+  const lastSelectionRef = useRef<string>('');
+  const copyActionRef = useRef<() => void>(() => {});
+  const pasteActionRef = useRef<() => void>(() => {});
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
+
+  const copySelectionOrBuffer = useCallback(async () => {
+    let sel = termRef.current?.getSelection() || lastSelectionRef.current;
+    if (!sel) {
+      const buf = termRef.current?.buffer.active;
+      if (buf) {
+        const lines: string[] = [];
+        for (let i = 0; i < buf.length; i++) {
+          const line = buf.getLine(i);
+          if (line) lines.push(line.translateToString(true));
+        }
+        sel = lines.join('\n').trimEnd();
+      }
+    }
+
+    if (sel && sel.length > 0) {
+      try {
+        await ClipboardSetText(sel);
+      } catch {
+        try {
+          await navigator.clipboard.writeText(sel);
+        } catch {}
+      }
+      toast.success('Copied to clipboard');
+    }
+    setContextMenu(null);
+  }, []);
+
+  const pasteClipboardText = useCallback(async () => {
+    try {
+      let text = '';
+      try {
+        text = await ClipboardGetText();
+      } catch {
+        try {
+          text = await navigator.clipboard?.readText();
+        } catch {}
+      }
+      if (text && termRef.current) {
+        SendTerminalInput(sessionId, tabId, text).catch(() => {});
+      }
+    } catch {
+      toast.error('Unable to paste text');
+    }
+    setContextMenu(null);
+  }, [sessionId, tabId]);
+
+  copyActionRef.current = copySelectionOrBuffer;
+  pasteActionRef.current = pasteClipboardText;
 
   // Initialize xterm instance
   useEffect(() => {
@@ -99,6 +151,50 @@ export const XTermTab: React.FC<XTermTabProps> = ({
     const el = containerRef.current;
     el.addEventListener('click', handleFocusClick);
 
+    // Intercept xterm key events for shortcuts
+    term.attachCustomKeyEventHandler((e: KeyboardEvent) => {
+      if (e.type === 'keydown') {
+        // Ctrl+Shift+C: copy selection or full buffer
+        if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'C' || e.key === 'c')) {
+          copyActionRef.current?.();
+          return false;
+        }
+
+        // Ctrl+C with text selected: copy selection instead of sending SIGINT
+        if ((e.ctrlKey || e.metaKey) && !e.shiftKey && (e.key === 'c' || e.key === 'c')) {
+          if (term.hasSelection()) {
+            copyActionRef.current?.();
+            return false;
+          }
+        }
+
+        // Ctrl+Shift+V: paste from clipboard
+        if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'V' || e.key === 'v')) {
+          pasteActionRef.current?.();
+          return false;
+        }
+      }
+      return true;
+    });
+
+    // Automatically copy selection to OS clipboard (standard terminal convention)
+    const selectionDisposable = term.onSelectionChange(() => {
+      const s = term.getSelection();
+      if (s && s.length > 0) {
+        lastSelectionRef.current = s;
+        ClipboardSetText(s).catch(() => {});
+      }
+    });
+
+    // Middle-click to paste
+    const handleMouseUp = (e: MouseEvent) => {
+      if (e.button === 1) {
+        e.preventDefault();
+        pasteActionRef.current?.();
+      }
+    };
+    el.addEventListener('mouseup', handleMouseUp);
+
     // Forward user keystrokes to remote PTY
     const dataDisposable = term.onData((data) => {
       SendTerminalInput(sessionId, tabId, data).catch(() => {});
@@ -138,6 +234,8 @@ export const XTermTab: React.FC<XTermTabProps> = ({
     return () => {
       clearTimeout(initTimer);
       el.removeEventListener('click', handleFocusClick);
+      el.removeEventListener('mouseup', handleMouseUp);
+      selectionDisposable.dispose();
       resizeObserver.disconnect();
       unsubData();
       unsubExit();
@@ -164,9 +262,12 @@ export const XTermTab: React.FC<XTermTabProps> = ({
     }
   }, [isActive]);
 
-  // Context Menu & Keyboard handlers
+  // Context Menu handlers
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
+    if (termRef.current?.hasSelection()) {
+      lastSelectionRef.current = termRef.current.getSelection();
+    }
     setContextMenu({ x: e.clientX, y: e.clientY });
   };
 
@@ -186,38 +287,6 @@ export const XTermTab: React.FC<XTermTabProps> = ({
     };
   }, [contextMenu]);
 
-  const handleCopySelection = useCallback(async () => {
-    const sel = termRef.current?.getSelection();
-    if (sel && sel.length > 0) {
-      try {
-        await ClipboardSetText(sel);
-      } catch {
-        try {
-          await navigator.clipboard.writeText(sel);
-        } catch {}
-      }
-      toast.success('Selection copied');
-    }
-    setContextMenu(null);
-  }, []);
-
-  const handlePasteClipboard = useCallback(async () => {
-    try {
-      let text = '';
-      try {
-        text = await ClipboardGetText();
-      } catch {
-        text = await navigator.clipboard?.readText();
-      }
-      if (text && termRef.current) {
-        SendTerminalInput(sessionId, tabId, text);
-      }
-    } catch {
-      toast.error('Unable to paste text');
-    }
-    setContextMenu(null);
-  }, [sessionId, tabId]);
-
   const handleSelectAll = useCallback(() => {
     termRef.current?.selectAll();
     setContextMenu(null);
@@ -227,22 +296,6 @@ export const XTermTab: React.FC<XTermTabProps> = ({
     termRef.current?.clear();
     setContextMenu(null);
   }, []);
-
-  // Keyboard shortcut listeners (Ctrl+Shift+C / Ctrl+Shift+V)
-  useEffect(() => {
-    if (!isActive) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'C' || e.key === 'c')) {
-        e.preventDefault();
-        handleCopySelection();
-      } else if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'V' || e.key === 'v')) {
-        e.preventDefault();
-        handlePasteClipboard();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isActive, handleCopySelection, handlePasteClipboard]);
 
   return (
     <div
@@ -264,7 +317,7 @@ export const XTermTab: React.FC<XTermTabProps> = ({
           onClick={(e) => e.stopPropagation()}
         >
           <button
-            onClick={handleCopySelection}
+            onClick={copySelectionOrBuffer}
             className="w-full flex items-center justify-between px-3 py-1.5 hover:bg-zinc-800 hover:text-white transition-colors cursor-pointer text-left"
           >
             <div className="flex items-center gap-2">
@@ -274,7 +327,7 @@ export const XTermTab: React.FC<XTermTabProps> = ({
             <span className="text-[10px] text-zinc-500 font-mono">Ctrl+Shift+C</span>
           </button>
           <button
-            onClick={handlePasteClipboard}
+            onClick={pasteClipboardText}
             className="w-full flex items-center justify-between px-3 py-1.5 hover:bg-zinc-800 hover:text-white transition-colors cursor-pointer text-left"
           >
             <div className="flex items-center gap-2">

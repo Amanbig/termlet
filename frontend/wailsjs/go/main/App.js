@@ -186,6 +186,10 @@ export function RenameRemotePath(arg1, arg2, arg3) {
   return window['go']['main']['App']['RenameRemotePath'](arg1, arg2, arg3);
 }
 
+export function ResizeTerminal(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['ResizeTerminal'](arg1, arg2, arg3, arg4);
+}
+
 export function RestartApp() {
   return window['go']['main']['App']['RestartApp']();
 }
@@ -214,12 +218,20 @@ export function SelectPrivateKeyFile() {
   return window['go']['main']['App']['SelectPrivateKeyFile']();
 }
 
+export function SendTerminalInput(arg1, arg2, arg3) {
+  return window['go']['main']['App']['SendTerminalInput'](arg1, arg2, arg3);
+}
+
 export function SetRemoteCwd(arg1, arg2, arg3) {
   return window['go']['main']['App']['SetRemoteCwd'](arg1, arg2, arg3);
 }
 
 export function StartPortForward(arg1, arg2, arg3, arg4, arg5) {
   return window['go']['main']['App']['StartPortForward'](arg1, arg2, arg3, arg4, arg5);
+}
+
+export function StartTerminalSession(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['StartTerminalSession'](arg1, arg2, arg3, arg4);
 }
 
 export function StopPortForward(arg1) {

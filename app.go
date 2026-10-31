@@ -1047,6 +1047,42 @@ func (a *App) SetRemoteCwd(sessionID string, terminalID string, cwd string) erro
 	return a.connMgr.SetRemoteCwd(sessionID, terminalID, cwd)
 }
 
+// StartTerminalSession starts an interactive PTY shell on the remote server.
+func (a *App) StartTerminalSession(sessionID string, terminalID string, rows int, cols int) error {
+	if a.connMgr == nil {
+		return fmt.Errorf("connection manager not initialized")
+	}
+	ctx := a.ctx
+	return a.connMgr.StartTerminal(sessionID, terminalID, rows, cols,
+		func(data string) {
+			if ctx != nil {
+				wailsRuntime.EventsEmit(ctx, "terminal:data:"+sessionID+":"+terminalID, data)
+			}
+		},
+		func() {
+			if ctx != nil {
+				wailsRuntime.EventsEmit(ctx, "terminal:exit:"+sessionID+":"+terminalID)
+			}
+		},
+	)
+}
+
+// SendTerminalInput forwards user keystrokes / text into the remote PTY shell.
+func (a *App) SendTerminalInput(sessionID string, terminalID string, data string) error {
+	if a.connMgr == nil {
+		return fmt.Errorf("connection manager not initialized")
+	}
+	return a.connMgr.SendTerminalInput(sessionID, terminalID, data)
+}
+
+// ResizeTerminal notifies the remote PTY shell of terminal dimension changes.
+func (a *App) ResizeTerminal(sessionID string, terminalID string, rows int, cols int) error {
+	if a.connMgr == nil {
+		return fmt.Errorf("connection manager not initialized")
+	}
+	return a.connMgr.ResizeTerminal(sessionID, terminalID, rows, cols)
+}
+
 // CloseTerminal cleans up an individual terminal instance on the session.
 func (a *App) CloseTerminal(sessionID string, terminalID string) error {
 	if a.connMgr == nil {

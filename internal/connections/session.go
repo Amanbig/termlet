@@ -3,6 +3,7 @@ package connections
 import (
 	"context"
 	"fmt"
+	"io"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -37,6 +38,8 @@ type TerminalInstance struct {
 	mu         sync.Mutex
 	Cwd        string
 	ActiveSess *ssh.Session
+	Stdin      io.WriteCloser
+	Running    bool
 }
 
 // Session represents an active connection to an SSH server with an SFTP subsystem.
@@ -183,19 +186,150 @@ func (s *Session) CancelCommand(termIDs ...string) bool {
 	return cancelled
 }
 
+// StartTerminal starts an interactive PTY session with real-time streaming on the remote SSH server.
+func (s *Session) StartTerminal(termID string, rows, cols int, onData func(string), onExit func()) error {
+	term := s.getOrCreateTerminal(termID)
+	term.mu.Lock()
+	defer term.mu.Unlock()
+
+	if term.Running && term.ActiveSess != nil {
+		return nil
+	}
+
+	s.mu.RLock()
+	sshCl := s.SSH
+	closed := s.closed || s.dropped
+	s.mu.RUnlock()
+
+	if closed || sshCl == nil {
+		return fmt.Errorf("session is not connected")
+	}
+
+	sshSess, err := sshCl.NewSession()
+	if err != nil {
+		return fmt.Errorf("failed to open SSH channel: %w", err)
+	}
+
+	if rows <= 0 {
+		rows = 24
+	}
+	if cols <= 0 {
+		cols = 80
+	}
+
+	modes := ssh.TerminalModes{
+		ssh.ECHO:          1,
+		ssh.TTY_OP_ISPEED: 14400,
+		ssh.TTY_OP_OSPEED: 14400,
+	}
+
+	if err := sshSess.RequestPty("xterm-256color", rows, cols, modes); err != nil {
+		_ = sshSess.Close()
+		return fmt.Errorf("failed to request PTY: %w", err)
+	}
+
+	stdin, err := sshSess.StdinPipe()
+	if err != nil {
+		_ = sshSess.Close()
+		return fmt.Errorf("failed to open stdin pipe: %w", err)
+	}
+
+	stdout, err := sshSess.StdoutPipe()
+	if err != nil {
+		_ = sshSess.Close()
+		return fmt.Errorf("failed to open stdout pipe: %w", err)
+	}
+
+	if err := sshSess.Shell(); err != nil {
+		_ = sshSess.Close()
+		return fmt.Errorf("failed to start remote shell: %w", err)
+	}
+
+	term.ActiveSess = sshSess
+	term.Stdin = stdin
+	term.Running = true
+
+	go func() {
+		buf := make([]byte, 4096)
+		for {
+			n, err := stdout.Read(buf)
+			if n > 0 {
+				onData(string(buf[:n]))
+			}
+			if err != nil {
+				break
+			}
+		}
+
+		term.mu.Lock()
+		term.Running = false
+		term.ActiveSess = nil
+		term.Stdin = nil
+		term.mu.Unlock()
+
+		if onExit != nil {
+			onExit()
+		}
+	}()
+
+	return nil
+}
+
+// SendTerminalInput forwards raw keystrokes/data to the interactive PTY stdin.
+func (s *Session) SendTerminalInput(termID string, data string) error {
+	term := s.getOrCreateTerminal(termID)
+	term.mu.Lock()
+	stdin := term.Stdin
+	running := term.Running
+	term.mu.Unlock()
+
+	if !running || stdin == nil {
+		return fmt.Errorf("terminal session %s is not active", termID)
+	}
+
+	_, err := stdin.Write([]byte(data))
+	return err
+}
+
+// ResizeTerminal handles PTY window size adjustments from the UI.
+func (s *Session) ResizeTerminal(termID string, rows, cols int) error {
+	term := s.getOrCreateTerminal(termID)
+	term.mu.Lock()
+	sess := term.ActiveSess
+	running := term.Running
+	term.mu.Unlock()
+
+	if !running || sess == nil {
+		return nil
+	}
+
+	if rows <= 0 {
+		rows = 24
+	}
+	if cols <= 0 {
+		cols = 80
+	}
+	return sess.WindowChange(rows, cols)
+}
+
 // CloseTerminal terminates and cleans up an individual terminal instance.
 func (s *Session) CloseTerminal(termID string) {
-	if termID == "" || termID == "default" {
+	if termID == "" {
 		return
 	}
 	s.terminalsMu.Lock()
 	defer s.terminalsMu.Unlock()
 	if term, exists := s.terminals[termID]; exists && term != nil {
 		term.mu.Lock()
+		if term.Stdin != nil {
+			_ = term.Stdin.Close()
+			term.Stdin = nil
+		}
 		if term.ActiveSess != nil {
 			_ = term.ActiveSess.Close()
 			term.ActiveSess = nil
 		}
+		term.Running = false
 		term.mu.Unlock()
 		delete(s.terminals, termID)
 	}

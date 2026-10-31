@@ -26,6 +26,7 @@ import {
   CloseTerminal,
 } from '../../wailsjs/go/main/App';
 import { connections } from '../../wailsjs/go/models';
+import { XTermTab } from './XTermTab';
 
 interface RemoteTerminalDrawerProps {
   isOpen: boolean;
@@ -1201,201 +1202,26 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
         </div>
       </div>
 
-      {/* Terminal Output & Inline Command Stream for Active Tab */}
-      <div
-        ref={terminalScrollRef}
-        onContextMenu={handleContextMenu}
-        onClick={() => {
-          const selection = window.getSelection()?.toString();
-          if (!selection) {
-            inputRef.current?.focus({ preventScroll: true });
-          }
-        }}
-        className="flex-1 overflow-y-auto px-4 py-2 pb-5 font-mono text-xs leading-relaxed space-y-1.5 cursor-text divide-y-0 selection:bg-blue-600/40 selection:text-white select-text"
-      >
+      {/* Interactive Real-Time PTY Terminal Viewport */}
+      <div className="flex-1 min-h-0 relative overflow-hidden bg-zinc-950">
         {!currentSession && (
-          <div className="flex items-center gap-2 text-zinc-500 py-4">
+          <div className="flex items-center gap-2 text-zinc-500 py-4 px-4 font-mono text-xs">
             <AlertCircle className="w-4 h-4 text-amber-400" />
             <span>No active SSH connection. Connect to a server to use the terminal.</span>
           </div>
         )}
 
-        {activeTab &&
-          activeTab.history.map((item) => {
-            if (item.type === 'system') {
-              return (
-                <div
-                  key={item.id}
-                  className="text-zinc-500 border-l-2 border-emerald-500/60 pl-2.5 py-1 my-1 text-[11px] whitespace-pre-wrap select-text font-sans"
-                >
-                  {item.text}
-                </div>
-              );
-            }
-
-            if (item.type === 'cmd') {
-              return (
-                <div
-                  key={item.id}
-                  className={`flex items-start gap-1.5 text-zinc-100 font-mono text-xs select-text ${
-                    item.isContinuation ? 'pl-2' : 'pt-1'
-                  }`}
-                >
-                  {item.isContinuation ? (
-                    <span className="text-zinc-500 font-bold select-text shrink-0">
-                      &gt;
-                    </span>
-                  ) : (
-                    <span className="text-emerald-400 font-bold select-text shrink-0">
-                      {currentSession ? `${currentSession.username}@${currentSession.host}` : 'ssh'}:
-                      <span className="text-blue-400 font-normal">{shortenPath(item.cwd || '~')}</span>$
-                    </span>
-                  )}
-                  <span className="text-zinc-100 font-semibold select-text break-all">
-                    {item.text}
-                  </span>
-                </div>
-              );
-            }
-
-            if (item.type === 'err') {
-              return (
-                <div
-                  key={item.id}
-                  className="text-rose-400/90 whitespace-pre-wrap break-all pl-3 border-l border-rose-500/40 text-[11px] select-text"
-                >
-                  {item.text}
-                </div>
-              );
-            }
-
-            return (
-              <div
-                key={item.id}
-                className={`whitespace-pre-wrap break-all pl-3 select-text text-[11px] ${
-                  item.exitCode !== undefined && item.exitCode !== 0
-                    ? 'text-rose-300/90 border-l border-rose-500/30'
-                    : 'text-zinc-300'
-                }`}
-              >
-                {item.text}
-              </div>
-            );
-          })}
-
-        {activeTab?.executing && (
-          <div className="flex items-center gap-2 text-amber-400/90 py-1 text-[11px] pl-1 select-text">
-            <Loader2 className="w-3 h-3 animate-spin" />
-            <span className="italic">Running remote command...</span>
-          </div>
-        )}
-
-        {/* Active Inline Command Prompt */}
-        {currentSession && activeTab && !activeTab.executing && (
-          <div className="flex flex-col gap-0.5 text-zinc-200 pt-1 select-text">
-            {activeTab.continuationLines.length > 0 && (
-              <>
-                <div className="flex items-start gap-1.5 text-zinc-100 font-mono text-xs select-text">
-                  <span className="text-emerald-400 font-bold select-text shrink-0">
-                    {currentSession.username}@{currentSession.host}:
-                    <span className="text-blue-400 font-normal">{shortenPath(activeTab.cwd)}</span>$
-                  </span>
-                  <span className="text-zinc-100 select-text break-all">
-                    {activeTab.continuationLines[0]}
-                  </span>
-                </div>
-                {activeTab.continuationLines.slice(1).map((line, idx) => (
-                  <div key={idx} className="flex items-start gap-1.5 text-zinc-100 font-mono text-xs pl-2 select-text">
-                    <span className="text-zinc-500 font-bold select-text shrink-0">&gt;</span>
-                    <span className="text-zinc-100 select-text break-all">{line}</span>
-                  </div>
-                ))}
-              </>
-            )}
-
-            <form
-              onSubmit={handleRunCommand}
-              className={`flex items-start gap-1.5 text-zinc-200 ${
-                activeTab.continuationLines.length > 0 ? 'pl-2' : ''
-              }`}
-            >
-              {activeTab.continuationLines.length > 0 ? (
-                <span className="text-zinc-500 font-bold select-text shrink-0">&gt;</span>
-              ) : (
-                <span className="text-emerald-400 font-bold select-text shrink-0">
-                  {currentSession.username}@{currentSession.host}:
-                  <span className="text-blue-400 font-normal">{shortenPath(activeTab.cwd)}</span>$
-                </span>
-              )}
-              <input
-                ref={inputRef}
-                type="text"
-                value={activeTab.commandInput}
-                onChange={(e) => setCommandInput(e.target.value)}
-                onKeyDown={handleKeyDownInput}
-                onPaste={handlePasteInput}
-                className="flex-1 min-w-[60px] bg-transparent border-0 outline-none text-zinc-100 font-mono text-xs p-0 m-0 shadow-none focus:outline-none focus:ring-0 focus:border-none caret-emerald-400"
-                autoComplete="off"
-                autoCorrect="off"
-                autoCapitalize="off"
-                spellCheck="false"
-                autoFocus
-              />
-            </form>
-          </div>
-        )}
+        {currentSession &&
+          tabs.map((tab) => (
+            <XTermTab
+              key={tab.id}
+              sessionId={currentSession.id}
+              tabId={tab.id}
+              isActive={tab.id === (activeTab?.id || tabs[0]?.id)}
+              onCommandExecuted={onCommandExecuted}
+            />
+          ))}
       </div>
-
-      {/* Terminal Right-Click Context Menu */}
-      {contextMenu && (
-        <div
-          style={{ top: contextMenu.y, left: contextMenu.x }}
-          className="fixed z-50 min-w-[170px] bg-zinc-900 border border-zinc-700/80 rounded-md shadow-2xl py-1 text-xs text-zinc-200 select-none animate-in fade-in zoom-in-95 duration-100 font-sans"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <button
-            onClick={handleContextCopy}
-            className="w-full flex items-center justify-between px-3 py-1.5 hover:bg-zinc-800 hover:text-white transition-colors cursor-pointer text-left"
-          >
-            <div className="flex items-center gap-2">
-              <Copy className="w-3.5 h-3.5 text-zinc-400" />
-              <span>Copy</span>
-            </div>
-            <span className="text-[10px] text-zinc-500 font-mono">Ctrl+Shift+C</span>
-          </button>
-          <button
-            onClick={handleContextPaste}
-            className="w-full flex items-center justify-between px-3 py-1.5 hover:bg-zinc-800 hover:text-white transition-colors cursor-pointer text-left"
-          >
-            <div className="flex items-center gap-2">
-              <ClipboardPaste className="w-3.5 h-3.5 text-zinc-400" />
-              <span>Paste</span>
-            </div>
-            <span className="text-[10px] text-zinc-500 font-mono">Ctrl+Shift+V</span>
-          </button>
-          <div className="h-px bg-zinc-800 my-1" />
-          <button
-            onClick={handleContextSelectAll}
-            className="w-full flex items-center justify-between px-3 py-1.5 hover:bg-zinc-800 hover:text-white transition-colors cursor-pointer text-left"
-          >
-            <div className="flex items-center gap-2">
-              <Square className="w-3.5 h-3.5 text-zinc-400" />
-              <span>Select All</span>
-            </div>
-            <span className="text-[10px] text-zinc-500 font-mono">Ctrl+A</span>
-          </button>
-          <button
-            onClick={handleContextClear}
-            className="w-full flex items-center justify-between px-3 py-1.5 hover:bg-zinc-800 hover:text-rose-400 transition-colors cursor-pointer text-left"
-          >
-            <div className="flex items-center gap-2">
-              <Trash2 className="w-3.5 h-3.5 text-zinc-400" />
-              <span>Clear Terminal</span>
-            </div>
-            <span className="text-[10px] text-zinc-500 font-mono">Ctrl+L</span>
-          </button>
-        </div>
-      )}
     </div>
   );
 };

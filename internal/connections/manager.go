@@ -293,6 +293,33 @@ func (m *Manager) SetRemoteCwd(sessionID string, terminalID string, cwd string) 
 	return nil
 }
 
+// StartTerminal initializes an interactive PTY shell session on the remote server.
+func (m *Manager) StartTerminal(sessionID string, terminalID string, rows, cols int, onData func(string), onExit func()) error {
+	sess, err := m.GetSession(sessionID)
+	if err != nil {
+		return err
+	}
+	return sess.StartTerminal(terminalID, rows, cols, onData, onExit)
+}
+
+// SendTerminalInput delivers keystrokes/data to the remote PTY.
+func (m *Manager) SendTerminalInput(sessionID string, terminalID string, data string) error {
+	sess, err := m.GetSession(sessionID)
+	if err != nil {
+		return err
+	}
+	return sess.SendTerminalInput(terminalID, data)
+}
+
+// ResizeTerminal notifies the remote PTY of terminal dimension changes.
+func (m *Manager) ResizeTerminal(sessionID string, terminalID string, rows, cols int) error {
+	sess, err := m.GetSession(sessionID)
+	if err != nil {
+		return err
+	}
+	return sess.ResizeTerminal(terminalID, rows, cols)
+}
+
 // CloseTerminal terminates and cleans up an individual terminal instance.
 func (m *Manager) CloseTerminal(sessionID string, terminalID string) error {
 	m.mu.RLock()

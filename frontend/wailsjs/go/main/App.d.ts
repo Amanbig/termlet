@@ -100,6 +100,8 @@ export function RemoveKnownHostByLine(arg1:string,arg2:number):Promise<void>;
 
 export function RenameRemotePath(arg1:string,arg2:string,arg3:string):Promise<void>;
 
+export function ResizeTerminal(arg1:string,arg2:string,arg3:number,arg4:number):Promise<void>;
+
 export function RestartApp():Promise<void>;
 
 export function RestartPortForward(arg1:string,arg2:string):Promise<tunnel.TunnelInfo>;
@@ -114,9 +116,13 @@ export function SearchRemoteFiles(arg1:string,arg2:string,arg3:string,arg4:numbe
 
 export function SelectPrivateKeyFile():Promise<string>;
 
+export function SendTerminalInput(arg1:string,arg2:string,arg3:string):Promise<void>;
+
 export function SetRemoteCwd(arg1:string,arg2:string,arg3:string):Promise<void>;
 
 export function StartPortForward(arg1:string,arg2:number,arg3:string,arg4:number,arg5:string):Promise<tunnel.TunnelInfo>;
+
+export function StartTerminalSession(arg1:string,arg2:string,arg3:number,arg4:number):Promise<void>;
 
 export function StopPortForward(arg1:string):Promise<void>;
 

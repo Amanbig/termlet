@@ -39,7 +39,8 @@ export const XTermTab: React.FC<XTermTabProps> = ({
       fontSize: 12.5,
       lineHeight: 1.25,
       cursorBlink: true,
-      cursorStyle: 'bar',
+      cursorStyle: 'block',
+      cursorInactiveStyle: 'outline',
       allowTransparency: true,
       scrollback: 10000,
       theme: {
@@ -81,6 +82,7 @@ export const XTermTab: React.FC<XTermTabProps> = ({
     const initTimer = setTimeout(() => {
       try {
         fitAddon.fit();
+        term.focus();
         const rows = term.rows || 24;
         const cols = term.cols || 80;
         StartTerminalSession(sessionId, tabId, rows, cols).catch((err) => {
@@ -90,6 +92,12 @@ export const XTermTab: React.FC<XTermTabProps> = ({
         console.error('Terminal init error:', e);
       }
     }, 40);
+
+    const handleFocusClick = () => {
+      term.focus();
+    };
+    const el = containerRef.current;
+    el.addEventListener('click', handleFocusClick);
 
     // Forward user keystrokes to remote PTY
     const dataDisposable = term.onData((data) => {
@@ -129,6 +137,7 @@ export const XTermTab: React.FC<XTermTabProps> = ({
 
     return () => {
       clearTimeout(initTimer);
+      el.removeEventListener('click', handleFocusClick);
       resizeObserver.disconnect();
       unsubData();
       unsubExit();

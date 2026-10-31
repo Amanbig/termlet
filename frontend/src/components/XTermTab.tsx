@@ -36,6 +36,7 @@ export const XTermTab: React.FC<XTermTabProps> = ({
 
   const copySelectionOrBuffer = useCallback(async () => {
     let sel = termRef.current?.getSelection() || lastSelectionRef.current;
+    let isFullBuffer = false;
     if (!sel) {
       const buf = termRef.current?.buffer.active;
       if (buf) {
@@ -45,6 +46,7 @@ export const XTermTab: React.FC<XTermTabProps> = ({
           if (line) lines.push(line.translateToString(true));
         }
         sel = lines.join('\n').trimEnd();
+        isFullBuffer = true;
       }
     }
 
@@ -56,7 +58,9 @@ export const XTermTab: React.FC<XTermTabProps> = ({
           await navigator.clipboard.writeText(sel);
         } catch {}
       }
-      toast.success('Copied to clipboard');
+      toast.success(isFullBuffer ? 'Terminal output copied' : 'Selection copied to clipboard');
+    } else {
+      toast.info('Nothing to copy');
     }
     setContextMenu(null);
   }, []);
@@ -273,6 +277,7 @@ export const XTermTab: React.FC<XTermTabProps> = ({
     if (sel && sel.length > 0) {
       lastSelectionRef.current = sel;
       ClipboardSetText(sel).catch(() => {});
+      toast.success('Selection copied to clipboard');
     }
 
     setContextMenu({ x: e.clientX, y: e.clientY });
@@ -336,7 +341,7 @@ export const XTermTab: React.FC<XTermTabProps> = ({
           >
             <div className="flex items-center gap-2">
               <Copy className="w-3.5 h-3.5 text-zinc-400" />
-              <span>Copy</span>
+              <span>{termRef.current?.hasSelection() || lastSelectionRef.current ? 'Copy Selection' : 'Copy All Output'}</span>
             </div>
             <span className="text-[10px] text-zinc-500 font-mono">Ctrl+Shift+C</span>
           </button>

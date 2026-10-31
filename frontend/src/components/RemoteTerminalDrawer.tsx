@@ -26,6 +26,7 @@ import {
   CloseTerminal,
 } from '../../wailsjs/go/main/App';
 import { connections } from '../../wailsjs/go/models';
+import { ClipboardGetText, ClipboardSetText } from '../../wailsjs/runtime/runtime';
 import { XTermTab } from './XTermTab';
 
 interface RemoteTerminalDrawerProps {
@@ -376,7 +377,11 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
         return h.text;
       })
       .join('\n');
-    navigator.clipboard.writeText(text);
+    try {
+      ClipboardSetText(text);
+    } catch {
+      navigator.clipboard?.writeText(text);
+    }
     setCopied(true);
     toast.success('Terminal output copied to clipboard');
     setTimeout(() => setCopied(false), 2000);
@@ -445,7 +450,11 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
   const handleContextCopy = () => {
     const selection = window.getSelection()?.toString();
     if (selection && selection.length > 0) {
-      navigator.clipboard.writeText(selection);
+      try {
+        ClipboardSetText(selection);
+      } catch {
+        navigator.clipboard?.writeText(selection);
+      }
       toast.success('Selection copied');
     } else {
       handleCopyAll();
@@ -455,12 +464,17 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
 
   const handleContextPaste = async () => {
     try {
-      const text = await navigator.clipboard.readText();
+      let text = '';
+      try {
+        text = await ClipboardGetText();
+      } catch {
+        text = await navigator.clipboard?.readText();
+      }
       if (text) {
         pasteText(text);
       }
     } catch {
-      toast.error('Unable to paste: clipboard permission denied');
+      toast.error('Unable to paste text');
     }
     setContextMenu(null);
   };
@@ -502,7 +516,11 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
         e.preventDefault();
         const selection = window.getSelection()?.toString();
         if (selection && selection.length > 0) {
-          navigator.clipboard.writeText(selection);
+          try {
+            ClipboardSetText(selection);
+          } catch {
+            navigator.clipboard?.writeText(selection);
+          }
           toast.success('Selection copied to clipboard');
         } else {
           handleCopyAll();
@@ -513,9 +531,16 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
       // Ctrl+Shift+V: Terminal paste (standard terminal shortcut)
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'V' || e.key === 'v')) {
         e.preventDefault();
-        navigator.clipboard.readText().then((text) => {
-          if (text) pasteText(text);
-        }).catch(() => {});
+        ClipboardGetText()
+          .then((text) => {
+            if (text) pasteText(text);
+          })
+          .catch(async () => {
+            try {
+              const text = await navigator.clipboard?.readText();
+              if (text) pasteText(text);
+            } catch {}
+          });
         return;
       }
 

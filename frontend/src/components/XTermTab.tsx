@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
-import { EventsOn, EventsOff } from '../../wailsjs/runtime/runtime';
+import { EventsOn, EventsOff, ClipboardGetText, ClipboardSetText } from '../../wailsjs/runtime/runtime';
 import {
   StartTerminalSession,
   SendTerminalInput,
@@ -186,10 +186,16 @@ export const XTermTab: React.FC<XTermTabProps> = ({
     };
   }, [contextMenu]);
 
-  const handleCopySelection = useCallback(() => {
+  const handleCopySelection = useCallback(async () => {
     const sel = termRef.current?.getSelection();
     if (sel && sel.length > 0) {
-      navigator.clipboard.writeText(sel);
+      try {
+        await ClipboardSetText(sel);
+      } catch {
+        try {
+          await navigator.clipboard.writeText(sel);
+        } catch {}
+      }
       toast.success('Selection copied');
     }
     setContextMenu(null);
@@ -197,12 +203,17 @@ export const XTermTab: React.FC<XTermTabProps> = ({
 
   const handlePasteClipboard = useCallback(async () => {
     try {
-      const text = await navigator.clipboard.readText();
+      let text = '';
+      try {
+        text = await ClipboardGetText();
+      } catch {
+        text = await navigator.clipboard?.readText();
+      }
       if (text && termRef.current) {
         SendTerminalInput(sessionId, tabId, text);
       }
     } catch {
-      toast.error('Clipboard access denied');
+      toast.error('Unable to paste text');
     }
     setContextMenu(null);
   }, [sessionId, tabId]);

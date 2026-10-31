@@ -31,6 +31,7 @@ export const XTermTab: React.FC<XTermTabProps> = ({
   const lastSelectionRef = useRef<string>('');
   const copyActionRef = useRef<() => void>(() => {});
   const pasteActionRef = useRef<() => void>(() => {});
+  const menuRef = useRef<HTMLDivElement>(null);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
 
   const copySelectionOrBuffer = useCallback(async () => {
@@ -265,24 +266,33 @@ export const XTermTab: React.FC<XTermTabProps> = ({
   // Context Menu handlers
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
-    if (termRef.current?.hasSelection()) {
-      lastSelectionRef.current = termRef.current.getSelection();
+    e.stopPropagation();
+
+    // If text was highlighted, immediately copy it on right-click (PuTTY / Linux terminal convention)
+    const sel = termRef.current?.getSelection();
+    if (sel && sel.length > 0) {
+      lastSelectionRef.current = sel;
+      ClipboardSetText(sel).catch(() => {});
     }
+
     setContextMenu({ x: e.clientX, y: e.clientY });
   };
 
   useEffect(() => {
     if (!contextMenu) return;
-    const handleClose = () => setContextMenu(null);
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setContextMenu(null);
+      }
+    };
     const handleEsc = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setContextMenu(null);
     };
-    window.addEventListener('click', handleClose);
-    window.addEventListener('contextmenu', handleClose);
+
+    window.addEventListener('mousedown', handleOutsideClick);
     window.addEventListener('keydown', handleEsc);
     return () => {
-      window.removeEventListener('click', handleClose);
-      window.removeEventListener('contextmenu', handleClose);
+      window.removeEventListener('mousedown', handleOutsideClick);
       window.removeEventListener('keydown', handleEsc);
     };
   }, [contextMenu]);
@@ -312,12 +322,16 @@ export const XTermTab: React.FC<XTermTabProps> = ({
       {/* Right Click Context Menu */}
       {contextMenu && (
         <div
+          ref={menuRef}
           style={{ top: contextMenu.y, left: contextMenu.x }}
           className="fixed z-50 min-w-[170px] bg-zinc-900 border border-zinc-700/80 rounded-md shadow-2xl py-1 text-xs text-zinc-200 select-none animate-in fade-in zoom-in-95 duration-100 font-sans"
+          onMouseDown={(e) => e.stopPropagation()}
           onClick={(e) => e.stopPropagation()}
         >
           <button
-            onClick={copySelectionOrBuffer}
+            onClick={() => {
+              copySelectionOrBuffer();
+            }}
             className="w-full flex items-center justify-between px-3 py-1.5 hover:bg-zinc-800 hover:text-white transition-colors cursor-pointer text-left"
           >
             <div className="flex items-center gap-2">
@@ -327,7 +341,9 @@ export const XTermTab: React.FC<XTermTabProps> = ({
             <span className="text-[10px] text-zinc-500 font-mono">Ctrl+Shift+C</span>
           </button>
           <button
-            onClick={pasteClipboardText}
+            onClick={() => {
+              pasteClipboardText();
+            }}
             className="w-full flex items-center justify-between px-3 py-1.5 hover:bg-zinc-800 hover:text-white transition-colors cursor-pointer text-left"
           >
             <div className="flex items-center gap-2">

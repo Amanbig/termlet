@@ -38,7 +38,7 @@ func (c *Client) ListDirectory(dirPath string) ([]models.RemoteFile, error) {
 		return nil, fmt.Errorf("failed to read directory %s: %w", dirPath, err)
 	}
 
-	var results []models.RemoteFile
+	results := []models.RemoteFile{}
 	for _, fi := range fileInfos {
 		fullPath := path.Join(dirPath, fi.Name())
 		results = append(results, models.RemoteFile{

@@ -171,7 +171,7 @@ func (c *Client) searchWithSFTPWalk(rootPath string, query string, maxResults in
 	c.mu.Unlock()
 
 	queryLower := strings.ToLower(strings.TrimSpace(query))
-	var results []models.RemoteFile
+	results := []models.RemoteFile{}
 
 	type dirEntry struct {
 		dirPath string

@@ -56,6 +56,7 @@ interface RemoteFileTreeProps {
   activeFilePath?: string | null;
   onDisconnect?: (sessionId: string) => void;
   onOpenProfiles?: () => void;
+  refreshTrigger?: number;
 }
 
 export const RemoteFileTree: React.FC<RemoteFileTreeProps> = ({
@@ -66,6 +67,7 @@ export const RemoteFileTree: React.FC<RemoteFileTreeProps> = ({
   activeFilePath,
   onDisconnect,
   onOpenProfiles,
+  refreshTrigger,
 }) => {
   const confirm = useConfirm();
   const [items, setItems] = useState<TreeItem[]>([]);
@@ -81,23 +83,58 @@ export const RemoteFileTree: React.FC<RemoteFileTreeProps> = ({
   const [menuOpenPath, setMenuOpenPath] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const openPathsRef = useRef<Set<string>>(new Set());
+  const isInitialMount = useRef(true);
 
-  const fetchDirectory = useCallback(
-    async (dirPath: string) => {
-      if (!sessionId) return;
-      setIsLoading(true);
-      setTreeError(null);
-      try {
-        const files = await ListRemoteFiles(sessionId, dirPath);
-        setItems(
-          files.map((f) => ({
+  // Recursively fetch directory contents while preserving open state for folders in openPaths
+  const loadDirectoryTree = useCallback(
+    async (dirPath: string, openPaths: Set<string>): Promise<TreeItem[]> => {
+      const files = (await ListRemoteFiles(sessionId!, dirPath)) || [];
+      const treeItems: TreeItem[] = await Promise.all(
+        files.map(async (f) => {
+          if (f.is_dir && openPaths.has(f.path)) {
+            try {
+              const children = await loadDirectoryTree(f.path, openPaths);
+              return {
+                ...f,
+                isOpen: true,
+                isLoading: false,
+                isLoaded: true,
+                children,
+              };
+            } catch {
+              return {
+                ...f,
+                isOpen: true,
+                isLoading: false,
+                isLoaded: false,
+                children: [],
+              };
+            }
+          }
+          return {
             ...f,
             isOpen: false,
             isLoading: false,
             isLoaded: false,
             children: [],
-          }))
-        );
+          };
+        })
+      );
+      return treeItems;
+    },
+    [sessionId]
+  );
+
+  const fetchDirectory = useCallback(
+    async (dirPath: string, preserveOpen = true) => {
+      if (!sessionId) return;
+      setIsLoading(true);
+      setTreeError(null);
+      try {
+        const openPaths = preserveOpen ? openPathsRef.current : new Set<string>();
+        const tree = await loadDirectoryTree(dirPath, openPaths);
+        setItems(tree);
         setCurrentPath(dirPath);
       } catch (err: any) {
         const formatted = formatErrorMessage(err, 'Directory Listing');
@@ -109,17 +146,30 @@ export const RemoteFileTree: React.FC<RemoteFileTreeProps> = ({
         setIsLoading(false);
       }
     },
-    [sessionId]
+    [sessionId, loadDirectoryTree]
   );
 
   useEffect(() => {
     if (sessionId) {
-      fetchDirectory(startDirectory || '.');
+      openPathsRef.current.clear();
+      fetchDirectory(startDirectory || '.', false);
     } else {
+      openPathsRef.current.clear();
       setItems([]);
       setTreeError(null);
     }
   }, [sessionId, startDirectory, fetchDirectory]);
+
+  // Handle external refresh trigger (e.g. from terminal commands)
+  useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+    if (sessionId) {
+      fetchDirectory(currentPath, true);
+    }
+  }, [refreshTrigger]);
 
   // Recursively toggle or load directory children
   const toggleFolder = async (item: TreeItem) => {
@@ -127,11 +177,13 @@ export const RemoteFileTree: React.FC<RemoteFileTreeProps> = ({
 
     if (item.isOpen) {
       // Close folder
+      openPathsRef.current.delete(item.path);
       setItems((prev) => updateTree(prev, item.path, { isOpen: false }));
       return;
     }
 
-    // Open folder: if already loaded children, just expand
+    // Open folder
+    openPathsRef.current.add(item.path);
     if (item.isLoaded) {
       setItems((prev) => updateTree(prev, item.path, { isOpen: true }));
       return;
@@ -140,10 +192,10 @@ export const RemoteFileTree: React.FC<RemoteFileTreeProps> = ({
     // Load children
     setItems((prev) => updateTree(prev, item.path, { isLoading: true }));
     try {
-      const children = await ListRemoteFiles(sessionId, item.path);
+      const children = (await ListRemoteFiles(sessionId, item.path)) || [];
       const childItems: TreeItem[] = children.map((c) => ({
         ...c,
-        isOpen: false,
+        isOpen: openPathsRef.current.has(c.path),
         isLoading: false,
         isLoaded: false,
         children: [],
@@ -183,7 +235,10 @@ export const RemoteFileTree: React.FC<RemoteFileTreeProps> = ({
         await CreateRemoteDirectory(sessionId, dest);
         toast.success(`Created folder ${newItemName}`);
       }
-      fetchDirectory(currentPath);
+      if (parent !== currentPath) {
+        openPathsRef.current.add(parent);
+      }
+      await fetchDirectory(currentPath, true);
     } catch (err: any) {
       const formatted = formatErrorMessage(err, 'Create File/Folder');
       toast.error(`${formatted.title}: ${formatted.message}`, {
@@ -207,7 +262,11 @@ export const RemoteFileTree: React.FC<RemoteFileTreeProps> = ({
     try {
       await RenameRemotePath(sessionId, oldPath, newPath);
       toast.success('Renamed successfully');
-      fetchDirectory(currentPath);
+      if (openPathsRef.current.has(oldPath)) {
+        openPathsRef.current.delete(oldPath);
+        openPathsRef.current.add(newPath);
+      }
+      await fetchDirectory(currentPath, true);
     } catch (err: any) {
       const formatted = formatErrorMessage(err, 'Rename');
       toast.error(`${formatted.title}: ${formatted.message}`, {
@@ -233,7 +292,8 @@ export const RemoteFileTree: React.FC<RemoteFileTreeProps> = ({
     try {
       await DeleteRemotePath(sessionId, targetPath, isDir);
       toast.success(`Deleted ${name}`);
-      fetchDirectory(currentPath);
+      openPathsRef.current.delete(targetPath);
+      await fetchDirectory(currentPath, true);
     } catch (err: any) {
       const formatted = formatErrorMessage(err, 'Delete');
       toast.error(`${formatted.title}: ${formatted.message}`, {
@@ -274,7 +334,7 @@ export const RemoteFileTree: React.FC<RemoteFileTreeProps> = ({
         const base64 = (reader.result as string).split(',')[1];
         await UploadFileContent(sessionId, currentPath, file.name, base64);
         toast.success(`Uploaded ${file.name}`);
-        fetchDirectory(currentPath);
+        await fetchDirectory(currentPath, true);
       } catch (err: any) {
         const formatted = formatErrorMessage(err, 'Upload');
         toast.error(`${formatted.title}: ${formatted.message}`, {
@@ -494,7 +554,18 @@ export const RemoteFileTree: React.FC<RemoteFileTreeProps> = ({
 
           {/* Render children if open */}
           {item.is_dir && item.isOpen && item.children && (
-            <div>{renderTree(item.children, level + 1)}</div>
+            <div>
+              {item.children.length === 0 ? (
+                <div
+                  style={{ paddingLeft: `${(level + 1) * 14 + 18}px` }}
+                  className="py-1 px-2 text-[11px] text-zinc-400 dark:text-zinc-500 italic select-none"
+                >
+                  (empty folder)
+                </div>
+              ) : (
+                renderTree(item.children, level + 1)
+              )}
+            </div>
           )}
         </div>
       );

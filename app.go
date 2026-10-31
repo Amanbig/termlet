@@ -366,18 +366,32 @@ func (a *App) getSFTPClient(sessionID string) (*sftpclient.Client, error) {
 func (a *App) ListRemoteFiles(sessionID string, remotePath string) ([]models.RemoteFile, error) {
 	sftpCl, err := a.getSFTPClient(sessionID)
 	if err != nil {
-		return nil, err
+		return []models.RemoteFile{}, err
 	}
-	return sftpCl.ListDirectory(remotePath)
+	files, err := sftpCl.ListDirectory(remotePath)
+	if err != nil {
+		return []models.RemoteFile{}, err
+	}
+	if files == nil {
+		return []models.RemoteFile{}, nil
+	}
+	return files, nil
 }
 
 // SearchRemoteFiles searches for files under a remote directory matching a query.
 func (a *App) SearchRemoteFiles(sessionID string, rootPath string, query string, maxResults int) ([]models.RemoteFile, error) {
 	sftpCl, err := a.getSFTPClient(sessionID)
 	if err != nil {
-		return nil, err
+		return []models.RemoteFile{}, err
 	}
-	return sftpCl.SearchFiles(rootPath, query, maxResults)
+	files, err := sftpCl.SearchFiles(rootPath, query, maxResults)
+	if err != nil {
+		return []models.RemoteFile{}, err
+	}
+	if files == nil {
+		return []models.RemoteFile{}, nil
+	}
+	return files, nil
 }
 
 // ReadRemoteFile retrieves the contents and metadata of a file.

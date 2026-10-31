@@ -15,6 +15,7 @@ import {
   CopyPlus,
   ChevronLeft,
   ChevronRight,
+  ClipboardPaste,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -31,6 +32,7 @@ interface RemoteTerminalDrawerProps {
   onClose: () => void;
   currentSession: connections.SessionSummary | null;
   onDirectoryChanged?: (newDir: string) => void;
+  onCommandExecuted?: () => void;
 }
 
 interface HistoryEntry {
@@ -82,6 +84,7 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
   onClose,
   currentSession,
   onDirectoryChanged,
+  onCommandExecuted,
 }) => {
   const [tabs, setTabs] = useState<TerminalTab[]>([]);
   const [activeTabId, setActiveTabId] = useState<string>('');
@@ -362,6 +365,125 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
     }
   }, [currentSession, activeTab]);
 
+  const handleCopyAll = useCallback(() => {
+    if (!activeTab) return;
+    const text = activeTab.history
+      .map((h) => {
+        if (h.type === 'cmd') {
+          return `${currentSession ? `${currentSession.username}@${currentSession.host}:` : ''}${shortenPath(h.cwd || '~')}$ ${h.text}`;
+        }
+        return h.text;
+      })
+      .join('\n');
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    toast.success('Terminal output copied to clipboard');
+    setTimeout(() => setCopied(false), 2000);
+  }, [activeTab, currentSession]);
+
+  const pasteText = useCallback(
+    (text: string) => {
+      if (!text) return;
+      if (text.includes('\n')) {
+        const rawLines = text.split(/\r?\n/);
+        const firstLine = (activeTab?.commandInput || '') + rawLines[0];
+        const allLines = [firstLine, ...rawLines.slice(1)];
+        const prevLines = allLines.slice(0, -1);
+        const lastLine = allLines[allLines.length - 1];
+
+        setTabs((prev) =>
+          prev.map((t) => {
+            if (t.id !== activeTabId) return t;
+            return {
+              ...t,
+              continuationLines: [...(t.continuationLines || []), ...prevLines],
+              commandInput: lastLine,
+            };
+          })
+        );
+      } else {
+        setTabs((prev) =>
+          prev.map((t) => {
+            if (t.id !== activeTabId) return t;
+            return {
+              ...t,
+              commandInput: (t.commandInput || '') + text,
+            };
+          })
+        );
+      }
+      setTimeout(() => inputRef.current?.focus({ preventScroll: true }), 30);
+    },
+    [activeTab, activeTabId]
+  );
+
+  // Context Menu State for right click inside terminal
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
+
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setContextMenu({ x: e.clientX, y: e.clientY });
+  };
+
+  useEffect(() => {
+    if (!contextMenu) return;
+    const handleClose = () => setContextMenu(null);
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setContextMenu(null);
+    };
+    window.addEventListener('click', handleClose);
+    window.addEventListener('contextmenu', handleClose);
+    window.addEventListener('keydown', handleEsc);
+    return () => {
+      window.removeEventListener('click', handleClose);
+      window.removeEventListener('contextmenu', handleClose);
+      window.removeEventListener('keydown', handleEsc);
+    };
+  }, [contextMenu]);
+
+  const handleContextCopy = () => {
+    const selection = window.getSelection()?.toString();
+    if (selection && selection.length > 0) {
+      navigator.clipboard.writeText(selection);
+      toast.success('Selection copied');
+    } else {
+      handleCopyAll();
+    }
+    setContextMenu(null);
+  };
+
+  const handleContextPaste = async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (text) {
+        pasteText(text);
+      }
+    } catch {
+      toast.error('Unable to paste: clipboard permission denied');
+    }
+    setContextMenu(null);
+  };
+
+  const handleContextSelectAll = () => {
+    if (terminalScrollRef.current) {
+      const range = document.createRange();
+      range.selectNodeContents(terminalScrollRef.current);
+      const sel = window.getSelection();
+      sel?.removeAllRanges();
+      sel?.addRange(range);
+    }
+    setContextMenu(null);
+  };
+
+  const handleContextClear = () => {
+    if (activeTabId) {
+      setTabs((prev) =>
+        prev.map((t) => (t.id === activeTabId ? { ...t, history: [] } : t))
+      );
+    }
+    setContextMenu(null);
+  };
+
   // Global keydown listeners for Ctrl+C, Ctrl+L, and tab shortcuts
   useEffect(() => {
     if (!isOpen) return;
@@ -371,6 +493,28 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === '`' || e.key === '~' || e.key === 'T' || e.key === 't')) {
         e.preventDefault();
         handleNewTab();
+        return;
+      }
+
+      // Ctrl+Shift+C: Terminal copy active selection (standard terminal shortcut)
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'C' || e.key === 'c')) {
+        e.preventDefault();
+        const selection = window.getSelection()?.toString();
+        if (selection && selection.length > 0) {
+          navigator.clipboard.writeText(selection);
+          toast.success('Selection copied to clipboard');
+        } else {
+          handleCopyAll();
+        }
+        return;
+      }
+
+      // Ctrl+Shift+V: Terminal paste (standard terminal shortcut)
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'V' || e.key === 'v')) {
+        e.preventDefault();
+        navigator.clipboard.readText().then((text) => {
+          if (text) pasteText(text);
+        }).catch(() => {});
         return;
       }
 
@@ -386,7 +530,7 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
       }
 
       // Ctrl+C handling
-      if ((e.ctrlKey || e.metaKey) && (e.key === 'c' || e.key === 'C')) {
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && (e.key === 'c' || e.key === 'C')) {
         const selection = window.getSelection()?.toString();
         if (selection && selection.length > 0) {
           return; // Native copy
@@ -434,7 +578,7 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, activeTab, activeTabId, handleCancelCommand, handleNewTab]);
+  }, [isOpen, activeTab, activeTabId, handleCancelCommand, handleNewTab, handleCopyAll, pasteText]);
 
   const setCommandInput = useCallback(
     (val: string) => {
@@ -623,6 +767,7 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
           };
         })
       );
+      onCommandExecuted?.();
     } catch (err: any) {
       if (!isCancelledRef.current[tabId]) {
         setTabs((prev) =>
@@ -658,24 +803,7 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
     if (!text || !text.includes('\n')) return;
 
     e.preventDefault();
-    const rawLines = text.split(/\r?\n/);
-    if (rawLines.length <= 1) return;
-
-    const firstLine = (activeTab?.commandInput || '') + rawLines[0];
-    const allLines = [firstLine, ...rawLines.slice(1)];
-    const prevLines = allLines.slice(0, -1);
-    const lastLine = allLines[allLines.length - 1];
-
-    setTabs((prev) =>
-      prev.map((t) => {
-        if (t.id !== activeTabId) return t;
-        return {
-          ...t,
-          continuationLines: [...(t.continuationLines || []), ...prevLines],
-          commandInput: lastLine,
-        };
-      })
-    );
+    pasteText(text);
   };
 
   const handleKeyDownInput = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -853,22 +981,6 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
     },
     [height, isMaximized]
   );
-
-  const handleCopyAll = () => {
-    if (!activeTab) return;
-    const text = activeTab.history
-      .map((h) => {
-        if (h.type === 'cmd') {
-          return `${currentSession ? `${currentSession.username}@${currentSession.host}:` : ''}${shortenPath(h.cwd || '~')}$ ${h.text}`;
-        }
-        return h.text;
-      })
-      .join('\n');
-    navigator.clipboard.writeText(text);
-    setCopied(true);
-    toast.success('Terminal output copied to clipboard');
-    setTimeout(() => setCopied(false), 2000);
-  };
 
   if (!isOpen) return null;
 
@@ -1092,13 +1204,14 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
       {/* Terminal Output & Inline Command Stream for Active Tab */}
       <div
         ref={terminalScrollRef}
+        onContextMenu={handleContextMenu}
         onClick={() => {
           const selection = window.getSelection()?.toString();
           if (!selection) {
             inputRef.current?.focus({ preventScroll: true });
           }
         }}
-        className="flex-1 overflow-y-auto px-4 py-2 pb-5 font-mono text-xs leading-relaxed space-y-1.5 cursor-text divide-y-0"
+        className="flex-1 overflow-y-auto px-4 py-2 pb-5 font-mono text-xs leading-relaxed space-y-1.5 cursor-text divide-y-0 selection:bg-blue-600/40 selection:text-white select-text"
       >
         {!currentSession && (
           <div className="flex items-center gap-2 text-zinc-500 py-4">
@@ -1113,7 +1226,7 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
               return (
                 <div
                   key={item.id}
-                  className="text-zinc-500 border-l-2 border-emerald-500/60 pl-2.5 py-1 my-1 text-[11px] whitespace-pre-wrap select-all font-sans"
+                  className="text-zinc-500 border-l-2 border-emerald-500/60 pl-2.5 py-1 my-1 text-[11px] whitespace-pre-wrap select-text font-sans"
                 >
                   {item.text}
                 </div>
@@ -1124,21 +1237,21 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
               return (
                 <div
                   key={item.id}
-                  className={`flex items-start gap-1.5 text-zinc-100 font-mono text-xs ${
+                  className={`flex items-start gap-1.5 text-zinc-100 font-mono text-xs select-text ${
                     item.isContinuation ? 'pl-2' : 'pt-1'
                   }`}
                 >
                   {item.isContinuation ? (
-                    <span className="text-zinc-500 font-bold select-none shrink-0">
+                    <span className="text-zinc-500 font-bold select-text shrink-0">
                       &gt;
                     </span>
                   ) : (
-                    <span className="text-emerald-400 font-bold select-none shrink-0">
+                    <span className="text-emerald-400 font-bold select-text shrink-0">
                       {currentSession ? `${currentSession.username}@${currentSession.host}` : 'ssh'}:
                       <span className="text-blue-400 font-normal">{shortenPath(item.cwd || '~')}</span>$
                     </span>
                   )}
-                  <span className="text-zinc-100 font-semibold select-all break-all">
+                  <span className="text-zinc-100 font-semibold select-text break-all">
                     {item.text}
                   </span>
                 </div>
@@ -1149,7 +1262,7 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
               return (
                 <div
                   key={item.id}
-                  className="text-rose-400/90 whitespace-pre-wrap break-all pl-3 border-l border-rose-500/40 text-[11px] select-all"
+                  className="text-rose-400/90 whitespace-pre-wrap break-all pl-3 border-l border-rose-500/40 text-[11px] select-text"
                 >
                   {item.text}
                 </div>
@@ -1159,7 +1272,7 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
             return (
               <div
                 key={item.id}
-                className={`whitespace-pre-wrap break-all pl-3 select-all text-[11px] ${
+                className={`whitespace-pre-wrap break-all pl-3 select-text text-[11px] ${
                   item.exitCode !== undefined && item.exitCode !== 0
                     ? 'text-rose-300/90 border-l border-rose-500/30'
                     : 'text-zinc-300'
@@ -1171,7 +1284,7 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
           })}
 
         {activeTab?.executing && (
-          <div className="flex items-center gap-2 text-amber-400/90 py-1 text-[11px] pl-1">
+          <div className="flex items-center gap-2 text-amber-400/90 py-1 text-[11px] pl-1 select-text">
             <Loader2 className="w-3 h-3 animate-spin" />
             <span className="italic">Running remote command...</span>
           </div>
@@ -1179,22 +1292,22 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
 
         {/* Active Inline Command Prompt */}
         {currentSession && activeTab && !activeTab.executing && (
-          <div className="flex flex-col gap-0.5 text-zinc-200 pt-1">
+          <div className="flex flex-col gap-0.5 text-zinc-200 pt-1 select-text">
             {activeTab.continuationLines.length > 0 && (
               <>
-                <div className="flex items-start gap-1.5 text-zinc-100 font-mono text-xs">
-                  <span className="text-emerald-400 font-bold select-none shrink-0">
+                <div className="flex items-start gap-1.5 text-zinc-100 font-mono text-xs select-text">
+                  <span className="text-emerald-400 font-bold select-text shrink-0">
                     {currentSession.username}@{currentSession.host}:
                     <span className="text-blue-400 font-normal">{shortenPath(activeTab.cwd)}</span>$
                   </span>
-                  <span className="text-zinc-100 select-all break-all">
+                  <span className="text-zinc-100 select-text break-all">
                     {activeTab.continuationLines[0]}
                   </span>
                 </div>
                 {activeTab.continuationLines.slice(1).map((line, idx) => (
-                  <div key={idx} className="flex items-start gap-1.5 text-zinc-100 font-mono text-xs pl-2">
-                    <span className="text-zinc-500 font-bold select-none shrink-0">&gt;</span>
-                    <span className="text-zinc-100 select-all break-all">{line}</span>
+                  <div key={idx} className="flex items-start gap-1.5 text-zinc-100 font-mono text-xs pl-2 select-text">
+                    <span className="text-zinc-500 font-bold select-text shrink-0">&gt;</span>
+                    <span className="text-zinc-100 select-text break-all">{line}</span>
                   </div>
                 ))}
               </>
@@ -1207,9 +1320,9 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
               }`}
             >
               {activeTab.continuationLines.length > 0 ? (
-                <span className="text-zinc-500 font-bold select-none shrink-0">&gt;</span>
+                <span className="text-zinc-500 font-bold select-text shrink-0">&gt;</span>
               ) : (
-                <span className="text-emerald-400 font-bold select-none shrink-0">
+                <span className="text-emerald-400 font-bold select-text shrink-0">
                   {currentSession.username}@{currentSession.host}:
                   <span className="text-blue-400 font-normal">{shortenPath(activeTab.cwd)}</span>$
                 </span>
@@ -1232,6 +1345,57 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
           </div>
         )}
       </div>
+
+      {/* Terminal Right-Click Context Menu */}
+      {contextMenu && (
+        <div
+          style={{ top: contextMenu.y, left: contextMenu.x }}
+          className="fixed z-50 min-w-[170px] bg-zinc-900 border border-zinc-700/80 rounded-md shadow-2xl py-1 text-xs text-zinc-200 select-none animate-in fade-in zoom-in-95 duration-100 font-sans"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            onClick={handleContextCopy}
+            className="w-full flex items-center justify-between px-3 py-1.5 hover:bg-zinc-800 hover:text-white transition-colors cursor-pointer text-left"
+          >
+            <div className="flex items-center gap-2">
+              <Copy className="w-3.5 h-3.5 text-zinc-400" />
+              <span>Copy</span>
+            </div>
+            <span className="text-[10px] text-zinc-500 font-mono">Ctrl+Shift+C</span>
+          </button>
+          <button
+            onClick={handleContextPaste}
+            className="w-full flex items-center justify-between px-3 py-1.5 hover:bg-zinc-800 hover:text-white transition-colors cursor-pointer text-left"
+          >
+            <div className="flex items-center gap-2">
+              <ClipboardPaste className="w-3.5 h-3.5 text-zinc-400" />
+              <span>Paste</span>
+            </div>
+            <span className="text-[10px] text-zinc-500 font-mono">Ctrl+Shift+V</span>
+          </button>
+          <div className="h-px bg-zinc-800 my-1" />
+          <button
+            onClick={handleContextSelectAll}
+            className="w-full flex items-center justify-between px-3 py-1.5 hover:bg-zinc-800 hover:text-white transition-colors cursor-pointer text-left"
+          >
+            <div className="flex items-center gap-2">
+              <Square className="w-3.5 h-3.5 text-zinc-400" />
+              <span>Select All</span>
+            </div>
+            <span className="text-[10px] text-zinc-500 font-mono">Ctrl+A</span>
+          </button>
+          <button
+            onClick={handleContextClear}
+            className="w-full flex items-center justify-between px-3 py-1.5 hover:bg-zinc-800 hover:text-rose-400 transition-colors cursor-pointer text-left"
+          >
+            <div className="flex items-center gap-2">
+              <Trash2 className="w-3.5 h-3.5 text-zinc-400" />
+              <span>Clear Terminal</span>
+            </div>
+            <span className="text-[10px] text-zinc-500 font-mono">Ctrl+L</span>
+          </button>
+        </div>
+      )}
     </div>
   );
 };

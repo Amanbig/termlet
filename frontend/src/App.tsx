@@ -95,6 +95,11 @@ export function App() {
   const [transferDrawerOpen, setTransferDrawerOpen] = useState(false);
   const [activeTransfersCount, setActiveTransfersCount] = useState<number>(0);
   const [terminalDrawerOpen, setTerminalDrawerOpen] = useState(false);
+  const [fileTreeRefreshTrigger, setFileTreeRefreshTrigger] = useState(0);
+
+  const handleTerminalCommandExecuted = useCallback(() => {
+    setFileTreeRefreshTrigger((prev) => prev + 1);
+  }, []);
   const initialProfileHandledRef = useRef(false);
   const connectingProfilesRef = useRef<Set<string>>(new Set());
 
@@ -722,6 +727,7 @@ export function App() {
                     activeFilePath={activeFilePath}
                     onDisconnect={handleDisconnect}
                     onOpenProfiles={() => setActiveActivityView('connections')}
+                    refreshTrigger={fileTreeRefreshTrigger}
                   />
                 </div>
 
@@ -857,6 +863,7 @@ export function App() {
             isOpen={terminalDrawerOpen}
             onClose={() => setTerminalDrawerOpen(false)}
             currentSession={currentSession}
+            onCommandExecuted={handleTerminalCommandExecuted}
           />
         </div>
       </div>

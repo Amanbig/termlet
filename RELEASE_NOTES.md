@@ -1,44 +1,50 @@
-# Termlet v0.9.3 🚀
+# Termlet v0.9.4 🚀
 
-Termlet **v0.9.3** introduces **Multi-Window Connection Support** for handling multiple server environments simultaneously, a native **File Explorer Picker** for SSH private keys, **Snapcraft core24 & GPU modernization**, and robust connection concurrency guards and error feedback.
+Termlet **v0.9.4** introduces a **Real-Time Interactive PTY Terminal** powered by `@xterm/xterm`, **Empty Folder Robustness & Visual Feedback**, **Persistent File Tree Expansion**, **Native OS-Level Clipboard & Drag-Selection**, and a classic **Solid Block Cursor with Click-to-Focus**.
 
 ---
 
 ### ✨ What's New & Highlights
 
-#### 🪟 Multi-Window Connection Architecture
-- **Independent Window Spawning**:
-  - Open multiple native Termlet windows to manage different servers simultaneously with fully independent sessions, file trees, and terminal states.
-  - Deep-link or launch connections directly from the CLI via `termlet --profile <profile-id>`.
-  - Global shortcut <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>N</kbd> / <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>N</kbd> and quick-action icon in the TitleBar to spawn a new window at any time.
-  - Dedicated **"Open in New Window"** option in profile context menus.
-- **Smart Multi-Connection Window Routing**:
-  - Added new setting: *"Open connections in new window when already connected"* in **Settings → General**.
-  - When enabled, connecting to another server while an existing connection is active automatically launches the new connection in its own dedicated window.
-- **Connection Concurrency & Idempotency Safeguards**:
-  - Backend idempotency guards prevent duplicate SSH and SFTP connections for the same profile.
-  - Initial profile ID passed via CLI flag is atomically consumed on startup to eliminate re-trigger loops.
-  - Frontend in-flight ref locks guarantee rapid clicks never spawn duplicate concurrent sessions.
+#### 🖥️ Real-Time Interactive PTY Terminal (`@xterm/xterm`)
+- **Full Pseudo-Terminal (PTY) Engine**:
+  - Replaced the legacy subshell runner with an authentic `xterm-256color` PTY allocated directly on the remote server (`ssh.RequestPty`).
+  - Seamlessly streams interactive `stdin` and `stdout` in real time via bidirectional Wails runtime events.
+- **Support for Interactive CLI Applications**:
+  - **`htop` & `top`**: Live CPU/memory monitoring with real-time process table updates, interactive scrolling, and function key controls.
+  - **Text Editors**: Full terminal editors like `vim`, `nano`, `vi`, `pico`, and `emacs` work with cursor navigation, syntax highlighting, and keyboard shortcuts.
+  - **Interactive Containers & Shells**: `docker exec -it ...`, `python3`, `node`, `bash`, and `sudo` password prompts work natively.
+  - **Dynamic Progress Bars**: Commands with in-place rewriting like `docker pull`, `git clone`, `apt install`, and `ping` animate in real time.
+- **Dynamic Window Resizing**:
+  - Embedded `ResizeObserver` automatically recalculates terminal rows and columns (`fitAddon.fit()`) and synchronizes remote dimensions (`ssh.WindowChange`) as you drag or maximize the drawer.
+- **Native Shell Errors & Tab Completion**:
+  - Unknown or invalid commands now stream authentic shell output (e.g. `bash: hi: command not found`).
+  - Full `<Tab>` path and command auto-completion and Up/Down history browsing.
 
-#### 🔑 Native Private Key File Picker
-- **Instant Key File Selection**:
-  - Integrated an inline native file dialog picker button (**"Pick / Generate Key..."**) right next to the Private Key Path input in the connection dialog.
-  - Opens the OS-native file manager (Nautilus, Dolphin, Explorer, Finder) filtered for common SSH private key formats (`.pem`, `.ppk`, OpenSSH keys, `id_rsa`, `id_ed25519`, `id_ecdsa`).
-  - Seamlessly updates the connection profile path without manual file path typing.
+#### 📁 SFTP File Tree & Empty Folder Robustness
+- **Empty Directory Safety**:
+  - Fixed a serialization crash where empty directory listings returned `null` instead of `[]` to the frontend, causing `TypeError: null is not an object (evaluating '...map')`.
+  - Added a clean `(empty folder)` indicator in the file tree when expanding empty directories.
+- **Persistent Tree Expansion on Reload**:
+  - Creating, renaming, uploading, or deleting files no longer collapses previously opened subfolders.
+  - The tree recursively restores open directory branches and re-fetches updated children.
+  - Commands executed in the terminal drawer automatically trigger non-disruptive tree synchronization.
 
-#### 🛡️ Enhanced Error Handling & Feedback
-- **Intelligent Error Categorization**:
-  - Distinguishes missing credentials from network and connection failures.
-  - Host unreachable, connection timeout, and handshake failures immediately trigger clear, informative toast error alerts (`Connection failed: <details>`) before presenting the setup dialog.
-  - Failed initial profile lookups provide actionable notifications.
-  - Multi-window spawn errors at the OS level are caught and reported directly in the UI.
+#### 📋 Native OS Clipboard & Smooth Drag-Selection
+- **WebKit Sandbox Permission Bypass**:
+  - Migrated terminal clipboard operations to Wails's native OS clipboard bridge (`ClipboardGetText` / `ClipboardSetText`), eliminating `"Clipboard access denied"` errors on Linux WebKit2GTK.
+- **Auto-Copy on Mouse Selection**:
+  - Highlighting text or double-clicking paths/words automatically copies the selection to the system clipboard (standard terminal convention).
+- **Instant Right-Click Copy with Toast Notification**:
+  - Right-clicking highlighted text copies it instantly with a clear toast alert (`Selection copied to clipboard`).
+  - Context menu buttons dynamically adapt between **"Copy Selection"** and **"Copy All Output"**.
+  - Middle-click mouse paste support.
+  - Keyboard shortcuts <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>C</kbd> and <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>V</kbd>.
 
-#### 📦 Snapcraft Packaging & Linux Compatibility
-- **Ubuntu 24.04 (Noble) & core24 Foundation**:
-  - Migrated Snap package to `base: core24` with `gnome-46-2404` extension and `gpu-2404` Mesa interface.
-  - Resolves `DRI_Mesa` graphics driver initialization and WebKitGTK 4.1 hardware acceleration crashes on modern Linux distributions.
-- **Snap Environment Detection**:
-  - Self-updater automatically detects when Termlet is running under Snap confinement and cleanly defers updates to Snapcraft (`snap refresh termlet`) to prevent conflicts with read-only SquashFS mounts.
+#### 🟩 Classic Solid Block Cursor & Click-to-Focus
+- **Authentic Terminal Aesthetics**:
+  - Configured high-visibility solid blinking green block cursor (`█`) matching standard GNOME Terminal and xterm aesthetics.
+  - Clicking anywhere inside the terminal drawer immediately focuses the active shell.
 
 ---
 

@@ -39,7 +39,7 @@ Built with [Wails v2](https://wails.io) (Go) and React 19 + TypeScript, so it sh
 ## Features
 
 - **SSH terminal and profiles**: save servers, use passwords, private keys (with passphrases), or your SSH agent. Host keys are verified, with a warning when a key changes.
-- **Multi-tab remote terminal**: true line-based stream emulator with multi-tab concurrency, multi-line command continuation (`\` & Shift+Enter), tab renaming, tab duplication, and draggable drawer resizing.
+- **Multi-tab interactive remote terminal**: true real-time PTY terminal powered by `@xterm/xterm` with interactive TTY support (`htop`, `vim`, `nano`, `docker exec -it`, `sudo`), live progress bars (`docker pull`), multi-tab concurrency, tab renaming/duplication, and draggable drawer resizing.
 - **SFTP file browser**: browse, create, rename, delete, and upload files on the remote host with bi-directional terminal CWD sync.
 - **Remote code editor**: CodeMirror 6 with syntax highlighting, multiple tabs, 14 themes, and <kbd>Ctrl</kbd>+<kbd>S</kbd> to save straight to the server. Binary files are detected and not opened.
 - **Local port forwarding** (`ssh -L`): create, start, and stop tunnels from a dedicated view. Forwards are saved with the profile, with one-click "open in browser" and presets for common services (HTTP, Vite, PostgreSQL, MySQL, Redis, Traefik).

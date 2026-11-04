@@ -26,6 +26,7 @@ import {
   Trash2,
   Copy,
   KeyRound,
+  Heart,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -935,6 +936,21 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     >
                       <span>Amanbig/termlet</span>
                       <ExternalLink className="w-3 h-3" />
+                    </button>
+                  </div>
+                  <div className="flex items-center justify-between pr-4 sm:col-span-2 pt-2.5 mt-0.5 border-t border-zinc-100 dark:border-zinc-800/40">
+                    <span className="flex items-center gap-1.5 font-medium text-zinc-700 dark:text-zinc-300">
+                      <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500/20" />
+                      <span>Support Termlet:</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenExternal('https://github.com/sponsors/Amanbig')}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800/60 text-xs font-medium transition-colors cursor-pointer"
+                    >
+                      <Heart className="w-3 h-3 text-rose-500 fill-rose-500" />
+                      <span>Sponsor on GitHub</span>
+                      <ExternalLink className="w-3 h-3 opacity-70" />
                     </button>
                   </div>
                 </div>

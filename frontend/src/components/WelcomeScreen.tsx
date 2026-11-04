@@ -10,8 +10,11 @@ import {
   ArrowRight,
   Trash2,
   Edit2,
+  Heart,
+  ExternalLink,
 } from 'lucide-react';
 import { Button } from './ui/button';
+import { BrowserOpenURL } from '../../wailsjs/runtime/runtime';
 
 import logoImg from '../assets/images/logo.png';
 
@@ -204,6 +207,38 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
 
             <div className="p-3 rounded-md bg-white/60 dark:bg-zinc-900/20 border border-zinc-200 dark:border-zinc-800/40 text-[11px] text-zinc-500 flex items-center justify-between">
               <span>Press <kbd className="px-1.5 py-0.5 bg-zinc-200 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-300 rounded font-mono text-[10px]">Ctrl+S</kbd> to save remote files</span>
+            </div>
+
+            {/* Sponsor & Support Callout */}
+            <div className="p-3.5 rounded-md bg-gradient-to-r from-rose-50/70 via-white to-amber-50/50 dark:from-rose-950/20 dark:via-zinc-900/40 dark:to-amber-950/10 border border-rose-200/70 dark:border-rose-900/40 flex items-center justify-between gap-3 shadow-2xs">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-7 h-7 rounded-full bg-rose-100 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800/60 flex items-center justify-center shrink-0">
+                  <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500" />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-xs font-medium text-zinc-900 dark:text-zinc-100 truncate">
+                    Support Termlet
+                  </div>
+                  <div className="text-[11px] text-zinc-500 dark:text-zinc-400 truncate">
+                    Free &amp; open source. Back continuous development on GitHub!
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  const url = 'https://github.com/sponsors/Amanbig';
+                  if (typeof BrowserOpenURL === 'function') {
+                    BrowserOpenURL(url);
+                  } else {
+                    window.open(url, '_blank');
+                  }
+                }}
+                className="shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-rose-600 hover:bg-rose-700 text-white text-xs font-medium transition-colors cursor-pointer shadow-xs"
+              >
+                <span>Sponsor</span>
+                <Heart className="w-3 h-3 fill-white" />
+              </button>
             </div>
           </div>
         </div>

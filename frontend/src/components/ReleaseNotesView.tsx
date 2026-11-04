@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Sparkles, ExternalLink, BookOpen, CheckCircle2 } from 'lucide-react';
+import { Sparkles, ExternalLink, BookOpen, CheckCircle2, Heart } from 'lucide-react';
 import { marked } from 'marked';
 import { GetReleaseNotes } from '../../wailsjs/go/main/App';
 import { BrowserOpenURL } from '../../wailsjs/runtime/runtime';
@@ -90,6 +90,20 @@ export const ReleaseNotesView: React.FC<ReleaseNotesViewProps> = ({
 
           <div className="flex items-center gap-2">
             <button
+              onClick={() => {
+                const url = 'https://github.com/sponsors/Amanbig';
+                if (typeof BrowserOpenURL === 'function') {
+                  BrowserOpenURL(url);
+                } else {
+                  window.open(url, '_blank');
+                }
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-rose-200 dark:border-rose-800/60 bg-rose-50/60 hover:bg-rose-100 dark:bg-rose-950/30 dark:hover:bg-rose-900/50 text-xs text-rose-700 dark:text-rose-300 font-medium transition-colors cursor-pointer"
+            >
+              <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500" />
+              <span>Sponsor</span>
+            </button>
+            <button
               onClick={handleOpenGitHub}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800/80 text-xs text-zinc-700 dark:text-zinc-300 font-medium transition-colors cursor-pointer"
             >
@@ -122,6 +136,20 @@ export const ReleaseNotesView: React.FC<ReleaseNotesViewProps> = ({
               <span>Termlet is up to date</span>
             </div>
             <div className="flex items-center gap-4">
+              <button
+                onClick={() => {
+                  const url = 'https://github.com/sponsors/Amanbig';
+                  if (typeof BrowserOpenURL === 'function') {
+                    BrowserOpenURL(url);
+                  } else {
+                    window.open(url, '_blank');
+                  }
+                }}
+                className="hover:text-rose-600 dark:hover:text-rose-400 hover:underline cursor-pointer flex items-center gap-1.5 text-rose-600 dark:text-rose-400 font-medium"
+              >
+                <Heart className="w-3.5 h-3.5 fill-rose-500/20" />
+                <span>Support on GitHub</span>
+              </button>
               <button
                 onClick={handleOpenGitHub}
                 className="hover:text-blue-600 dark:hover:text-blue-400 hover:underline cursor-pointer flex items-center gap-1"

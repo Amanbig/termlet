@@ -3,8 +3,6 @@ package tunnel
 import (
 	"fmt"
 	"net"
-	"net/http"
-	"net/http/httptest"
 	"testing"
 )
 
@@ -16,16 +14,16 @@ func TestCheckHealthNonExistent(t *testing.T) {
 	}
 }
 
-func TestProbePortHTTP(t *testing.T) {
-	// Start a local test HTTP server
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte("OK"))
-	}))
-	defer server.Close()
+func TestProbePortTCP(t *testing.T) {
+	// Start a local test TCP listener (simulating an open forwarded port)
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("failed to start listener: %v", err)
+	}
+	defer ln.Close()
 
 	// Extract local port
-	_, portStr, err := net.SplitHostPort(server.Listener.Addr().String())
+	_, portStr, err := net.SplitHostPort(ln.Addr().String())
 	if err != nil {
 		t.Fatalf("failed to split host port: %v", err)
 	}
@@ -37,11 +35,8 @@ func TestProbePortHTTP(t *testing.T) {
 	if res.Status != "healthy" {
 		t.Errorf("expected status healthy, got %s", res.Status)
 	}
-	if res.Protocol != "http" {
-		t.Errorf("expected protocol http, got %s", res.Protocol)
-	}
-	if res.StatusCode != 200 {
-		t.Errorf("expected status code 200, got %d", res.StatusCode)
+	if res.Protocol != "tcp" {
+		t.Errorf("expected protocol tcp, got %s", res.Protocol)
 	}
 }
 

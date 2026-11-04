@@ -1,10 +1,8 @@
 package tunnel
 
 import (
-	"context"
 	"fmt"
 	"net"
-	"net/http"
 	"sync"
 	"time"
 )
@@ -39,6 +37,7 @@ func (m *Manager) CheckHealth(tunnelID string) PortHealthStatus {
 	f.mu.Lock()
 	status := f.info.Status
 	localPort := f.info.LocalPort
+	errorMsg := f.info.ErrorMsg
 	f.mu.Unlock()
 
 	if status != StatusActive {
@@ -50,7 +49,23 @@ func (m *Manager) CheckHealth(tunnelID string) PortHealthStatus {
 		}
 	}
 
-	return ProbePort(tunnelID, localPort)
+	if errorMsg != "" {
+		return PortHealthStatus{
+			TunnelID:   tunnelID,
+			LocalPort:  localPort,
+			Status:     "warning",
+			StatusText: errorMsg,
+			Protocol:   "tcp",
+		}
+	}
+
+	return PortHealthStatus{
+		TunnelID:   tunnelID,
+		LocalPort:  localPort,
+		Status:     "healthy",
+		StatusText: "Ready",
+		Protocol:   "tcp",
+	}
 }
 
 // CheckAllHealth probes multiple tunnels concurrently with a short timeout.
@@ -74,46 +89,12 @@ func (m *Manager) CheckAllHealth(tunnelIDs []string) []PortHealthStatus {
 	return results
 }
 
-// ProbePort performs a fast HTTP or TCP probe against 127.0.0.1:localPort.
+// ProbePort performs a fast TCP connectivity probe against 127.0.0.1:localPort.
+// It verifies TCP socket readiness without sending unsolicited application-layer (HTTP) data.
 func ProbePort(tunnelID string, localPort int) PortHealthStatus {
 	addr := fmt.Sprintf("127.0.0.1:%d", localPort)
 	start := time.Now()
 
-	// 1. Try HTTP request first (GET with redirect suppression)
-	client := &http.Client{
-		Timeout: 2 * time.Second,
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			return http.ErrUseLastResponse
-		},
-	}
-
-	req, err := http.NewRequestWithContext(context.Background(), "GET", fmt.Sprintf("http://%s/", addr), nil)
-	if err == nil {
-		req.Header.Set("User-Agent", "Termlet-HealthCheck/1.0")
-		resp, err := client.Do(req)
-		if err == nil {
-			_ = resp.Body.Close()
-			latency := time.Since(start).Milliseconds()
-
-			healthStatus := "healthy"
-			if resp.StatusCode >= 500 {
-				healthStatus = "warning"
-			}
-
-			return PortHealthStatus{
-				TunnelID:   tunnelID,
-				LocalPort:  localPort,
-				Status:     healthStatus,
-				StatusCode: resp.StatusCode,
-				StatusText: fmt.Sprintf("%d %s", resp.StatusCode, http.StatusText(resp.StatusCode)),
-				Protocol:   "http",
-				LatencyMs:  latency,
-			}
-		}
-	}
-
-	// 2. If HTTP probe failed, test TCP connectivity directly
-	tcpStart := time.Now()
 	conn, err := net.DialTimeout("tcp", addr, 1500*time.Millisecond)
 	if err != nil {
 		return PortHealthStatus{
@@ -126,12 +107,12 @@ func ProbePort(tunnelID string, localPort int) PortHealthStatus {
 	}
 	_ = conn.Close()
 
-	tcpLatency := time.Since(tcpStart).Milliseconds()
+	tcpLatency := time.Since(start).Milliseconds()
 	return PortHealthStatus{
 		TunnelID:   tunnelID,
 		LocalPort:  localPort,
 		Status:     "healthy",
-		StatusText: "TCP Ready",
+		StatusText: "Ready",
 		Protocol:   "tcp",
 		LatencyMs:  tcpLatency,
 	}

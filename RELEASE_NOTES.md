@@ -1,50 +1,38 @@
-# Termlet v0.9.4 🚀
+# Termlet v0.9.5 🚀
 
-Termlet **v0.9.4** introduces a **Real-Time Interactive PTY Terminal** powered by `@xterm/xterm`, **Empty Folder Robustness & Visual Feedback**, **Persistent File Tree Expansion**, **Native OS-Level Clipboard & Drag-Selection**, and a classic **Solid Block Cursor with Click-to-Focus**.
+Termlet **v0.9.5** eliminates **unsolicited HTTP health check requests** on forwarded ports, resolves a **React polling spin loop**, prepares the snap package for **Ubuntu USN-8975-1 security updates** (`libsoup-3.0-common`), and consolidates all latest core dependencies across Go, Node.js, and GitHub Actions.
 
 ---
 
 ### ✨ What's New & Highlights
 
-#### 🖥️ Real-Time Interactive PTY Terminal (`@xterm/xterm`)
-- **Full Pseudo-Terminal (PTY) Engine**:
-  - Replaced the legacy subshell runner with an authentic `xterm-256color` PTY allocated directly on the remote server (`ssh.RequestPty`).
-  - Seamlessly streams interactive `stdin` and `stdout` in real time via bidirectional Wails runtime events.
-- **Support for Interactive CLI Applications**:
-  - **`htop` & `top`**: Live CPU/memory monitoring with real-time process table updates, interactive scrolling, and function key controls.
-  - **Text Editors**: Full terminal editors like `vim`, `nano`, `vi`, `pico`, and `emacs` work with cursor navigation, syntax highlighting, and keyboard shortcuts.
-  - **Interactive Containers & Shells**: `docker exec -it ...`, `python3`, `node`, `bash`, and `sudo` password prompts work natively.
-  - **Dynamic Progress Bars**: Commands with in-place rewriting like `docker pull`, `git clone`, `apt install`, and `ping` animate in real time.
-- **Dynamic Window Resizing**:
-  - Embedded `ResizeObserver` automatically recalculates terminal rows and columns (`fitAddon.fit()`) and synchronizes remote dimensions (`ssh.WindowChange`) as you drag or maximize the drawer.
-- **Native Shell Errors & Tab Completion**:
-  - Unknown or invalid commands now stream authentic shell output (e.g. `bash: hi: command not found`).
-  - Full `<Tab>` path and command auto-completion and Up/Down history browsing.
+#### 🔌 Non-Intrusive Port Forwarding & Health Checking
+- **Eliminated Unsolicited HTTP GET Probes**:
+  - Removed synthetic HTTP client probing (`GET http://127.0.0.1:<port>/` with `User-Agent: Termlet-HealthCheck/1.0`) that previously hit forwarded ports over SSH even before any browser or client connection was opened.
+  - Prevents server access log pollution, unwanted route execution, and connection/protocol corruption on non-HTTP services (such as PostgreSQL, MySQL, Redis, MongoDB, and gRPC).
+  - Health checks now check internal forwarder readiness (`Status`, `LocalPort`, `ErrorMsg`) and verify raw TCP socket readiness (`net.DialTimeout`) without sending application-layer bytes.
+- **Fixed React Polling & Re-render Spin Loop**:
+  - Resolved a `useCallback` / `useEffect` dependency loop in `PortForwardView` that caused health checks to fire repeatedly every second in the background.
+  - Stabilized component lifecycle callbacks and timers to a smooth, predictable 5-second refresh interval without unnecessary re-renders.
 
-#### 📁 SFTP File Tree & Empty Folder Robustness
-- **Empty Directory Safety**:
-  - Fixed a serialization crash where empty directory listings returned `null` instead of `[]` to the frontend, causing `TypeError: null is not an object (evaluating '...map')`.
-  - Added a clean `(empty folder)` indicator in the file tree when expanding empty directories.
-- **Persistent Tree Expansion on Reload**:
-  - Creating, renaming, uploading, or deleting files no longer collapses previously opened subfolders.
-  - The tree recursively restores open directory branches and re-fetches updated children.
-  - Commands executed in the terminal drawer automatically trigger non-disruptive tree synchronization.
+#### 🛡️ Ubuntu Security Updates & Snapcraft Packaging
+- **Ubuntu Security Notice (USN-8975-1)**:
+  - Addressed Canonical security advisory for `libsoup-3.0-common` in snap revisions r10/r11 by updating build configuration to pull the latest Ubuntu `core24` archive security patches.
+- **Snapcraft Tooling Alignment**:
+  - Synchronized Wails CLI installation in `snap/snapcraft.yaml` to `v2.17.0` to match `go.mod`.
 
-#### 📋 Native OS Clipboard & Smooth Drag-Selection
-- **WebKit Sandbox Permission Bypass**:
-  - Migrated terminal clipboard operations to Wails's native OS clipboard bridge (`ClipboardGetText` / `ClipboardSetText`), eliminating `"Clipboard access denied"` errors on Linux WebKit2GTK.
-- **Auto-Copy on Mouse Selection**:
-  - Highlighting text or double-clicking paths/words automatically copies the selection to the system clipboard (standard terminal convention).
-- **Instant Right-Click Copy with Toast Notification**:
-  - Right-clicking highlighted text copies it instantly with a clear toast alert (`Selection copied to clipboard`).
-  - Context menu buttons dynamically adapt between **"Copy Selection"** and **"Copy All Output"**.
-  - Middle-click mouse paste support.
-  - Keyboard shortcuts <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>C</kbd> and <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>V</kbd>.
-
-#### 🟩 Classic Solid Block Cursor & Click-to-Focus
-- **Authentic Terminal Aesthetics**:
-  - Configured high-visibility solid blinking green block cursor (`█`) matching standard GNOME Terminal and xterm aesthetics.
-  - Clicking anywhere inside the terminal drawer immediately focuses the active shell.
+#### 📦 Core Dependency Updates
+- **Go Backend**:
+  - `github.com/wailsapp/wails/v2`: `v2.16.0` &rarr; `v2.17.0`
+  - `github.com/pkg/sftp`: `v1.13.11` &rarr; `v1.13.12`
+- **Frontend & Tooling**:
+  - `vite`: `8.3.4` &rarr; `8.3.5`
+  - `shadcn`: `4.22.0` &rarr; `4.23.0`
+  - `@types/node`: `26.6.5` &rarr; `26.6.6`
+  - `marked`: `18.1.1` &rarr; `18.1.3`
+  - `lucide-react`: `1.59.0` &rarr; `1.68.0`
+- **CI / CD**:
+  - `actions/upload-artifact`: `v4` &rarr; `v7` in release workflow
 
 ---
 

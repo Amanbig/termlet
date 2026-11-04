@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   Radio,
   Plus,
@@ -74,11 +74,16 @@ export const PortForwardView: React.FC<PortForwardViewProps> = ({
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Probe health for active tunnels
-  const probeHealth = useCallback(async (listToProbe?: tunnel.TunnelInfo[]) => {
-    const list = listToProbe || tunnels;
-    const activeIds = list.filter((t) => t.status === 'active').map((t) => t.id);
-    if (activeIds.length === 0) return;
+  const onTunnelsChangeRef = useRef(onTunnelsChange);
+  onTunnelsChangeRef.current = onTunnelsChange;
+
+  // Probe health for active tunnels without sending unprompted application data
+  const probeHealth = useCallback(async (listToProbe: tunnel.TunnelInfo[]) => {
+    const activeIds = listToProbe.filter((t) => t.status === 'active').map((t) => t.id);
+    if (activeIds.length === 0) {
+      setHealthMap({});
+      return;
+    }
 
     setIsCheckingHealth(true);
     try {
@@ -88,20 +93,20 @@ export const PortForwardView: React.FC<PortForwardViewProps> = ({
         for (const res of results) {
           nextMap[res.tunnelId] = res;
         }
-        setHealthMap((prev) => ({ ...prev, ...nextMap }));
+        setHealthMap(nextMap);
       }
     } catch (err) {
       console.warn('Failed to probe port health:', err);
     } finally {
       setIsCheckingHealth(false);
     }
-  }, [tunnels]);
+  }, []);
 
   // Fetch tunnels
   const fetchTunnels = useCallback(async () => {
     if (!sessionId) {
       setTunnels([]);
-      onTunnelsChange?.(0);
+      onTunnelsChangeRef.current?.(0);
       return;
     }
     setIsLoading(true);
@@ -110,20 +115,20 @@ export const PortForwardView: React.FC<PortForwardViewProps> = ({
       const safeList = list || [];
       setTunnels(safeList);
       const activeCount = safeList.filter((t) => t.status === 'active').length;
-      onTunnelsChange?.(activeCount);
+      onTunnelsChangeRef.current?.(activeCount);
       probeHealth(safeList);
     } catch (err: any) {
       console.warn('Failed to load port forwards:', err);
     } finally {
       setIsLoading(false);
     }
-  }, [sessionId, onTunnelsChange, probeHealth]);
+  }, [sessionId, probeHealth]);
 
   useEffect(() => {
     fetchTunnels();
     // Refresh periodically if we have active session
     if (!sessionId) return;
-    const interval = setInterval(fetchTunnels, 4000);
+    const interval = setInterval(fetchTunnels, 5000);
     return () => clearInterval(interval);
   }, [sessionId, fetchTunnels]);
 

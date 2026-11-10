@@ -56,6 +56,8 @@ type Session struct {
 	cachedSecret    string
 	cancelKeepAlive context.CancelFunc
 	onDisconnect    DisconnectCallback
+	bastionSSH      *ssh.Client
+	jumpHostName    string
 
 	// Multi-terminal execution tracking
 	terminals   map[string]*TerminalInstance
@@ -75,6 +77,7 @@ type SessionSummary struct {
 	IsAlive        bool   `json:"is_alive"`
 	Status         string `json:"status"` // "connected" | "disconnected" | "dropped"
 	AutoReconnect  bool   `json:"auto_reconnect"`
+	JumpHostName   string `json:"jump_host_name,omitempty"`
 }
 
 // NewSession creates a new initialized Session.
@@ -613,7 +616,16 @@ func (s *Session) MarkDropped(reason error) {
 }
 
 // UpdateConnection updates active SSH and SFTP handles upon reconnect.
-func (s *Session) UpdateConnection(sshClient *ssh.Client, sftpClient *sftpclient.Client) {
+// SetBastion associates an active bastion SSH client and jump host name with this session.
+func (s *Session) SetBastion(bastion *ssh.Client, jumpHostName string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.bastionSSH = bastion
+	s.jumpHostName = jumpHostName
+}
+
+// UpdateConnection updates the underlying SSH and SFTP clients after reconnection.
+func (s *Session) UpdateConnection(sshClient *ssh.Client, sftpClient *sftpclient.Client, newBastion ...*ssh.Client) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -622,6 +634,12 @@ func (s *Session) UpdateConnection(sshClient *ssh.Client, sftpClient *sftpclient
 	}
 	if s.SSH != nil {
 		_ = s.SSH.Close()
+	}
+	if len(newBastion) > 0 && newBastion[0] != nil {
+		if s.bastionSSH != nil {
+			_ = s.bastionSSH.Close()
+		}
+		s.bastionSSH = newBastion[0]
 	}
 
 	s.SSH = sshClient
@@ -656,6 +674,11 @@ func (s *Session) Close() error {
 	}
 	if s.SSH != nil {
 		if err := s.SSH.Close(); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	if s.bastionSSH != nil {
+		if err := s.bastionSSH.Close(); err != nil {
 			errs = append(errs, err)
 		}
 	}
@@ -724,5 +747,6 @@ func (s *Session) Summary() SessionSummary {
 		IsAlive:        isAlive,
 		Status:         status,
 		AutoReconnect:  s.Profile.AutoReconnect,
+		JumpHostName:   s.jumpHostName,
 	}
 }

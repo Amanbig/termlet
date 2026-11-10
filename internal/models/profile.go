@@ -33,6 +33,8 @@ type Profile struct {
 	PortForwards      []ForwardedPortConfig `json:"port_forwards,omitempty"`
 	KeepAliveInterval int                   `json:"keepalive_interval,omitempty"`
 	AutoReconnect     bool                  `json:"auto_reconnect,omitempty"`
+	JumpHostProfileID string                `json:"jump_host_profile_id,omitempty"`
+	ProxyJump         string                `json:"proxy_jump,omitempty"`
 	CreatedAt         int64                 `json:"created_at"`
 	UpdatedAt         int64                 `json:"updated_at"`
 }

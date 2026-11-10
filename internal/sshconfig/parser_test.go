@@ -26,6 +26,7 @@ Host vps1
 Host prod-api staging-api
     HostName api.example.com
     IdentityFile ~/.ssh/id_ed25519
+    ProxyJump vps1
 
 Host *
     ServerAliveInterval 60
@@ -79,6 +80,9 @@ Host *
 	}
 	if p2.Username != "developer" { // Inherited from global defaults
 		t.Errorf("expected username developer, got %s", p2.Username)
+	}
+	if p2.ProxyJump != "vps1" {
+		t.Errorf("expected proxy_jump vps1, got %s", p2.ProxyJump)
 	}
 
 	// Verify staging-api

@@ -18,6 +18,7 @@ import {
   Search,
   X,
   ExternalLink,
+  ChevronDown,
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -330,17 +331,20 @@ export const SSHKeysView: React.FC<SSHKeysViewProps> = ({ onClose, activeSession
                   <div className="flex items-center gap-2">
                     <Server className="w-4 h-4 text-blue-500 shrink-0" />
                     <span className="text-zinc-600 dark:text-zinc-400 font-medium">Target connected server for 1-click install:</span>
-                    <select
-                      value={selectedSessionId}
-                      onChange={(e) => setSelectedSessionId(e.target.value)}
-                      className="bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 rounded px-2.5 py-1 text-xs text-zinc-900 dark:text-zinc-100 font-medium cursor-pointer shadow-2xs"
-                    >
-                      {sessions.map((s) => (
-                        <option key={s.id} value={s.id}>
-                          {s.profile_name} ({s.username}@{s.host}:{s.port})
-                        </option>
-                      ))}
-                    </select>
+                    <div className="relative inline-flex items-center">
+                      <select
+                        value={selectedSessionId}
+                        onChange={(e) => setSelectedSessionId(e.target.value)}
+                        className="bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 rounded pl-2.5 pr-7 py-1 text-xs text-zinc-900 dark:text-zinc-100 font-medium cursor-pointer shadow-2xs appearance-none"
+                      >
+                        {sessions.map((s) => (
+                          <option key={s.id} value={s.id} className="bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100">
+                            {s.profile_name} ({s.username}@{s.host}:{s.port})
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown className="w-3 h-3 text-zinc-400 absolute right-2 pointer-events-none" />
+                    </div>
                   </div>
                   <span className="text-[11px] text-zinc-400">
                     Keys will be appended to remote <code className="bg-zinc-200 dark:bg-zinc-800 px-1 py-0.5 rounded font-mono">~/.ssh/authorized_keys</code>

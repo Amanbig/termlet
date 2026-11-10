@@ -1132,6 +1132,7 @@ export function App() {
         }}
         initialProfile={editingProfile}
         initialHostKeyPrompt={pendingHostKeyPrompt}
+        existingProfiles={profiles}
         onConnected={handleConnected}
         onProfileSaved={refreshProfiles}
         onImportSSHConfig={() => setImportSSHConfigOpen(true)}

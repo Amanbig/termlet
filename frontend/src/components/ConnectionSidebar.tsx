@@ -12,6 +12,7 @@ import {
   FolderDown,
   RotateCw,
   ExternalLink,
+  Route,
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -124,8 +125,14 @@ export const ConnectionSidebar: React.FC<ConnectionSidebarProps> = ({
                             </span>
                           )}
                         </div>
-                        <div className="text-[10px] text-zinc-500 truncate">
-                          {session.username}@{session.host}:{session.port}
+                        <div className="text-[10px] text-zinc-500 truncate flex items-center gap-1">
+                          <span>{session.username}@{session.host}:{session.port}</span>
+                          {session.jump_host_name && (
+                            <span className="text-blue-500 font-medium flex items-center gap-0.5" title={`Tunneled through jump host ${session.jump_host_name}`}>
+                              <Route className="w-2.5 h-2.5" />
+                              <span>via {session.jump_host_name}</span>
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -213,8 +220,14 @@ export const ConnectionSidebar: React.FC<ConnectionSidebarProps> = ({
                         <div className="font-medium truncate text-zinc-900 dark:text-zinc-200">
                           {profile.name}
                         </div>
-                        <div className="text-[10px] text-zinc-500 truncate">
-                          {profile.username}@{profile.host}:{profile.port}
+                        <div className="text-[10px] text-zinc-500 truncate flex items-center gap-1">
+                          <span>{profile.username}@{profile.host}:{profile.port}</span>
+                          {(profile.jump_host_profile_id || profile.proxy_jump) && (
+                            <span className="text-zinc-400 dark:text-zinc-500 flex items-center gap-0.5" title="Configured with Jump Host / Bastion">
+                              <Route className="w-2.5 h-2.5 text-blue-500/70" />
+                              <span>via Bastion</span>
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>

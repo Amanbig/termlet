@@ -120,3 +120,26 @@ func TestSessionCleanCloseNoCallback(t *testing.T) {
 		t.Fatalf("clean close should not mark session as dropped")
 	}
 }
+
+func TestSessionWithJumpHost(t *testing.T) {
+	profile := Profile{
+		ID:                "prof-target",
+		Name:              "Private Database",
+		Host:              "10.0.0.99",
+		Port:              22,
+		Username:          "dbadmin",
+		JumpHostProfileID: "prof-bastion",
+	}
+
+	session := NewSession("sess-jump", profile, nil, nil)
+	session.SetBastion(nil, "AWS Bastion Gateway")
+
+	summary := session.Summary()
+	if summary.JumpHostName != "AWS Bastion Gateway" {
+		t.Fatalf("expected jump host name 'AWS Bastion Gateway', got %q", summary.JumpHostName)
+	}
+
+	if err := session.Close(); err != nil {
+		t.Fatalf("unexpected error closing session: %v", err)
+	}
+}

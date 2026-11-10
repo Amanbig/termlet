@@ -12,6 +12,7 @@ export namespace connections {
 	    is_alive: boolean;
 	    status: string;
 	    auto_reconnect: boolean;
+	    jump_host_name?: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new SessionSummary(source);
@@ -30,6 +31,7 @@ export namespace connections {
 	        this.is_alive = source["is_alive"];
 	        this.status = source["status"];
 	        this.auto_reconnect = source["auto_reconnect"];
+	        this.jump_host_name = source["jump_host_name"];
 	    }
 	}
 
@@ -230,6 +232,8 @@ export namespace models {
 	    port_forwards?: ForwardedPortConfig[];
 	    keepalive_interval?: number;
 	    auto_reconnect?: boolean;
+	    jump_host_profile_id?: string;
+	    proxy_jump?: string;
 	    created_at: number;
 	    updated_at: number;
 	
@@ -250,6 +254,8 @@ export namespace models {
 	        this.port_forwards = this.convertValues(source["port_forwards"], ForwardedPortConfig);
 	        this.keepalive_interval = source["keepalive_interval"];
 	        this.auto_reconnect = source["auto_reconnect"];
+	        this.jump_host_profile_id = source["jump_host_profile_id"];
+	        this.proxy_jump = source["proxy_jump"];
 	        this.created_at = source["created_at"];
 	        this.updated_at = source["updated_at"];
 	    }

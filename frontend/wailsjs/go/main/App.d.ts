@@ -82,9 +82,9 @@ export function ListPortForwards(arg1:string):Promise<Array<tunnel.TunnelInfo>>;
 
 export function ListProfiles():Promise<Array<models.Profile>>;
 
-export function ListSnippets():Promise<Array<models.Snippet>>;
-
 export function ListRemoteFiles(arg1:string,arg2:string):Promise<Array<models.RemoteFile>>;
+
+export function ListSnippets():Promise<Array<models.Snippet>>;
 
 export function ListTransfers():Promise<Array<transfer.Item>>;
 
@@ -104,13 +104,13 @@ export function RemoveKnownHostByLine(arg1:string,arg2:number):Promise<void>;
 
 export function RenameRemotePath(arg1:string,arg2:string,arg3:string):Promise<void>;
 
+export function ResetDefaultSnippets():Promise<Array<models.Snippet>>;
+
 export function ResizeTerminal(arg1:string,arg2:string,arg3:number,arg4:number):Promise<void>;
 
 export function RestartApp():Promise<void>;
 
 export function RestartPortForward(arg1:string,arg2:string):Promise<tunnel.TunnelInfo>;
-
-export function ResetDefaultSnippets():Promise<Array<models.Snippet>>;
 
 export function SavePortForwardConfig(arg1:string,arg2:number,arg3:string,arg4:number,arg5:string):Promise<tunnel.TunnelInfo>;
 

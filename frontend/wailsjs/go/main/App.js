@@ -150,12 +150,12 @@ export function ListProfiles() {
   return window['go']['main']['App']['ListProfiles']();
 }
 
-export function ListSnippets() {
-  return window['go']['main']['App']['ListSnippets']();
-}
-
 export function ListRemoteFiles(arg1, arg2) {
   return window['go']['main']['App']['ListRemoteFiles'](arg1, arg2);
+}
+
+export function ListSnippets() {
+  return window['go']['main']['App']['ListSnippets']();
 }
 
 export function ListTransfers() {
@@ -194,6 +194,10 @@ export function RenameRemotePath(arg1, arg2, arg3) {
   return window['go']['main']['App']['RenameRemotePath'](arg1, arg2, arg3);
 }
 
+export function ResetDefaultSnippets() {
+  return window['go']['main']['App']['ResetDefaultSnippets']();
+}
+
 export function ResizeTerminal(arg1, arg2, arg3, arg4) {
   return window['go']['main']['App']['ResizeTerminal'](arg1, arg2, arg3, arg4);
 }
@@ -204,10 +208,6 @@ export function RestartApp() {
 
 export function RestartPortForward(arg1, arg2) {
   return window['go']['main']['App']['RestartPortForward'](arg1, arg2);
-}
-
-export function ResetDefaultSnippets() {
-  return window['go']['main']['App']['ResetDefaultSnippets']();
 }
 
 export function SavePortForwardConfig(arg1, arg2, arg3, arg4, arg5) {

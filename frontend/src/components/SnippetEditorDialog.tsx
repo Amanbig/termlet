@@ -60,14 +60,14 @@ export const SnippetEditorDialog: React.FC<SnippetEditorDialogProps> = ({
       .map((t) => t.trim())
       .filter((t) => t.length > 0);
 
-    const snippetPayload: models.Snippet = {
+    const snippetPayload = new models.Snippet({
       id: snippet?.id || '',
       title: title.trim(),
       command: command.trim(),
       category: category.trim() || 'General',
       description: description.trim(),
       tags,
-    };
+    });
 
     setIsSaving(true);
     setError(null);

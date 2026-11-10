@@ -70,6 +70,10 @@ export function DeleteRemotePath(arg1, arg2, arg3) {
   return window['go']['main']['App']['DeleteRemotePath'](arg1, arg2, arg3);
 }
 
+export function DeleteSnippet(arg1) {
+  return window['go']['main']['App']['DeleteSnippet'](arg1);
+}
+
 export function Disconnect(arg1) {
   return window['go']['main']['App']['Disconnect'](arg1);
 }
@@ -150,6 +154,10 @@ export function ListRemoteFiles(arg1, arg2) {
   return window['go']['main']['App']['ListRemoteFiles'](arg1, arg2);
 }
 
+export function ListSnippets() {
+  return window['go']['main']['App']['ListSnippets']();
+}
+
 export function ListTransfers() {
   return window['go']['main']['App']['ListTransfers']();
 }
@@ -186,6 +194,10 @@ export function RenameRemotePath(arg1, arg2, arg3) {
   return window['go']['main']['App']['RenameRemotePath'](arg1, arg2, arg3);
 }
 
+export function ResetDefaultSnippets() {
+  return window['go']['main']['App']['ResetDefaultSnippets']();
+}
+
 export function ResizeTerminal(arg1, arg2, arg3, arg4) {
   return window['go']['main']['App']['ResizeTerminal'](arg1, arg2, arg3, arg4);
 }
@@ -208,6 +220,10 @@ export function SaveProfile(arg1, arg2) {
 
 export function SaveRemoteFile(arg1, arg2, arg3, arg4) {
   return window['go']['main']['App']['SaveRemoteFile'](arg1, arg2, arg3, arg4);
+}
+
+export function SaveSnippet(arg1) {
+  return window['go']['main']['App']['SaveSnippet'](arg1);
 }
 
 export function SearchRemoteFiles(arg1, arg2, arg3, arg4) {

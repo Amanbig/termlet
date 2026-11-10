@@ -42,6 +42,8 @@ export function DeleteProfile(arg1:string):Promise<void>;
 
 export function DeleteRemotePath(arg1:string,arg2:string,arg3:boolean):Promise<void>;
 
+export function DeleteSnippet(arg1:string):Promise<void>;
+
 export function Disconnect(arg1:string):Promise<void>;
 
 export function DownloadAndApplyUpdate(arg1:string,arg2:string):Promise<void>;
@@ -82,6 +84,8 @@ export function ListProfiles():Promise<Array<models.Profile>>;
 
 export function ListRemoteFiles(arg1:string,arg2:string):Promise<Array<models.RemoteFile>>;
 
+export function ListSnippets():Promise<Array<models.Snippet>>;
+
 export function ListTransfers():Promise<Array<transfer.Item>>;
 
 export function OpenLocalFile(arg1:string):Promise<void>;
@@ -100,6 +104,8 @@ export function RemoveKnownHostByLine(arg1:string,arg2:number):Promise<void>;
 
 export function RenameRemotePath(arg1:string,arg2:string,arg3:string):Promise<void>;
 
+export function ResetDefaultSnippets():Promise<Array<models.Snippet>>;
+
 export function ResizeTerminal(arg1:string,arg2:string,arg3:number,arg4:number):Promise<void>;
 
 export function RestartApp():Promise<void>;
@@ -111,6 +117,8 @@ export function SavePortForwardConfig(arg1:string,arg2:number,arg3:string,arg4:n
 export function SaveProfile(arg1:models.Profile,arg2:string):Promise<void>;
 
 export function SaveRemoteFile(arg1:string,arg2:string,arg3:string,arg4:number):Promise<sftpclient.SaveResult>;
+
+export function SaveSnippet(arg1:models.Snippet):Promise<models.Snippet>;
 
 export function SearchRemoteFiles(arg1:string,arg2:string,arg3:string,arg4:number):Promise<Array<models.RemoteFile>>;
 

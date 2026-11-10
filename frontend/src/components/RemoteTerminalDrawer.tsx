@@ -16,6 +16,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ClipboardPaste,
+  ScrollText,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -35,6 +36,8 @@ interface RemoteTerminalDrawerProps {
   currentSession: connections.SessionSummary | null;
   onDirectoryChanged?: (newDir: string) => void;
   onCommandExecuted?: () => void;
+  onOpenSnippets?: () => void;
+  onActiveTabChange?: (tabId: string) => void;
 }
 
 interface HistoryEntry {
@@ -87,10 +90,18 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
   currentSession,
   onDirectoryChanged,
   onCommandExecuted,
+  onOpenSnippets,
+  onActiveTabChange,
 }) => {
   const [tabs, setTabs] = useState<TerminalTab[]>([]);
   const [activeTabId, setActiveTabId] = useState<string>('');
   const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (activeTabId) {
+      onActiveTabChange?.(activeTabId);
+    }
+  }, [activeTabId, onActiveTabChange]);
 
   // Height state with drag-to-resize
   const [height, setHeight] = useState<number>(() => {
@@ -1176,6 +1187,17 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
             >
               <Square className="w-2.5 h-2.5 fill-rose-300" />
               <span>Cancel</span>
+            </button>
+          )}
+
+          {onOpenSnippets && (
+            <button
+              onClick={onOpenSnippets}
+              className="flex items-center gap-1 px-1.5 py-0.5 rounded hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors cursor-pointer text-[11px] mr-0.5"
+              title="Command Snippets & Macros (Ctrl+K)"
+            >
+              <ScrollText className="w-3.5 h-3.5 text-blue-400" />
+              <span className="hidden sm:inline">Snippets</span>
             </button>
           )}
 

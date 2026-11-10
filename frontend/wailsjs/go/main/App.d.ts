@@ -42,6 +42,8 @@ export function DeleteProfile(arg1:string):Promise<void>;
 
 export function DeleteRemotePath(arg1:string,arg2:string,arg3:boolean):Promise<void>;
 
+export function DeleteSnippet(arg1:string):Promise<void>;
+
 export function Disconnect(arg1:string):Promise<void>;
 
 export function DownloadAndApplyUpdate(arg1:string,arg2:string):Promise<void>;
@@ -80,6 +82,8 @@ export function ListPortForwards(arg1:string):Promise<Array<tunnel.TunnelInfo>>;
 
 export function ListProfiles():Promise<Array<models.Profile>>;
 
+export function ListSnippets():Promise<Array<models.Snippet>>;
+
 export function ListRemoteFiles(arg1:string,arg2:string):Promise<Array<models.RemoteFile>>;
 
 export function ListTransfers():Promise<Array<transfer.Item>>;
@@ -106,11 +110,15 @@ export function RestartApp():Promise<void>;
 
 export function RestartPortForward(arg1:string,arg2:string):Promise<tunnel.TunnelInfo>;
 
+export function ResetDefaultSnippets():Promise<Array<models.Snippet>>;
+
 export function SavePortForwardConfig(arg1:string,arg2:number,arg3:string,arg4:number,arg5:string):Promise<tunnel.TunnelInfo>;
 
 export function SaveProfile(arg1:models.Profile,arg2:string):Promise<void>;
 
 export function SaveRemoteFile(arg1:string,arg2:string,arg3:string,arg4:number):Promise<sftpclient.SaveResult>;
+
+export function SaveSnippet(arg1:models.Snippet):Promise<models.Snippet>;
 
 export function SearchRemoteFiles(arg1:string,arg2:string,arg3:string,arg4:number):Promise<Array<models.RemoteFile>>;
 

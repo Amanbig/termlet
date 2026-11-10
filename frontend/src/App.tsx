@@ -11,6 +11,11 @@ import {
   GetAppVersion,
   GetInitialProfileID,
   OpenNewWindow,
+  ListSnippets,
+  SaveSnippet,
+  DeleteSnippet,
+  ResetDefaultSnippets,
+  SendTerminalInput,
 } from '../wailsjs/go/main/App';
 import { EventsOn } from '../wailsjs/runtime/runtime';
 import { updater, models } from '../wailsjs/go/models';
@@ -29,6 +34,8 @@ import { PortForwardView } from './components/PortForwardView';
 import { WelcomeScreen } from './components/WelcomeScreen';
 import { TitleBar } from './components/TitleBar';
 import { QuickOpenModal } from './components/QuickOpenModal';
+import { CommandPaletteModal } from './components/CommandPaletteModal';
+import { SnippetsView } from './components/SnippetsView';
 import { ImportSSHConfigModal } from './components/ImportSSHConfigModal';
 import { ReconnectBanner, DroppedSessionInfo } from './components/ReconnectBanner';
 import { TransferDrawer } from './components/TransferDrawer';
@@ -39,7 +46,7 @@ import { useSettings } from './hooks/useSettings';
 import { useConfirm } from './context/ConfirmContext';
 import { Toaster } from './components/ui/sonner';
 import { toast } from 'sonner';
-import { Power, Sparkles, X, Radio, ArrowUpDown, ShieldCheck, KeyRound, Terminal } from 'lucide-react';
+import { Power, Sparkles, X, Radio, ArrowUpDown, ShieldCheck, KeyRound, Terminal, ScrollText } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -96,6 +103,9 @@ export function App() {
   const [activeTransfersCount, setActiveTransfersCount] = useState<number>(0);
   const [terminalDrawerOpen, setTerminalDrawerOpen] = useState(false);
   const [fileTreeRefreshTrigger, setFileTreeRefreshTrigger] = useState(0);
+  const [snippets, setSnippets] = useState<models.Snippet[]>([]);
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const [activeTerminalTabId, setActiveTerminalTabId] = useState<string>('term-1');
 
   const handleTerminalCommandExecuted = useCallback(() => {
     setFileTreeRefreshTrigger((prev) => prev + 1);
@@ -199,6 +209,11 @@ export function App() {
         }
       }
 
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k' && !e.shiftKey) {
+        e.preventDefault();
+        setCommandPaletteOpen((prev) => !prev);
+      }
+
       if ((e.ctrlKey || e.metaKey) && (e.key === '`' || e.key === '~')) {
         e.preventDefault();
         if (currentSessionId) {
@@ -240,6 +255,62 @@ export function App() {
     refreshProfiles();
     refreshSessions();
   }, [refreshProfiles, refreshSessions]);
+
+  const refreshSnippets = useCallback(async () => {
+    try {
+      const list = await ListSnippets();
+      setSnippets(list || []);
+    } catch (err: any) {
+      console.error('Failed to load snippets:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshSnippets();
+  }, [refreshSnippets]);
+
+  const handleSaveSnippet = useCallback(
+    async (snippet: models.Snippet) => {
+      await SaveSnippet(snippet);
+      await refreshSnippets();
+    },
+    [refreshSnippets]
+  );
+
+  const handleDeleteSnippet = useCallback(
+    async (id: string) => {
+      await DeleteSnippet(id);
+      await refreshSnippets();
+    },
+    [refreshSnippets]
+  );
+
+  const handleResetDefaultSnippets = useCallback(async () => {
+    await ResetDefaultSnippets();
+    await refreshSnippets();
+  }, [refreshSnippets]);
+
+  const handleExecuteSnippet = useCallback(
+    (snippet: models.Snippet) => {
+      if (currentSessionId) {
+        setTerminalDrawerOpen(true);
+        const tabId = activeTerminalTabId || 'term-1';
+        SendTerminalInput(currentSessionId, tabId, snippet.command + '\n')
+          .then(() => {
+            toast.success(`Executed "${snippet.title}"`);
+          })
+          .catch((err: any) => {
+            toast.error(`Failed to send command to terminal: ${err?.message || err}`);
+          });
+      } else {
+        navigator.clipboard.writeText(snippet.command);
+        toast.info(
+          `Copied "${snippet.title}" to clipboard. Connect to an SSH session to execute directly.`
+        );
+      }
+    },
+    [currentSessionId, activeTerminalTabId]
+  );
 
   // Check if window was launched targeting a specific profile via CLI flag (run once on mount)
   useEffect(() => {
@@ -663,6 +734,7 @@ export function App() {
           setSidebarOpen(true);
         }}
         onQuickOpen={() => setQuickOpenOpen(true)}
+        onOpenCommandPalette={() => setCommandPaletteOpen(true)}
         onNewWindow={() => handleOpenNewWindow('')}
       />
 
@@ -768,6 +840,17 @@ export function App() {
                     onOpenInNewWindow={(id) => handleOpenNewWindow(id)}
                   />
                 </div>
+
+                <div className={activeActivityView === 'snippets' ? 'h-full flex flex-col' : 'hidden'}>
+                  <SnippetsView
+                    snippets={snippets}
+                    onExecuteSnippet={handleExecuteSnippet}
+                    onSaveSnippet={handleSaveSnippet}
+                    onDeleteSnippet={handleDeleteSnippet}
+                    onResetDefaults={handleResetDefaultSnippets}
+                    hasActiveSession={!!currentSessionId}
+                  />
+                </div>
               </ErrorBoundary>
             </div>
           </div>
@@ -864,6 +947,8 @@ export function App() {
             onClose={() => setTerminalDrawerOpen(false)}
             currentSession={currentSession}
             onCommandExecuted={handleTerminalCommandExecuted}
+            onOpenSnippets={() => setCommandPaletteOpen(true)}
+            onActiveTabChange={(tabId) => setActiveTerminalTabId(tabId)}
           />
         </div>
       </div>
@@ -985,6 +1070,16 @@ export function App() {
             <Terminal className="w-3 h-3 text-emerald-500" />
             <span>Terminal</span>
           </button>
+
+          {/* Command Snippets button */}
+          <button
+            onClick={() => setCommandPaletteOpen(true)}
+            className="px-2 py-0.5 rounded cursor-pointer transition-colors flex items-center gap-1.5 hover:bg-zinc-200/60 dark:hover:bg-zinc-800 text-zinc-500 dark:text-zinc-400"
+            title="Command Snippets & Palette (Ctrl+K)"
+          >
+            <ScrollText className="w-3 h-3 text-blue-500" />
+            <span>Snippets</span>
+          </button>
         </div>
 
         {/* Right: Quick shortcuts / status info */}
@@ -1058,6 +1153,18 @@ export function App() {
         startDirectory={currentSession?.start_directory || '.'}
         openFiles={openFiles}
         onOpenFile={handleOpenFile}
+      />
+
+      {/* Command Snippets & Quick Actions Palette Modal (Ctrl+K / Cmd+K) */}
+      <CommandPaletteModal
+        isOpen={commandPaletteOpen}
+        onClose={() => setCommandPaletteOpen(false)}
+        snippets={snippets}
+        onExecuteSnippet={handleExecuteSnippet}
+        onSaveSnippet={handleSaveSnippet}
+        onDeleteSnippet={handleDeleteSnippet}
+        onResetDefaults={handleResetDefaultSnippets}
+        hasActiveSession={!!currentSessionId}
       />
 
       {/* SFTP Transfer Queue & Progress Drawer */}

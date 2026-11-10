@@ -344,6 +344,32 @@ export namespace models {
 	        this.size = source["size"];
 	    }
 	}
+	export class Snippet {
+	    id: string;
+	    title: string;
+	    command: string;
+	    description?: string;
+	    category?: string;
+	    tags?: string[];
+	    created_at?: string;
+	    updated_at?: string;
+
+	    static createFrom(source: any = {}) {
+	        return new Snippet(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.title = source["title"];
+	        this.command = source["command"];
+	        this.description = source["description"];
+	        this.category = source["category"];
+	        this.tags = source["tags"];
+	        this.created_at = source["created_at"];
+	        this.updated_at = source["updated_at"];
+	    }
+	}
 
 }
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Minus, Square, X, Server, Terminal, Settings as SettingsIcon, Search, AppWindow } from 'lucide-react';
+import { Minus, Square, X, Server, Terminal, Settings as SettingsIcon, Search, AppWindow, ScrollText } from 'lucide-react';
 import {
   WindowMinimise,
   WindowToggleMaximise,
@@ -17,6 +17,7 @@ interface TitleBarProps {
   onNewConnection: () => void;
   onOpenProfiles: () => void;
   onQuickOpen?: () => void;
+  onOpenCommandPalette?: () => void;
   onNewWindow?: () => void;
 }
 
@@ -37,6 +38,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({
   onNewConnection,
   onOpenProfiles,
   onQuickOpen,
+  onOpenCommandPalette,
   onNewWindow,
 }) => {
   const [isMaximised, setIsMaximised] = useState(false);
@@ -190,6 +192,18 @@ export const TitleBar: React.FC<TitleBarProps> = ({
             className="h-full px-2.5 flex items-center justify-center text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-200/70 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
           >
             <AppWindow className="w-3.5 h-3.5" />
+          </button>
+        )}
+
+        {/* Command Snippets & Palette Shortcut */}
+        {onOpenCommandPalette && (
+          <button
+            type="button"
+            onClick={onOpenCommandPalette}
+            title="Command Snippets & Palette (Ctrl+K)"
+            className="h-full px-2.5 flex items-center justify-center text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-200/70 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+          >
+            <ScrollText className="w-3.5 h-3.5" />
           </button>
         )}
 

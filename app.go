@@ -41,6 +41,7 @@ type App struct {
 	updater          *updater.Updater
 	tunnelMgr        *tunnel.Manager
 	transferMgr      *transfer.Manager
+	snippetStore     *storage.SnippetStorage
 }
 
 // ConnectResponse wraps the outcome of a Connect request.
@@ -68,6 +69,11 @@ func NewApp(initialProfileID string) *App {
 	upd := updater.NewUpdater()
 	tunnelMgr := tunnel.NewManager()
 
+	snippetStore, err := storage.NewSnippetStorage()
+	if err != nil {
+		fmt.Printf("warning: failed to init snippet storage: %v\n", err)
+	}
+
 	app := &App{
 		initialProfileID: initialProfileID,
 		profileStore:     profileStore,
@@ -75,6 +81,7 @@ func NewApp(initialProfileID string) *App {
 		connMgr:          connMgr,
 		updater:          upd,
 		tunnelMgr:        tunnelMgr,
+		snippetStore:     snippetStore,
 	}
 
 	app.transferMgr = transfer.NewManager(func(eventName string, data ...interface{}) {
@@ -162,6 +169,40 @@ func (a *App) GetProfileSecret(id string) (string, error) {
 		return "", nil
 	}
 	return a.secretStore.GetSecret(id)
+}
+
+// --- Snippet Management ---
+
+// ListSnippets returns all saved command snippets.
+func (a *App) ListSnippets() ([]models.Snippet, error) {
+	if a.snippetStore == nil {
+		return []models.Snippet{}, nil
+	}
+	return a.snippetStore.List()
+}
+
+// SaveSnippet creates or updates a snippet.
+func (a *App) SaveSnippet(snippet models.Snippet) (*models.Snippet, error) {
+	if a.snippetStore == nil {
+		return nil, fmt.Errorf("snippet storage is not initialized")
+	}
+	return a.snippetStore.Save(snippet)
+}
+
+// DeleteSnippet removes a snippet by ID.
+func (a *App) DeleteSnippet(id string) error {
+	if a.snippetStore == nil {
+		return nil
+	}
+	return a.snippetStore.Delete(id)
+}
+
+// ResetDefaultSnippets resets snippets back to the default library.
+func (a *App) ResetDefaultSnippets() ([]models.Snippet, error) {
+	if a.snippetStore == nil {
+		return []models.Snippet{}, fmt.Errorf("snippet storage is not initialized")
+	}
+	return a.snippetStore.ResetDefaults()
 }
 
 // GetDefaultSSHConfigPath returns the default location of the ~/.ssh/config file.

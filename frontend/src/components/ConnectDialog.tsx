@@ -183,8 +183,8 @@ export const ConnectDialog: React.FC<ConnectDialogProps> = ({
   return (
     <>
       <Dialog open={open && !hostKeyPrompt} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-[480px] bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-xl">
-          <DialogHeader>
+        <DialogContent className="sm:max-w-[490px] max-h-[85vh] flex flex-col p-0 overflow-hidden bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-2xl rounded-xl gap-0">
+          <DialogHeader className="p-4 pb-3 border-b border-zinc-200 dark:border-zinc-800/80 shrink-0 pr-10">
             <DialogTitle className="flex items-center gap-2 text-zinc-900 dark:text-zinc-100">
               <Server className="w-5 h-5 text-blue-500" />
               {initialProfile ? 'Edit Connection Profile' : 'New SSH Connection'}
@@ -211,7 +211,7 @@ export const ConnectDialog: React.FC<ConnectDialogProps> = ({
             )}
           </DialogHeader>
 
-          <div className="space-y-4 py-2">
+          <div className="flex-1 overflow-y-auto p-4 space-y-3.5">
             {/* Profile Name */}
             <div className="space-y-1.5">
               <Label className="text-xs text-zinc-700 dark:text-zinc-300">Profile Name (optional)</Label>
@@ -521,7 +521,7 @@ export const ConnectDialog: React.FC<ConnectDialogProps> = ({
             )}
           </div>
 
-          <DialogFooter className="gap-2 sm:gap-0">
+          <DialogFooter className="p-3 px-4 border-t border-zinc-200 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-900/40 shrink-0 flex items-center justify-end gap-2">
             <Button
               variant="outline"
               onClick={() => onOpenChange(false)}
@@ -532,7 +532,7 @@ export const ConnectDialog: React.FC<ConnectDialogProps> = ({
             <Button
               onClick={() => handleSubmit(false)}
               disabled={isConnecting}
-              className="bg-blue-600 hover:bg-blue-500 text-white text-xs h-8 cursor-pointer"
+              className="bg-blue-600 hover:bg-blue-500 text-white text-xs h-8 cursor-pointer shadow-xs"
             >
               {isConnecting ? (
                 <>
@@ -549,8 +549,8 @@ export const ConnectDialog: React.FC<ConnectDialogProps> = ({
       {/* Host Key Inspection & Approval Modal */}
       {hostKeyPrompt && (
         <Dialog open={true} onOpenChange={() => setHostKeyPrompt(null)}>
-          <DialogContent className="sm:max-w-[500px] bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-xl">
-            <DialogHeader>
+          <DialogContent className="sm:max-w-[500px] max-h-[85vh] flex flex-col p-0 overflow-hidden bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-2xl rounded-xl gap-0">
+            <DialogHeader className="p-4 pb-3 border-b border-zinc-200 dark:border-zinc-800/80 shrink-0 pr-10">
               <DialogTitle className="flex items-center gap-2 text-zinc-900 dark:text-zinc-100">
                 <ShieldAlert
                   className={`w-5 h-5 ${
@@ -566,28 +566,30 @@ export const ConnectDialog: React.FC<ConnectDialogProps> = ({
               </DialogDescription>
             </DialogHeader>
 
-            <div className="bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-md p-3 space-y-2 text-xs font-mono">
-              <div className="flex justify-between">
-                <span className="text-zinc-500">Host:</span>
-                <span className="text-zinc-800 dark:text-zinc-200">{hostKeyPrompt.hostname} ({hostKeyPrompt.address})</span>
+            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+              <div className="bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-md p-3 space-y-2 text-xs font-mono">
+                <div className="flex justify-between">
+                  <span className="text-zinc-500">Host:</span>
+                  <span className="text-zinc-800 dark:text-zinc-200">{hostKeyPrompt.hostname} ({hostKeyPrompt.address})</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-zinc-500">Key Type:</span>
+                  <span className="text-zinc-800 dark:text-zinc-200">{hostKeyPrompt.key_type}</span>
+                </div>
+                <div>
+                  <span className="text-zinc-500 block mb-1">Fingerprint (SHA256):</span>
+                  <span className="text-amber-600 dark:text-amber-400 break-all select-all">{hostKeyPrompt.fingerprint}</span>
+                </div>
               </div>
-              <div className="flex justify-between">
-                <span className="text-zinc-500">Key Type:</span>
-                <span className="text-zinc-800 dark:text-zinc-200">{hostKeyPrompt.key_type}</span>
-              </div>
-              <div>
-                <span className="text-zinc-500 block mb-1">Fingerprint (SHA256):</span>
-                <span className="text-amber-600 dark:text-amber-400 break-all select-all">{hostKeyPrompt.fingerprint}</span>
-              </div>
+
+              {hostKeyPrompt.status === 'changed' && (
+                <p className="text-xs text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 p-2.5 rounded border border-rose-200 dark:border-rose-900/60">
+                  Someone could be eavesdropping on you right now (man-in-the-middle attack)! If the server was not recently re-installed, do NOT continue.
+                </p>
+              )}
             </div>
 
-            {hostKeyPrompt.status === 'changed' && (
-              <p className="text-xs text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 p-2.5 rounded border border-rose-200 dark:border-rose-900/60">
-                Someone could be eavesdropping on you right now (man-in-the-middle attack)! If the server was not recently re-installed, do NOT continue.
-              </p>
-            )}
-
-            <DialogFooter className="gap-2">
+            <DialogFooter className="p-3 px-4 border-t border-zinc-200 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-900/40 shrink-0 flex items-center justify-end gap-2">
               <Button
                 variant="outline"
                 onClick={() => setHostKeyPrompt(null)}

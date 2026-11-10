@@ -229,22 +229,25 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
           {/* Category Filter Pills */}
           {categories.length > 2 && (
             <div className="flex items-center gap-1.5 px-4 py-2 border-b border-zinc-100 dark:border-zinc-800/80 overflow-x-auto select-none bg-zinc-50/30 dark:bg-zinc-950/30 scrollbar-none">
-              {categories.map((cat) => (
-                <button
-                  key={cat}
-                  onClick={() => {
-                    setSelectedCategory(cat);
-                    setSelectedIndex(0);
-                  }}
-                  className={`px-2.5 py-0.5 rounded-full text-[11px] font-medium transition-colors cursor-pointer shrink-0 ${
-                    selectedCategory === cat
-                      ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900'
-                      : 'bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-400'
-                  }`}
-                >
-                  {cat}
-                </button>
-              ))}
+              {categories.map((cat) => {
+                const isSelected = selectedCategory === cat;
+                return (
+                  <button
+                    key={cat}
+                    onClick={() => {
+                      setSelectedCategory(cat);
+                      setSelectedIndex(0);
+                    }}
+                    className={`px-2.5 py-0.5 rounded-full text-[11px] font-medium transition-colors cursor-pointer shrink-0 border ${
+                      isSelected
+                        ? 'bg-blue-600 text-white border-blue-500 shadow-2xs font-semibold'
+                        : 'bg-zinc-100 hover:bg-zinc-200/70 dark:bg-zinc-900/60 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border-zinc-200/60 dark:border-zinc-800/60'
+                    }`}
+                  >
+                    {cat}
+                  </button>
+                );
+              })}
             </div>
           )}
 

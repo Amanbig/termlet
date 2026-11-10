@@ -172,7 +172,7 @@ func isTargetWritable(targetPath string) bool {
 func CheckForUpdate(ctx context.Context) (*UpdateInfo, error) {
 	currentVer := version.Version
 	if currentVer == "" {
-		currentVer = "0.9.5"
+		currentVer = "0.10.0"
 	}
 	installType := DetectInstallationType()
 

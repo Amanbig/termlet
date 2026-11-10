@@ -10,7 +10,8 @@ For the active release currently being compiled or deployed, refer to the root [
 
 | Version | Release Date / Milestone | Highlights | Release Notes |
 | :--- | :--- | :--- | :---: |
-| **v0.9.5** | *Current* | Non-intrusive port forwarding (eliminated unsolicited HTTP GET probes), fixed React polling spin loop, Ubuntu USN-8975-1 security resolution for Snap, and full dependency updates across Go/Node/CI | [v0.9.5.md](v0.9.5.md) |
+| **v0.10.0** | *Current* | SSH Jump Host & Bastion (ProxyJump) tunneling, Command Snippets & Quick Actions Palette (`Ctrl+K`/`Cmd+K`), select dark/light theme polish, viewport-bounded dialogs, and core dependencies updates | [v0.10.0.md](v0.10.0.md) |
+| **v0.9.5** | Minor Release | Non-intrusive port forwarding (eliminated unsolicited HTTP GET probes), fixed React polling spin loop, Ubuntu USN-8975-1 security resolution for Snap, and full dependency updates across Go/Node/CI | [v0.9.5.md](v0.9.5.md) |
 | **v0.9.4** | Minor Release | Real-Time Interactive PTY Terminal (`@xterm/xterm`, `htop`, `vim`, `docker pull`), empty folder safety `(empty folder)`, persistent tree expansion on reload, native Wails OS clipboard, and instant right-click copy with toast notifications | [v0.9.4.md](v0.9.4.md) |
 | **v0.9.3** | Minor Release | Multi-Window Connection Architecture, CLI `--profile` launcher, native Private Key file picker, Snapcraft core24 & GPU modernization, and connection concurrency safeguards | [v0.9.3.md](v0.9.3.md) |
 | **v0.9.0** | Minor Release | Multi-tab line-based terminal emulator, multi-line command continuation (`\` & Shift+Enter), VS Code drag-to-resize drawer & sidepanel, unified panel width, ActivityBar reorder, tab rename/duplicate, and stable port list | [v0.9.0.md](v0.9.0.md) |

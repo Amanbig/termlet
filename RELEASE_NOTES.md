@@ -1,38 +1,48 @@
-# Termlet v0.9.5 🚀
+# Termlet v0.10.0 🚀
 
-Termlet **v0.9.5** eliminates **unsolicited HTTP health check requests** on forwarded ports, resolves a **React polling spin loop**, prepares the snap package for **Ubuntu USN-8975-1 security updates** (`libsoup-3.0-common`), and consolidates all latest core dependencies across Go, Node.js, and GitHub Actions.
+Termlet **v0.10.0** introduces **SSH Jump Host / Bastion (ProxyJump) tunneling**, an integrated **Command Snippets & Quick Actions Palette** (`Ctrl+K`/`Cmd+K`) with persistent storage and DevOps presets, comprehensive UI theme polish for dark/light mode select dropdowns, viewport-bounded scrollable connection dialogs, and consolidated dependency updates across Go, Vite, Tailwind CSS, and GitHub Actions.
 
 ---
 
 ### ✨ What's New & Highlights
 
-#### 🔌 Non-Intrusive Port Forwarding & Health Checking
-- **Eliminated Unsolicited HTTP GET Probes**:
-  - Removed synthetic HTTP client probing (`GET http://127.0.0.1:<port>/` with `User-Agent: Termlet-HealthCheck/1.0`) that previously hit forwarded ports over SSH even before any browser or client connection was opened.
-  - Prevents server access log pollution, unwanted route execution, and connection/protocol corruption on non-HTTP services (such as PostgreSQL, MySQL, Redis, MongoDB, and gRPC).
-  - Health checks now check internal forwarder readiness (`Status`, `LocalPort`, `ErrorMsg`) and verify raw TCP socket readiness (`net.DialTimeout`) without sending application-layer bytes.
-- **Fixed React Polling & Re-render Spin Loop**:
-  - Resolved a `useCallback` / `useEffect` dependency loop in `PortForwardView` that caused health checks to fire repeatedly every second in the background.
-  - Stabilized component lifecycle callbacks and timers to a smooth, predictable 5-second refresh interval without unnecessary re-renders.
+#### 🛡️ SSH Jump Host & Bastion (ProxyJump) Support
+- **Intermediate Bastion Dialing**:
+  - Connect securely to private remote servers located in isolated VPCs, subnets, or internal corporate networks by tunneling through an intermediate SSH bastion or jump host.
+  - Implemented cascading TCP dial tunneling in the Go backend (`bastion.Dial("tcp", addr)` with `handshakeConn`) ensuring full handshake negotiation, host key verification, context cancellation, and cascaded connection tear-down.
+- **Config-Driven & UI Integration**:
+  - Direct selection of configured Jump Host profiles inside the Connection Dialog.
+  - Full support for `ProxyJump` directives when importing configurations from `~/.ssh/config`.
+  - Informative visual routing badges across the Connection Sidebar and Remote Explorer (`via <jump_host>`) displaying real-time bastion routing status.
 
-#### 🛡️ Ubuntu Security Updates & Snapcraft Packaging
-- **Ubuntu Security Notice (USN-8975-1)**:
-  - Addressed Canonical security advisory for `libsoup-3.0-common` in snap revisions r10/r11 by updating build configuration to pull the latest Ubuntu `core24` archive security patches.
-- **Snapcraft Tooling Alignment**:
-  - Synchronized Wails CLI installation in `snap/snapcraft.yaml` to `v2.17.0` to match `go.mod`.
+#### ⚡ Command Snippets & Quick Actions Palette (`Ctrl+K` / `Cmd+K`)
+- **Global Command Palette**:
+  - Access snippets anywhere in Termlet using `Ctrl+K` (or `Cmd+K` on macOS) to instantly search, filter, preview, and execute commands in active remote sessions.
+- **Persistent Snippets Library & DevOps Presets**:
+  - Persisted JSON storage at `~/.config/termlet/snippets.json` with CRUD operations (create, edit, delete, categorize, tag, and restore defaults).
+  - Ships out-of-the-box with 11 production DevOps presets spanning Docker cleanup, Git maintenance, system diagnostics, and network troubleshooting.
+- **Dedicated Activity Drawer**:
+  - A clean 3-tier card layout in the Snippets sidebar drawer with full-width titles, monospace syntax blocks, description, copy button, and 1-click execution to the active interactive terminal.
+
+#### 🎨 UI Polish & Theming Consistency
+- **Native Select Dropdowns in Dark/Light Modes**:
+  - Configured `color-scheme: light` on `:root` and `color-scheme: dark` on `.dark` in CSS, ensuring Linux WebKitGTK and desktop runtimes render select elements and native dropdown popups in the proper theme.
+  - Enforced `appearance: none` with custom SVG chevrons and Tailwind zinc styling across all form selectors.
+- **Viewport-Bounded Dialog Safety**:
+  - Pinned modal headers and footers with `shrink-0` and made form contents scrollable (`max-h-[85vh]` and `overflow-y-auto`).
+  - Guarantees `Connect` and `Cancel` action buttons are always accessible and never clipped off-screen when Jump Host options, advanced keep-alive, or error details are expanded.
 
 #### 📦 Core Dependency Updates
 - **Go Backend**:
-  - `github.com/wailsapp/wails/v2`: `v2.16.0` &rarr; `v2.17.0`
-  - `github.com/pkg/sftp`: `v1.13.11` &rarr; `v1.13.12`
+  - `github.com/wailsapp/wails/v2`: `v2.17.0` &rarr; `v2.17.1`
+  - `golang.org/x/crypto`: updated to latest security release
 - **Frontend & Tooling**:
-  - `vite`: `8.3.4` &rarr; `8.3.5`
-  - `shadcn`: `4.22.0` &rarr; `4.23.0`
-  - `@types/node`: `26.6.5` &rarr; `26.6.6`
-  - `marked`: `18.1.1` &rarr; `18.1.3`
-  - `lucide-react`: `1.59.0` &rarr; `1.68.0`
-- **CI / CD**:
-  - `actions/upload-artifact`: `v4` &rarr; `v7` in release workflow
+  - `vite`: `8.3.5` &rarr; `8.3.6`
+  - `@vitejs/plugin-react`: `6.2.0` &rarr; `6.2.1`
+  - `tailwindcss` & `@tailwindcss/vite`: `4.3.4` &rarr; `4.3.5`
+  - `lucide-react`: `1.68.0` &rarr; `1.71.0`
+  - `marked`: `18.1.3` &rarr; `18.2.0`
+  - `cn`: `0.5.1` &rarr; `0.5.2`
 
 ---
 

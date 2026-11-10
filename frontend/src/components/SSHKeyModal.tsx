@@ -17,6 +17,7 @@ import {
   Terminal,
   FileCode,
   Download,
+  ChevronDown,
 } from 'lucide-react';
 import {
   Dialog,
@@ -307,17 +308,20 @@ export const SSHKeyModal: React.FC<SSHKeyModalProps> = ({
                   <div className="flex items-center gap-2">
                     <Server className="w-4 h-4 text-blue-500 shrink-0" />
                     <span className="text-zinc-600 dark:text-zinc-400">Target server for 1-click install:</span>
-                    <select
-                      value={selectedSessionId}
-                      onChange={(e) => setSelectedSessionId(e.target.value)}
-                      className="bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 rounded px-2 py-0.5 text-xs text-zinc-900 dark:text-zinc-100 font-medium cursor-pointer"
-                    >
-                      {sessions.map((s) => (
-                        <option key={s.id} value={s.id}>
-                          {s.profile_name} ({s.username}@{s.host}:{s.port})
-                        </option>
-                      ))}
-                    </select>
+                    <div className="relative inline-flex items-center">
+                      <select
+                        value={selectedSessionId}
+                        onChange={(e) => setSelectedSessionId(e.target.value)}
+                        className="bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 rounded pl-2 pr-6 py-0.5 text-xs text-zinc-900 dark:text-zinc-100 font-medium cursor-pointer appearance-none"
+                      >
+                        {sessions.map((s) => (
+                          <option key={s.id} value={s.id} className="bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100">
+                            {s.profile_name} ({s.username}@{s.host}:{s.port})
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown className="w-3 h-3 text-zinc-400 absolute right-1.5 pointer-events-none" />
+                    </div>
                   </div>
                 </div>
               )}

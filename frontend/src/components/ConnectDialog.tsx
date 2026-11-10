@@ -370,18 +370,27 @@ export const ConnectDialog: React.FC<ConnectDialogProps> = ({
                   </button>
                 )}
               </div>
-              <select
-                value={jumpHostProfileId}
-                onChange={(e) => setJumpHostProfileId(e.target.value)}
-                className="w-full px-2.5 py-1.5 text-xs rounded-md border border-zinc-300 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
-              >
-                <option value="">Direct Connection (No Jump Host)</option>
-                {availableJumpHosts.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name || `${p.username}@${p.host}`} ({p.username}@{p.host}:{p.port})
+              <div className="relative">
+                <select
+                  value={jumpHostProfileId}
+                  onChange={(e) => setJumpHostProfileId(e.target.value)}
+                  className="w-full h-8 pl-2.5 pr-8 text-xs rounded-md border border-zinc-300 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer appearance-none"
+                >
+                  <option value="" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100">
+                    Direct Connection (No Jump Host)
                   </option>
-                ))}
-              </select>
+                  {availableJumpHosts.map((p) => (
+                    <option
+                      key={p.id}
+                      value={p.id}
+                      className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100"
+                    >
+                      {p.name || `${p.username}@${p.host}`} ({p.username}@{p.host}:{p.port})
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="w-3.5 h-3.5 text-zinc-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              </div>
               {selectedJumpProfile && (
                 <div className="flex items-center gap-2 p-2 rounded-md bg-blue-500/10 border border-blue-500/20 text-[11px] text-blue-700 dark:text-blue-300">
                   <Route className="w-3.5 h-3.5 text-blue-500 shrink-0" />

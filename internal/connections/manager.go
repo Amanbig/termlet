@@ -3,6 +3,7 @@ package connections
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"termlet/internal/models"
 	"termlet/internal/sftpclient"
@@ -11,6 +12,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"golang.org/x/crypto/ssh"
 )
 
 // DroppedHandler is invoked when an active connection drops unexpectedly.
@@ -68,6 +70,63 @@ func (m *Manager) handleDropped(sessionID string, reason error) {
 	}
 }
 
+// resolveBastionClient establishes an SSH client connection to the bastion / jump host if specified.
+func (m *Manager) resolveBastionClient(ctx context.Context, profile Profile, trustKey bool) (*ssh.Client, string, *models.HostKeyPrompt, error) {
+	jumpProfileID := profile.JumpHostProfileID
+
+	// Fallback to matching ProxyJump alias/hostname if JumpHostProfileID is empty
+	if jumpProfileID == "" && profile.ProxyJump != "" && m.profileStore != nil {
+		profiles, _ := m.profileStore.List()
+		for _, p := range profiles {
+			if strings.EqualFold(p.Name, profile.ProxyJump) || strings.EqualFold(p.Host, profile.ProxyJump) {
+				jumpProfileID = p.ID
+				break
+			}
+		}
+	}
+
+	if jumpProfileID == "" {
+		return nil, "", nil, nil
+	}
+
+	if m.profileStore == nil {
+		return nil, "", nil, fmt.Errorf("profile storage not initialized to resolve jump host")
+	}
+
+	jumpProfile, err := m.profileStore.Get(jumpProfileID)
+	if err != nil {
+		return nil, "", nil, fmt.Errorf("jump host profile (%s) not found: %w", jumpProfileID, err)
+	}
+
+	jumpProfile.Normalize()
+
+	jumpSecret := ""
+	if m.secretStore != nil {
+		jumpSecret, _ = m.secretStore.GetSecret(jumpProfile.ID)
+	}
+
+	jumpAuth, err := sshclient.BuildAuthMethods(string(jumpProfile.AuthMethod), jumpProfile.KeyPath, jumpSecret, jumpSecret)
+	if err != nil {
+		return nil, "", nil, fmt.Errorf("jump host %s auth error: %w", jumpProfile.Name, err)
+	}
+
+	jumpRes, err := m.clientMgr.Connect(ctx, jumpProfile.Host, jumpProfile.Port, jumpProfile.Username, jumpAuth, trustKey, 15*time.Second)
+	if err != nil {
+		return nil, "", nil, fmt.Errorf("failed to connect to jump host %s (%s:%d): %w", jumpProfile.Name, jumpProfile.Host, jumpProfile.Port, err)
+	}
+
+	if jumpRes.HostKeyPrompt != nil {
+		jumpRes.HostKeyPrompt.Hostname = fmt.Sprintf("%s (Jump Host: %s)", jumpRes.HostKeyPrompt.Hostname, jumpProfile.Name)
+		return nil, "", jumpRes.HostKeyPrompt, nil
+	}
+
+	if jumpRes.Client == nil {
+		return nil, "", nil, fmt.Errorf("failed to establish connection to jump host %s", jumpProfile.Name)
+	}
+
+	return jumpRes.Client, jumpProfile.Name, nil, nil
+}
+
 // Connect establishes a connection using the provided profile and optional credentials.
 func (m *Manager) Connect(ctx context.Context, profile Profile, password string, trustKey bool) (*Session, *models.HostKeyPrompt, error) {
 	profile.Normalize()
@@ -85,18 +144,41 @@ func (m *Manager) Connect(ctx context.Context, profile Profile, password string,
 		return nil, nil, fmt.Errorf("authentication configuration error: %w", err)
 	}
 
-	// Connect SSH with host key inspection
-	res, err := m.clientMgr.Connect(ctx, profile.Host, profile.Port, profile.Username, authMethods, trustKey, 15*time.Second)
+	// Resolve jump host if configured
+	bastionCl, jumpName, prompt, err := m.resolveBastionClient(ctx, profile, trustKey)
 	if err != nil {
 		return nil, nil, err
 	}
+	if prompt != nil {
+		return nil, prompt, nil
+	}
+
+	var res *sshclient.ConnectResult
+	if bastionCl != nil {
+		res, err = m.clientMgr.ConnectViaBastion(ctx, bastionCl, profile.Host, profile.Port, profile.Username, authMethods, trustKey, 15*time.Second)
+		if err != nil {
+			_ = bastionCl.Close()
+			return nil, nil, err
+		}
+	} else {
+		res, err = m.clientMgr.Connect(ctx, profile.Host, profile.Port, profile.Username, authMethods, trustKey, 15*time.Second)
+		if err != nil {
+			return nil, nil, err
+		}
+	}
 
 	if res.HostKeyPrompt != nil {
+		if bastionCl != nil {
+			_ = bastionCl.Close()
+		}
 		// Host key needs user approval
 		return nil, res.HostKeyPrompt, nil
 	}
 
 	if res.Client == nil {
+		if bastionCl != nil {
+			_ = bastionCl.Close()
+		}
 		return nil, nil, fmt.Errorf("failed to establish SSH connection")
 	}
 
@@ -104,11 +186,17 @@ func (m *Manager) Connect(ctx context.Context, profile Profile, password string,
 	sftpCl, err := sftpclient.NewClient(res.Client)
 	if err != nil {
 		_ = res.Client.Close()
+		if bastionCl != nil {
+			_ = bastionCl.Close()
+		}
 		return nil, nil, fmt.Errorf("SFTP initialization failed: %w", err)
 	}
 
 	sessionID := uuid.New().String()
 	session := NewSession(sessionID, profile, res.Client, sftpCl)
+	if bastionCl != nil {
+		session.SetBastion(bastionCl, jumpName)
+	}
 	session.SetCachedSecret(password)
 
 	// Start KeepAlive monitoring
@@ -154,26 +242,56 @@ func (m *Manager) Reconnect(ctx context.Context, sessionID string) (*Session, *m
 		return nil, nil, fmt.Errorf("authentication error: %w", err)
 	}
 
-	res, err := m.clientMgr.Connect(ctx, profile.Host, profile.Port, profile.Username, authMethods, false, 15*time.Second)
+	// Resolve jump host if configured
+	bastionCl, jumpName, prompt, err := m.resolveBastionClient(ctx, profile, false)
 	if err != nil {
 		return nil, nil, err
 	}
+	if prompt != nil {
+		return nil, prompt, nil
+	}
+
+	var res *sshclient.ConnectResult
+	if bastionCl != nil {
+		res, err = m.clientMgr.ConnectViaBastion(ctx, bastionCl, profile.Host, profile.Port, profile.Username, authMethods, false, 15*time.Second)
+		if err != nil {
+			_ = bastionCl.Close()
+			return nil, nil, err
+		}
+	} else {
+		res, err = m.clientMgr.Connect(ctx, profile.Host, profile.Port, profile.Username, authMethods, false, 15*time.Second)
+		if err != nil {
+			return nil, nil, err
+		}
+	}
 
 	if res.HostKeyPrompt != nil {
+		if bastionCl != nil {
+			_ = bastionCl.Close()
+		}
 		return nil, res.HostKeyPrompt, nil
 	}
 
 	if res.Client == nil {
+		if bastionCl != nil {
+			_ = bastionCl.Close()
+		}
 		return nil, nil, fmt.Errorf("failed to re-establish SSH connection")
 	}
 
 	sftpCl, err := sftpclient.NewClient(res.Client)
 	if err != nil {
 		_ = res.Client.Close()
+		if bastionCl != nil {
+			_ = bastionCl.Close()
+		}
 		return nil, nil, fmt.Errorf("failed to re-initialize SFTP subsystem: %w", err)
 	}
 
-	sess.UpdateConnection(res.Client, sftpCl)
+	sess.UpdateConnection(res.Client, sftpCl, bastionCl)
+	if jumpName != "" {
+		sess.SetBastion(bastionCl, jumpName)
+	}
 
 	keepAliveSec := profile.KeepAliveInterval
 	if keepAliveSec <= 0 {

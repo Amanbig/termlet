@@ -50,6 +50,7 @@ func ParseSSHConfig(filePath string) ([]models.Profile, error) {
 		user         string
 		port         int
 		identityFile string
+		proxyJump    string
 		forwards     []models.ForwardedPortConfig
 	}
 
@@ -105,6 +106,7 @@ func ParseSSHConfig(filePath string) ([]models.Profile, error) {
 				Username:       user,
 				AuthMethod:     authMethod,
 				KeyPath:        keyPath,
+				ProxyJump:      current.proxyJump,
 				StartDirectory: ".",
 				PortForwards:   current.forwards,
 				CreatedAt:      now,
@@ -176,6 +178,8 @@ func ParseSSHConfig(filePath string) ([]models.Profile, error) {
 				expanded = filepath.Join(homeDir, expanded[2:])
 			}
 			current.identityFile = expanded
+		case "proxyjump":
+			current.proxyJump = value
 		case "localforward":
 			// Parse LocalForward: [bind_address:]port host:hostport
 			fParts := strings.Fields(value)

@@ -13,7 +13,7 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/tabs';
-import { ShieldAlert, Server, Key, KeyRound, Lock, Loader2, Check, AlertTriangle, ChevronDown, ChevronUp, FolderDown, FolderOpen } from 'lucide-react';
+import { ShieldAlert, Server, Key, KeyRound, Lock, Loader2, Check, AlertTriangle, ChevronDown, ChevronUp, FolderDown, FolderOpen, Route } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatErrorMessage, FormattedError } from '../utils/errors';
 import { SSHKeyModal } from './SSHKeyModal';
@@ -23,6 +23,7 @@ interface ConnectDialogProps {
   onOpenChange: (open: boolean) => void;
   initialProfile?: Profile | null;
   initialHostKeyPrompt?: HostKeyPrompt | null;
+  existingProfiles?: Profile[];
   onConnected: (sessionId: string, profile: Profile) => void;
   onProfileSaved?: () => void;
   onImportSSHConfig?: () => void;
@@ -33,6 +34,7 @@ export const ConnectDialog: React.FC<ConnectDialogProps> = ({
   onOpenChange,
   initialProfile,
   initialHostKeyPrompt,
+  existingProfiles = [],
   onConnected,
   onProfileSaved,
   onImportSSHConfig,
@@ -48,6 +50,8 @@ export const ConnectDialog: React.FC<ConnectDialogProps> = ({
   const [startDirectory, setStartDirectory] = useState('.');
   const [keepAliveInterval, setKeepAliveInterval] = useState(20);
   const [autoReconnect, setAutoReconnect] = useState(true);
+  const [jumpHostProfileId, setJumpHostProfileId] = useState('');
+  const [proxyJump, setProxyJump] = useState('');
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [saveProfileCheckbox, setSaveProfileCheckbox] = useState(true);
 
@@ -56,6 +60,11 @@ export const ConnectDialog: React.FC<ConnectDialogProps> = ({
   const [connError, setConnError] = useState<FormattedError | null>(null);
   const [showErrorRaw, setShowErrorRaw] = useState(false);
   const [isKeyModalOpen, setIsKeyModalOpen] = useState(false);
+
+  const availableJumpHosts = (existingProfiles || []).filter(
+    (p) => !initialProfile || p.id !== initialProfile.id
+  );
+  const selectedJumpProfile = availableJumpHosts.find((p) => p.id === jumpHostProfileId) || null;
 
   useEffect(() => {
     setConnError(null);
@@ -70,6 +79,8 @@ export const ConnectDialog: React.FC<ConnectDialogProps> = ({
       setStartDirectory(initialProfile.start_directory || '.');
       setKeepAliveInterval(initialProfile.keepalive_interval || 20);
       setAutoReconnect(initialProfile.auto_reconnect ?? true);
+      setJumpHostProfileId(initialProfile.jump_host_profile_id || '');
+      setProxyJump(initialProfile.proxy_jump || '');
       // Fetch saved secret if any
       if (initialProfile.id) {
         GetProfileSecret(initialProfile.id).then((sec) => {
@@ -88,6 +99,8 @@ export const ConnectDialog: React.FC<ConnectDialogProps> = ({
       setStartDirectory('.');
       setKeepAliveInterval(20);
       setAutoReconnect(true);
+      setJumpHostProfileId('');
+      setProxyJump('');
       setShowAdvanced(false);
     }
     setHostKeyPrompt(initialHostKeyPrompt || null);
@@ -124,6 +137,8 @@ export const ConnectDialog: React.FC<ConnectDialogProps> = ({
         start_directory: startDirectory.trim() || '.',
         keepalive_interval: Number(keepAliveInterval) || 20,
         auto_reconnect: autoReconnect,
+        jump_host_profile_id: jumpHostProfileId || '',
+        proxy_jump: proxyJump.trim() || '',
         port_forwards: initialProfile?.port_forwards || [],
         created_at: initialProfile?.created_at || Date.now(),
         updated_at: Date.now(),
@@ -338,6 +353,45 @@ export const ConnectDialog: React.FC<ConnectDialogProps> = ({
               </Tabs>
             </div>
 
+            {/* Jump Host / Bastion Section */}
+            <div className="space-y-1.5 pt-1">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
+                  <Route className="w-3.5 h-3.5 text-blue-500" />
+                  <span>Jump Host / Bastion</span>
+                </Label>
+                {jumpHostProfileId && (
+                  <button
+                    type="button"
+                    onClick={() => setJumpHostProfileId('')}
+                    className="text-[10px] text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors cursor-pointer"
+                  >
+                    Clear (Direct)
+                  </button>
+                )}
+              </div>
+              <select
+                value={jumpHostProfileId}
+                onChange={(e) => setJumpHostProfileId(e.target.value)}
+                className="w-full px-2.5 py-1.5 text-xs rounded-md border border-zinc-300 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
+              >
+                <option value="">Direct Connection (No Jump Host)</option>
+                {availableJumpHosts.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name || `${p.username}@${p.host}`} ({p.username}@{p.host}:{p.port})
+                  </option>
+                ))}
+              </select>
+              {selectedJumpProfile && (
+                <div className="flex items-center gap-2 p-2 rounded-md bg-blue-500/10 border border-blue-500/20 text-[11px] text-blue-700 dark:text-blue-300">
+                  <Route className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                  <span className="truncate">
+                    Tunnels through <strong>{selectedJumpProfile.name}</strong> ({selectedJumpProfile.host}:{selectedJumpProfile.port}) before reaching target.
+                  </span>
+                </div>
+              )}
+            </div>
+
             {/* Advanced Options (Keep-Alive & Reconnection) */}
             <div className="pt-1">
               <button
@@ -382,6 +436,22 @@ export const ConnectDialog: React.FC<ConnectDialogProps> = ({
                     <Label htmlFor="autoReconnect" className="text-xs text-zinc-600 dark:text-zinc-400 cursor-pointer">
                       Automatically attempt reconnection if connection drops
                     </Label>
+                  </div>
+
+                  <div className="space-y-1 pt-1 border-t border-zinc-200 dark:border-zinc-800">
+                    <Label htmlFor="proxyJump" className="text-[11px] text-zinc-700 dark:text-zinc-300">
+                      OpenSSH ProxyJump (optional)
+                    </Label>
+                    <Input
+                      id="proxyJump"
+                      placeholder="e.g. user@bastion:22 or bastion-alias"
+                      value={proxyJump}
+                      onChange={(e) => setProxyJump(e.target.value)}
+                      className="bg-white dark:bg-zinc-900 border-zinc-300 dark:border-zinc-800 text-xs h-7.5"
+                    />
+                    <p className="text-[10px] text-zinc-500 leading-relaxed">
+                      Matches the OpenSSH <code className="text-zinc-700 dark:text-zinc-300 font-mono">ProxyJump</code> configuration directive.
+                    </p>
                   </div>
                 </div>
               )}

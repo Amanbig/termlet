@@ -92,7 +92,8 @@ export const TitleBar: React.FC<TitleBarProps> = ({
       return `${fileName}${hostLabel} — Termlet`;
     }
     if (currentSession) {
-      return `${currentSession.profile_name || currentSession.host} (${currentSession.username}@${currentSession.host}:${currentSession.port}) — Termlet`;
+      const jumpNote = currentSession.jump_host_name ? ` (via ${currentSession.jump_host_name})` : '';
+      return `${currentSession.profile_name || currentSession.host} (${currentSession.username}@${currentSession.host}:${currentSession.port})${jumpNote} — Termlet`;
     }
     return 'Termlet — SSH Remote Workspace';
   };
@@ -120,7 +121,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({
             title={
               currentSession.status === 'dropped' || !currentSession.is_alive
                 ? `Connection lost to ${currentSession.host}:${currentSession.port}. Click to inspect or reconnect.`
-                : `Connected to ${currentSession.host}:${currentSession.port} as ${currentSession.username}`
+                : `Connected to ${currentSession.host}:${currentSession.port} as ${currentSession.username}${currentSession.jump_host_name ? ` (via Jump Host: ${currentSession.jump_host_name})` : ''}`
             }
             className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-[11px] font-mono transition-colors cursor-pointer ml-1 ${
               currentSession.status === 'dropped' || !currentSession.is_alive

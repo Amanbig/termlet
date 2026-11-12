@@ -15,6 +15,7 @@
   <a href="https://github.com/Amanbig/termlet/actions/workflows/ci.yml"><img src="https://github.com/Amanbig/termlet/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache_2.0-blue.svg" alt="License: Apache 2.0" /></a>
   <a href="https://github.com/Amanbig/termlet/issues"><img src="https://img.shields.io/github/issues/Amanbig/termlet" alt="Open issues" /></a>
+  <a href="https://github.com/Amanbig/termlet/discussions"><img src="https://img.shields.io/github/discussions/Amanbig/termlet" alt="GitHub Discussions" /></a>
   <a href="https://github.com/sponsors/Amanbig"><img src="https://img.shields.io/badge/Sponsor-%E2%99%A5-ea4aaa.svg" alt="Sponsor" /></a>
   <img src="https://img.shields.io/badge/Platform-Linux%20%7C%20Windows%20%7C%20macOS-lightgrey" alt="Platforms" />
 </p>
@@ -24,6 +25,7 @@
   <a href="#features">Features</a> ·
   <a href="#build-from-source">Build</a> ·
   <a href="CONTRIBUTING.md">Contribute</a> ·
+  <a href="https://github.com/Amanbig/termlet/discussions">Discussions</a> ·
   <a href="https://github.com/Amanbig/termlet/issues/new/choose">Report a bug</a>
 </p>
 

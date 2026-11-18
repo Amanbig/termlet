@@ -35,7 +35,6 @@ import { WelcomeScreen } from './components/WelcomeScreen';
 import { TitleBar } from './components/TitleBar';
 import { QuickOpenModal } from './components/QuickOpenModal';
 import { CommandPaletteModal } from './components/CommandPaletteModal';
-import { SnippetsView } from './components/SnippetsView';
 import { ImportSSHConfigModal } from './components/ImportSSHConfigModal';
 import { ReconnectBanner, DroppedSessionInfo } from './components/ReconnectBanner';
 import { TransferDrawer } from './components/TransferDrawer';
@@ -838,17 +837,6 @@ export function App() {
                     onReconnectSession={handleReconnectSession}
                     onImportSSHConfig={() => setImportSSHConfigOpen(true)}
                     onOpenInNewWindow={(id) => handleOpenNewWindow(id)}
-                  />
-                </div>
-
-                <div className={activeActivityView === 'snippets' ? 'h-full flex flex-col' : 'hidden'}>
-                  <SnippetsView
-                    snippets={snippets}
-                    onExecuteSnippet={handleExecuteSnippet}
-                    onSaveSnippet={handleSaveSnippet}
-                    onDeleteSnippet={handleDeleteSnippet}
-                    onResetDefaults={handleResetDefaultSnippets}
-                    hasActiveSession={!!currentSessionId}
                   />
                 </div>
               </ErrorBoundary>

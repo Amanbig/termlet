@@ -210,6 +210,10 @@ export function RestartPortForward(arg1, arg2) {
   return window['go']['main']['App']['RestartPortForward'](arg1, arg2);
 }
 
+export function SaveDynamicPortForwardConfig(arg1, arg2, arg3) {
+  return window['go']['main']['App']['SaveDynamicPortForwardConfig'](arg1, arg2, arg3);
+}
+
 export function SavePortForwardConfig(arg1, arg2, arg3, arg4, arg5) {
   return window['go']['main']['App']['SavePortForwardConfig'](arg1, arg2, arg3, arg4, arg5);
 }
@@ -240,6 +244,10 @@ export function SendTerminalInput(arg1, arg2, arg3) {
 
 export function SetRemoteCwd(arg1, arg2, arg3) {
   return window['go']['main']['App']['SetRemoteCwd'](arg1, arg2, arg3);
+}
+
+export function StartDynamicPortForward(arg1, arg2, arg3) {
+  return window['go']['main']['App']['StartDynamicPortForward'](arg1, arg2, arg3);
 }
 
 export function StartPortForward(arg1, arg2, arg3, arg4, arg5) {

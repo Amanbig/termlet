@@ -2,6 +2,7 @@ package tunnel
 
 import (
 	"context"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
@@ -23,6 +24,9 @@ const (
 	StatusActive  TunnelStatus = "active"
 	StatusStopped TunnelStatus = "stopped"
 	StatusError   TunnelStatus = "error"
+
+	TypeLocal   = "local"
+	TypeDynamic = "dynamic"
 )
 
 // TunnelInfo represents public tunnel metadata exposed to the UI.
@@ -33,6 +37,7 @@ type TunnelInfo struct {
 	RemoteHost  string       `json:"remoteHost"`
 	RemotePort  int          `json:"remotePort"`
 	Name        string       `json:"name"`
+	Type        string       `json:"type"` // "local" or "dynamic" (SOCKS5)
 	Status      TunnelStatus `json:"status"`
 	ErrorMsg    string       `json:"errorMsg,omitempty"`
 	CreatedAt   int64        `json:"createdAt"`
@@ -116,6 +121,7 @@ func (m *Manager) StartForwarding(sessionID string, sshClient *ssh.Client, local
 		stoppedF.ctx = ctx
 		stoppedF.cancel = cancel
 		stoppedF.info.Name = name
+		stoppedF.info.Type = TypeLocal
 		stoppedF.info.RemoteHost = remoteHost
 		stoppedF.info.RemotePort = remotePort
 		stoppedF.info.Status = StatusActive
@@ -137,6 +143,7 @@ func (m *Manager) StartForwarding(sessionID string, sshClient *ssh.Client, local
 			RemoteHost:  remoteHost,
 			RemotePort:  remotePort,
 			Name:        name,
+			Type:        TypeLocal,
 			Status:      StatusActive,
 			CreatedAt:   time.Now().Unix(),
 			Connections: 0,
@@ -154,6 +161,92 @@ func (m *Manager) StartForwarding(sessionID string, sshClient *ssh.Client, local
 	// Launch accept loop in background goroutine
 	go m.acceptLoop(f)
 
+	infoCopy := f.getInfo()
+	return &infoCopy, nil
+}
+
+// StartDynamicForwarding launches a local SOCKS5 proxy listener on 127.0.0.1:localPort and dynamically proxies TCP connections over the SSH client.
+func (m *Manager) StartDynamicForwarding(sessionID string, sshClient *ssh.Client, localPort int, name string) (*TunnelInfo, error) {
+	if sshClient == nil {
+		return nil, errors.New("cannot start dynamic port forwarding: SSH client is disconnected")
+	}
+	if localPort < 1 || localPort > 65535 {
+		return nil, fmt.Errorf("invalid local port %d: must be between 1 and 65535", localPort)
+	}
+	if strings.TrimSpace(name) == "" {
+		name = fmt.Sprintf("SOCKS5 Proxy (Port %d)", localPort)
+	}
+
+	m.mu.Lock()
+	var stoppedF *forwarder
+	for _, f := range m.forwarders {
+		f.mu.Lock()
+		if f.info.LocalPort == localPort {
+			if f.info.Status == StatusActive {
+				f.mu.Unlock()
+				m.mu.Unlock()
+				return nil, fmt.Errorf("local port %d is already active in Termlet (%s)", localPort, f.info.Name)
+			}
+			if f.info.SessionID == sessionID {
+				stoppedF = f
+			}
+		}
+		f.mu.Unlock()
+	}
+	m.mu.Unlock()
+
+	localAddr := fmt.Sprintf("127.0.0.1:%d", localPort)
+	listener, err := net.Listen("tcp", localAddr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to bind local port %d: %w (is another program using it?)", localPort, err)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	if stoppedF != nil {
+		stoppedF.mu.Lock()
+		stoppedF.listener = listener
+		stoppedF.sshClient = sshClient
+		stoppedF.ctx = ctx
+		stoppedF.cancel = cancel
+		stoppedF.info.Name = name
+		stoppedF.info.Type = TypeDynamic
+		stoppedF.info.RemoteHost = "dynamic"
+		stoppedF.info.RemotePort = 0
+		stoppedF.info.Status = StatusActive
+		stoppedF.info.ErrorMsg = ""
+		stoppedF.mu.Unlock()
+
+		go m.acceptLoop(stoppedF)
+		infoCopy := stoppedF.getInfo()
+		return &infoCopy, nil
+	}
+
+	tunnelID := uuid.New().String()
+	f := &forwarder{
+		info: TunnelInfo{
+			ID:          tunnelID,
+			SessionID:   sessionID,
+			LocalPort:   localPort,
+			RemoteHost:  "dynamic",
+			RemotePort:  0,
+			Name:        name,
+			Type:        TypeDynamic,
+			Status:      StatusActive,
+			CreatedAt:   time.Now().Unix(),
+			Connections: 0,
+		},
+		listener:  listener,
+		sshClient: sshClient,
+		ctx:       ctx,
+		cancel:    cancel,
+	}
+
+	m.mu.Lock()
+	m.forwarders[tunnelID] = f
+	m.mu.Unlock()
+
+	go m.acceptLoop(f)
 	infoCopy := f.getInfo()
 	return &infoCopy, nil
 }
@@ -178,7 +271,16 @@ func (m *Manager) acceptLoop(f *forwarder) {
 		}
 
 		atomic.AddInt64(&f.activeConns, 1)
-		go m.handleConnection(f, localConn)
+
+		f.mu.Lock()
+		tType := f.info.Type
+		f.mu.Unlock()
+
+		if tType == TypeDynamic {
+			go m.handleSocks5Connection(f, localConn)
+		} else {
+			go m.handleConnection(f, localConn)
+		}
 	}
 }
 
@@ -216,6 +318,148 @@ func (m *Manager) handleConnection(f *forwarder, localConn net.Conn) {
 		f.info.ErrorMsg = ""
 	}
 	f.mu.Unlock()
+
+	// Bidirectional data streaming with immediate teardown on EOF/error
+	var once sync.Once
+	closeBoth := func() {
+		_ = localConn.Close()
+		_ = remoteConn.Close()
+	}
+
+	go func() {
+		_, _ = io.Copy(remoteConn, localConn)
+		once.Do(closeBoth)
+	}()
+
+	_, _ = io.Copy(localConn, remoteConn)
+	once.Do(closeBoth)
+}
+
+// handleSocks5Connection parses the SOCKS5 handshake (RFC 1928) and dynamically dials the destination via the SSH client.
+func (m *Manager) handleSocks5Connection(f *forwarder, localConn net.Conn) {
+	defer func() {
+		_ = localConn.Close()
+		atomic.AddInt64(&f.activeConns, -1)
+	}()
+
+	// Apply a 15-second deadline for the initial SOCKS5 handshake
+	_ = localConn.SetDeadline(time.Now().Add(15 * time.Second))
+
+	// 1. Negotiation / Greeting: VER, NMETHODS
+	greetBuf := make([]byte, 2)
+	if _, err := io.ReadFull(localConn, greetBuf); err != nil {
+		return
+	}
+	if greetBuf[0] != 0x05 {
+		// Only SOCKS Version 5 is supported
+		return
+	}
+
+	nmethods := int(greetBuf[1])
+	if nmethods <= 0 {
+		return
+	}
+	methods := make([]byte, nmethods)
+	if _, err := io.ReadFull(localConn, methods); err != nil {
+		return
+	}
+
+	hasNoAuth := false
+	for _, m := range methods {
+		if m == 0x00 { // 0x00: NO AUTHENTICATION REQUIRED
+			hasNoAuth = true
+			break
+		}
+	}
+	if !hasNoAuth {
+		// 0xFF: NO ACCEPTABLE METHODS
+		_, _ = localConn.Write([]byte{0x05, 0xFF})
+		return
+	}
+
+	// Reply to greeting: SOCKS5, NO AUTH
+	if _, err := localConn.Write([]byte{0x05, 0x00}); err != nil {
+		return
+	}
+
+	// 2. SOCKS Request: VER (0x05), CMD, RSV (0x00), ATYP
+	reqHeader := make([]byte, 4)
+	if _, err := io.ReadFull(localConn, reqHeader); err != nil {
+		return
+	}
+	ver, cmd, _, atyp := reqHeader[0], reqHeader[1], reqHeader[2], reqHeader[3]
+	if ver != 0x05 {
+		return
+	}
+	if cmd != 0x01 { // 0x01 = CONNECT
+		// 0x07: Command not supported
+		_, _ = localConn.Write([]byte{0x05, 0x07, 0x00, 0x01, 0, 0, 0, 0, 0, 0})
+		return
+	}
+
+	var destHost string
+	switch atyp {
+	case 0x01: // IPv4 (4 octets)
+		ipBuf := make([]byte, 4)
+		if _, err := io.ReadFull(localConn, ipBuf); err != nil {
+			return
+		}
+		destHost = net.IP(ipBuf).String()
+	case 0x03: // DOMAINNAME (1 octet length followed by domain name string)
+		lenBuf := make([]byte, 1)
+		if _, err := io.ReadFull(localConn, lenBuf); err != nil {
+			return
+		}
+		domainLen := int(lenBuf[0])
+		domainBuf := make([]byte, domainLen)
+		if _, err := io.ReadFull(localConn, domainBuf); err != nil {
+			return
+		}
+		destHost = string(domainBuf)
+	case 0x04: // IPv6 (16 octets)
+		ipBuf := make([]byte, 16)
+		if _, err := io.ReadFull(localConn, ipBuf); err != nil {
+			return
+		}
+		destHost = net.IP(ipBuf).String()
+	default:
+		// 0x08: Address type not supported
+		_, _ = localConn.Write([]byte{0x05, 0x08, 0x00, 0x01, 0, 0, 0, 0, 0, 0})
+		return
+	}
+
+	portBuf := make([]byte, 2)
+	if _, err := io.ReadFull(localConn, portBuf); err != nil {
+		return
+	}
+	destPort := binary.BigEndian.Uint16(portBuf)
+	targetAddr := net.JoinHostPort(destHost, fmt.Sprintf("%d", destPort))
+
+	f.mu.Lock()
+	sshCl := f.sshClient
+	f.mu.Unlock()
+
+	if sshCl == nil {
+		// 0x01: General SOCKS server failure
+		_, _ = localConn.Write([]byte{0x05, 0x01, 0x00, 0x01, 0, 0, 0, 0, 0, 0})
+		return
+	}
+
+	remoteConn, err := sshCl.Dial("tcp", targetAddr)
+	if err != nil {
+		// 0x05: Connection refused
+		_, _ = localConn.Write([]byte{0x05, 0x05, 0x00, 0x01, 0, 0, 0, 0, 0, 0})
+		return
+	}
+	defer remoteConn.Close()
+
+	// SOCKS5 Success response: VER 5, REP 0 (succeeded), RSV 0, ATYP 1 (IPv4 0.0.0.0:0)
+	if _, err := localConn.Write([]byte{0x05, 0x00, 0x00, 0x01, 0, 0, 0, 0, 0, 0}); err != nil {
+		return
+	}
+
+	// Remove socket deadline now that handshake is complete
+	_ = localConn.SetDeadline(time.Time{})
 
 	// Bidirectional data streaming with immediate teardown on EOF/error
 	var once sync.Once
@@ -405,20 +649,37 @@ func (f *forwarder) getInfo() TunnelInfo {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	info := f.info
+	if info.Type == "" {
+		info.Type = TypeLocal
+	}
 	info.Connections = atomic.LoadInt64(&f.activeConns)
 	return info
 }
 
 // AddConfiguredTunnel registers a saved port forward in stopped state without opening a socket.
-func (m *Manager) AddConfiguredTunnel(id string, sessionID string, localPort int, remoteHost string, remotePort int, name string) *TunnelInfo {
+func (m *Manager) AddConfiguredTunnel(id string, sessionID string, localPort int, remoteHost string, remotePort int, name string, tunnelType ...string) *TunnelInfo {
+	tType := TypeLocal
+	if len(tunnelType) > 0 && tunnelType[0] != "" {
+		tType = tunnelType[0]
+	}
+
 	if strings.TrimSpace(id) == "" {
 		id = uuid.New().String()
 	}
-	if strings.TrimSpace(remoteHost) == "" {
-		remoteHost = "127.0.0.1"
-	}
-	if strings.TrimSpace(name) == "" {
-		name = fmt.Sprintf("Port %d ➔ %s:%d", localPort, remoteHost, remotePort)
+	if tType == TypeDynamic {
+		if strings.TrimSpace(name) == "" {
+			name = fmt.Sprintf("SOCKS5 Proxy (Port %d)", localPort)
+		}
+		if remoteHost == "" {
+			remoteHost = "dynamic"
+		}
+	} else {
+		if strings.TrimSpace(remoteHost) == "" {
+			remoteHost = "127.0.0.1"
+		}
+		if strings.TrimSpace(name) == "" {
+			name = fmt.Sprintf("Port %d ➔ %s:%d", localPort, remoteHost, remotePort)
+		}
 	}
 
 	m.mu.Lock()
@@ -430,12 +691,9 @@ func (m *Manager) AddConfiguredTunnel(id string, sessionID string, localPort int
 		return &info
 	}
 
-	// Also check if another forwarder has the exact same localPort and remote for this session
+	// Also check if another forwarder has the exact same localPort and session
 	for _, existing := range m.forwarders {
-		if existing.info.SessionID == sessionID &&
-			existing.info.LocalPort == localPort &&
-			existing.info.RemotePort == remotePort &&
-			existing.info.RemoteHost == remoteHost {
+		if existing.info.SessionID == sessionID && existing.info.LocalPort == localPort {
 			info := existing.getInfo()
 			return &info
 		}
@@ -449,13 +707,14 @@ func (m *Manager) AddConfiguredTunnel(id string, sessionID string, localPort int
 			RemoteHost:  remoteHost,
 			RemotePort:  remotePort,
 			Name:        name,
+			Type:        tType,
 			Status:      StatusStopped,
 			CreatedAt:   time.Now().Unix(),
 			Connections: 0,
 		},
 	}
 	m.forwarders[id] = f
-	infoCopy := f.info
+	infoCopy := f.getInfo()
 	return &infoCopy
 }
 

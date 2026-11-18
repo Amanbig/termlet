@@ -112,6 +112,8 @@ export function RestartApp():Promise<void>;
 
 export function RestartPortForward(arg1:string,arg2:string):Promise<tunnel.TunnelInfo>;
 
+export function SaveDynamicPortForwardConfig(arg1:string,arg2:number,arg3:string):Promise<tunnel.TunnelInfo>;
+
 export function SavePortForwardConfig(arg1:string,arg2:number,arg3:string,arg4:number,arg5:string):Promise<tunnel.TunnelInfo>;
 
 export function SaveProfile(arg1:models.Profile,arg2:string):Promise<void>;
@@ -127,6 +129,8 @@ export function SelectPrivateKeyFile():Promise<string>;
 export function SendTerminalInput(arg1:string,arg2:string,arg3:string):Promise<void>;
 
 export function SetRemoteCwd(arg1:string,arg2:string,arg3:string):Promise<void>;
+
+export function StartDynamicPortForward(arg1:string,arg2:number,arg3:string):Promise<tunnel.TunnelInfo>;
 
 export function StartPortForward(arg1:string,arg2:number,arg3:string,arg4:number,arg5:string):Promise<tunnel.TunnelInfo>;
 

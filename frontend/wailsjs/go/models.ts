@@ -105,6 +105,7 @@ export namespace models {
 	export class ForwardedPortConfig {
 	    id: string;
 	    local_port: number;
+	    local_host?: string;
 	    remote_host?: string;
 	    remote_port?: number;
 	    name: string;
@@ -118,6 +119,7 @@ export namespace models {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
 	        this.local_port = source["local_port"];
+	        this.local_host = source["local_host"];
 	        this.remote_host = source["remote_host"];
 	        this.remote_port = source["remote_port"];
 	        this.name = source["name"];
@@ -497,6 +499,7 @@ export namespace tunnel {
 	    id: string;
 	    sessionId: string;
 	    localPort: number;
+	    localHost?: string;
 	    remoteHost: string;
 	    remotePort: number;
 	    name: string;
@@ -515,6 +518,7 @@ export namespace tunnel {
 	        this.id = source["id"];
 	        this.sessionId = source["sessionId"];
 	        this.localPort = source["localPort"];
+	        this.localHost = source["localHost"];
 	        this.remoteHost = source["remoteHost"];
 	        this.remotePort = source["remotePort"];
 	        this.name = source["name"];

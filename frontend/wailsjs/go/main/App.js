@@ -226,6 +226,10 @@ export function SaveRemoteFile(arg1, arg2, arg3, arg4) {
   return window['go']['main']['App']['SaveRemoteFile'](arg1, arg2, arg3, arg4);
 }
 
+export function SaveRemotePortForwardConfig(arg1, arg2, arg3, arg4, arg5) {
+  return window['go']['main']['App']['SaveRemotePortForwardConfig'](arg1, arg2, arg3, arg4, arg5);
+}
+
 export function SaveSnippet(arg1) {
   return window['go']['main']['App']['SaveSnippet'](arg1);
 }
@@ -252,6 +256,10 @@ export function StartDynamicPortForward(arg1, arg2, arg3) {
 
 export function StartPortForward(arg1, arg2, arg3, arg4, arg5) {
   return window['go']['main']['App']['StartPortForward'](arg1, arg2, arg3, arg4, arg5);
+}
+
+export function StartRemotePortForward(arg1, arg2, arg3, arg4, arg5) {
+  return window['go']['main']['App']['StartRemotePortForward'](arg1, arg2, arg3, arg4, arg5);
 }
 
 export function StartTerminalSession(arg1, arg2, arg3, arg4) {

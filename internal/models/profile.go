@@ -15,10 +15,11 @@ const (
 type ForwardedPortConfig struct {
 	ID         string `json:"id"`
 	LocalPort  int    `json:"local_port"`
+	LocalHost  string `json:"local_host,omitempty"`
 	RemoteHost string `json:"remote_host,omitempty"`
 	RemotePort int    `json:"remote_port,omitempty"`
 	Name       string `json:"name"`
-	Type       string `json:"type,omitempty"` // "local" (default) or "dynamic" (SOCKS5)
+	Type       string `json:"type,omitempty"` // "local" (default), "dynamic" (SOCKS5), or "remote" (reverse -R)
 }
 
 // Profile holds saved configuration for an SSH/SFTP connection.

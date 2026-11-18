@@ -120,6 +120,8 @@ export function SaveProfile(arg1:models.Profile,arg2:string):Promise<void>;
 
 export function SaveRemoteFile(arg1:string,arg2:string,arg3:string,arg4:number):Promise<sftpclient.SaveResult>;
 
+export function SaveRemotePortForwardConfig(arg1:string,arg2:number,arg3:string,arg4:number,arg5:string):Promise<tunnel.TunnelInfo>;
+
 export function SaveSnippet(arg1:models.Snippet):Promise<models.Snippet>;
 
 export function SearchRemoteFiles(arg1:string,arg2:string,arg3:string,arg4:number):Promise<Array<models.RemoteFile>>;
@@ -133,6 +135,8 @@ export function SetRemoteCwd(arg1:string,arg2:string,arg3:string):Promise<void>;
 export function StartDynamicPortForward(arg1:string,arg2:number,arg3:string):Promise<tunnel.TunnelInfo>;
 
 export function StartPortForward(arg1:string,arg2:number,arg3:string,arg4:number,arg5:string):Promise<tunnel.TunnelInfo>;
+
+export function StartRemotePortForward(arg1:string,arg2:number,arg3:string,arg4:number,arg5:string):Promise<tunnel.TunnelInfo>;
 
 export function StartTerminalSession(arg1:string,arg2:string,arg3:number,arg4:number):Promise<void>;
 

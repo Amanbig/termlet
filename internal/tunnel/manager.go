@@ -27,6 +27,7 @@ const (
 
 	TypeLocal   = "local"
 	TypeDynamic = "dynamic"
+	TypeRemote  = "remote"
 )
 
 // TunnelInfo represents public tunnel metadata exposed to the UI.
@@ -34,10 +35,11 @@ type TunnelInfo struct {
 	ID          string       `json:"id"`
 	SessionID   string       `json:"sessionId"`
 	LocalPort   int          `json:"localPort"`
+	LocalHost   string       `json:"localHost,omitempty"`
 	RemoteHost  string       `json:"remoteHost"`
 	RemotePort  int          `json:"remotePort"`
 	Name        string       `json:"name"`
-	Type        string       `json:"type"` // "local" or "dynamic" (SOCKS5)
+	Type        string       `json:"type"` // "local", "dynamic" (SOCKS5), or "remote" (reverse -R)
 	Status      TunnelStatus `json:"status"`
 	ErrorMsg    string       `json:"errorMsg,omitempty"`
 	CreatedAt   int64        `json:"createdAt"`
@@ -251,6 +253,99 @@ func (m *Manager) StartDynamicForwarding(sessionID string, sshClient *ssh.Client
 	return &infoCopy, nil
 }
 
+// StartRemoteForwarding requests the remote SSH server to listen on remotePort and forwards incoming connections to localHost:localPort on the client machine (ssh -R).
+func (m *Manager) StartRemoteForwarding(sessionID string, sshClient *ssh.Client, remotePort int, localHost string, localPort int, name string) (*TunnelInfo, error) {
+	if sshClient == nil {
+		return nil, errors.New("cannot start remote port forwarding: SSH client is disconnected")
+	}
+	if remotePort < 1 || remotePort > 65535 {
+		return nil, fmt.Errorf("invalid remote port %d: must be between 1 and 65535", remotePort)
+	}
+	if localPort < 1 || localPort > 65535 {
+		return nil, fmt.Errorf("invalid local port %d: must be between 1 and 65535", localPort)
+	}
+	if strings.TrimSpace(localHost) == "" {
+		localHost = "127.0.0.1"
+	}
+	if strings.TrimSpace(name) == "" {
+		name = fmt.Sprintf("Remote :%d ➔ Local %s:%d", remotePort, localHost, localPort)
+	}
+
+	m.mu.Lock()
+	var stoppedF *forwarder
+	for _, f := range m.forwarders {
+		f.mu.Lock()
+		if f.info.Type == TypeRemote && f.info.SessionID == sessionID && f.info.RemotePort == remotePort {
+			if f.info.Status == StatusActive {
+				f.mu.Unlock()
+				m.mu.Unlock()
+				return nil, fmt.Errorf("remote port %d is already active in Termlet (%s)", remotePort, f.info.Name)
+			}
+			stoppedF = f
+		}
+		f.mu.Unlock()
+	}
+	m.mu.Unlock()
+
+	remoteAddr := fmt.Sprintf("127.0.0.1:%d", remotePort)
+	listener, err := sshClient.Listen("tcp", remoteAddr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to bind remote port %d on server: %w", remotePort, err)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	if stoppedF != nil {
+		stoppedF.mu.Lock()
+		stoppedF.listener = listener
+		stoppedF.sshClient = sshClient
+		stoppedF.ctx = ctx
+		stoppedF.cancel = cancel
+		stoppedF.info.Name = name
+		stoppedF.info.Type = TypeRemote
+		stoppedF.info.RemoteHost = "127.0.0.1"
+		stoppedF.info.RemotePort = remotePort
+		stoppedF.info.LocalHost = localHost
+		stoppedF.info.LocalPort = localPort
+		stoppedF.info.Status = StatusActive
+		stoppedF.info.ErrorMsg = ""
+		stoppedF.mu.Unlock()
+
+		go m.acceptLoop(stoppedF)
+		infoCopy := stoppedF.getInfo()
+		return &infoCopy, nil
+	}
+
+	tunnelID := uuid.New().String()
+	f := &forwarder{
+		info: TunnelInfo{
+			ID:          tunnelID,
+			SessionID:   sessionID,
+			LocalPort:   localPort,
+			LocalHost:   localHost,
+			RemoteHost:  "127.0.0.1",
+			RemotePort:  remotePort,
+			Name:        name,
+			Type:        TypeRemote,
+			Status:      StatusActive,
+			CreatedAt:   time.Now().Unix(),
+			Connections: 0,
+		},
+		listener:  listener,
+		sshClient: sshClient,
+		ctx:       ctx,
+		cancel:    cancel,
+	}
+
+	m.mu.Lock()
+	m.forwarders[tunnelID] = f
+	m.mu.Unlock()
+
+	go m.acceptLoop(f)
+	infoCopy := f.getInfo()
+	return &infoCopy, nil
+}
+
 // acceptLoop handles incoming local connections and dials the remote SSH host.
 func (m *Manager) acceptLoop(f *forwarder) {
 	for {
@@ -278,10 +373,57 @@ func (m *Manager) acceptLoop(f *forwarder) {
 
 		if tType == TypeDynamic {
 			go m.handleSocks5Connection(f, localConn)
+		} else if tType == TypeRemote {
+			go m.handleRemoteConnection(f, localConn)
 		} else {
 			go m.handleConnection(f, localConn)
 		}
 	}
+}
+
+// handleRemoteConnection pipes incoming traffic from the remote SSH server listener to the client machine's local service (ssh -R).
+func (m *Manager) handleRemoteConnection(f *forwarder, remoteConn net.Conn) {
+	defer func() {
+		_ = remoteConn.Close()
+		atomic.AddInt64(&f.activeConns, -1)
+	}()
+
+	f.mu.Lock()
+	localHost := f.info.LocalHost
+	if localHost == "" {
+		localHost = "127.0.0.1"
+	}
+	localTarget := net.JoinHostPort(localHost, fmt.Sprintf("%d", f.info.LocalPort))
+	f.mu.Unlock()
+
+	localConn, err := net.DialTimeout("tcp", localTarget, 5*time.Second)
+	if err != nil {
+		f.mu.Lock()
+		f.info.ErrorMsg = fmt.Sprintf("Failed to reach local target %s: %v", localTarget, err)
+		f.mu.Unlock()
+		return
+	}
+	defer localConn.Close()
+
+	f.mu.Lock()
+	if f.info.ErrorMsg != "" && strings.HasPrefix(f.info.ErrorMsg, "Failed to reach local target") {
+		f.info.ErrorMsg = ""
+	}
+	f.mu.Unlock()
+
+	var once sync.Once
+	closeBoth := func() {
+		_ = remoteConn.Close()
+		_ = localConn.Close()
+	}
+
+	go func() {
+		_, _ = io.Copy(localConn, remoteConn)
+		once.Do(closeBoth)
+	}()
+
+	_, _ = io.Copy(remoteConn, localConn)
+	once.Do(closeBoth)
 }
 
 // handleConnection pipes a local client connection to the remote target via SSH channel.
@@ -530,13 +672,27 @@ func (m *Manager) RestartForwarding(tunnelID string, sshClient *ssh.Client) (*Tu
 		return &info, nil
 	}
 
-	localAddr := fmt.Sprintf("127.0.0.1:%d", f.info.LocalPort)
-	listener, err := net.Listen("tcp", localAddr)
-	if err != nil {
-		f.info.Status = StatusError
-		f.info.ErrorMsg = err.Error()
-		info := f.info
-		return &info, fmt.Errorf("failed to re-bind port %d: %w", f.info.LocalPort, err)
+	var listener net.Listener
+	var err error
+
+	if f.info.Type == TypeRemote {
+		remoteAddr := fmt.Sprintf("127.0.0.1:%d", f.info.RemotePort)
+		listener, err = sshClient.Listen("tcp", remoteAddr)
+		if err != nil {
+			f.info.Status = StatusError
+			f.info.ErrorMsg = err.Error()
+			info := f.info
+			return &info, fmt.Errorf("failed to re-bind remote port %d on server: %w", f.info.RemotePort, err)
+		}
+	} else {
+		localAddr := fmt.Sprintf("127.0.0.1:%d", f.info.LocalPort)
+		listener, err = net.Listen("tcp", localAddr)
+		if err != nil {
+			f.info.Status = StatusError
+			f.info.ErrorMsg = err.Error()
+			info := f.info
+			return &info, fmt.Errorf("failed to re-bind port %d: %w", f.info.LocalPort, err)
+		}
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -652,6 +808,9 @@ func (f *forwarder) getInfo() TunnelInfo {
 	if info.Type == "" {
 		info.Type = TypeLocal
 	}
+	if info.LocalHost == "" {
+		info.LocalHost = "127.0.0.1"
+	}
 	info.Connections = atomic.LoadInt64(&f.activeConns)
 	return info
 }
@@ -673,6 +832,13 @@ func (m *Manager) AddConfiguredTunnel(id string, sessionID string, localPort int
 		if remoteHost == "" {
 			remoteHost = "dynamic"
 		}
+	} else if tType == TypeRemote {
+		if strings.TrimSpace(name) == "" {
+			name = fmt.Sprintf("Remote :%d ➔ Local :%d", remotePort, localPort)
+		}
+		if remoteHost == "" {
+			remoteHost = "127.0.0.1"
+		}
 	} else {
 		if strings.TrimSpace(remoteHost) == "" {
 			remoteHost = "127.0.0.1"
@@ -691,11 +857,16 @@ func (m *Manager) AddConfiguredTunnel(id string, sessionID string, localPort int
 		return &info
 	}
 
-	// Also check if another forwarder has the exact same localPort and session
+	// Also check if another forwarder has the exact same port configuration for this session
 	for _, existing := range m.forwarders {
-		if existing.info.SessionID == sessionID && existing.info.LocalPort == localPort {
-			info := existing.getInfo()
-			return &info
+		if existing.info.SessionID == sessionID {
+			if tType == TypeRemote && existing.info.Type == TypeRemote && existing.info.RemotePort == remotePort {
+				info := existing.getInfo()
+				return &info
+			} else if tType != TypeRemote && existing.info.Type != TypeRemote && existing.info.LocalPort == localPort {
+				info := existing.getInfo()
+				return &info
+			}
 		}
 	}
 
@@ -704,6 +875,7 @@ func (m *Manager) AddConfiguredTunnel(id string, sessionID string, localPort int
 			ID:          id,
 			SessionID:   sessionID,
 			LocalPort:   localPort,
+			LocalHost:   "127.0.0.1",
 			RemoteHost:  remoteHost,
 			RemotePort:  remotePort,
 			Name:        name,

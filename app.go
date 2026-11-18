@@ -819,9 +819,19 @@ func (a *App) saveTunnelToProfile(profileID string, info tunnel.TunnelInfo) {
 
 	found := false
 	for i, pf := range p.PortForwards {
-		if pf.ID == info.ID || (pf.LocalPort == info.LocalPort && (info.Type == tunnel.TypeDynamic || (pf.RemotePort == info.RemotePort && pf.RemoteHost == info.RemoteHost))) {
+		matched := false
+		if pf.ID == info.ID {
+			matched = true
+		} else if info.Type == tunnel.TypeRemote && pf.Type == tunnel.TypeRemote {
+			matched = (pf.RemotePort == info.RemotePort)
+		} else if info.Type != tunnel.TypeRemote && pf.Type != tunnel.TypeRemote {
+			matched = (pf.LocalPort == info.LocalPort)
+		}
+
+		if matched {
 			p.PortForwards[i].ID = info.ID
 			p.PortForwards[i].LocalPort = info.LocalPort
+			p.PortForwards[i].LocalHost = info.LocalHost
 			p.PortForwards[i].RemoteHost = info.RemoteHost
 			p.PortForwards[i].RemotePort = info.RemotePort
 			p.PortForwards[i].Name = info.Name
@@ -835,6 +845,7 @@ func (a *App) saveTunnelToProfile(profileID string, info tunnel.TunnelInfo) {
 		p.PortForwards = append(p.PortForwards, models.ForwardedPortConfig{
 			ID:         info.ID,
 			LocalPort:  info.LocalPort,
+			LocalHost:  info.LocalHost,
 			RemoteHost: info.RemoteHost,
 			RemotePort: info.RemotePort,
 			Name:       info.Name,
@@ -857,7 +868,13 @@ func (a *App) removeTunnelFromProfile(profileID string, tunnelID string, localPo
 
 	var filtered []models.ForwardedPortConfig
 	for _, pf := range p.PortForwards {
-		if pf.ID == tunnelID || (localPort > 0 && pf.LocalPort == localPort) {
+		if pf.ID == tunnelID {
+			continue
+		}
+		if localPort > 0 && pf.Type != tunnel.TypeRemote && pf.LocalPort == localPort {
+			continue
+		}
+		if remotePort > 0 && pf.Type == tunnel.TypeRemote && pf.RemotePort == remotePort {
 			continue
 		}
 		filtered = append(filtered, pf)
@@ -914,6 +931,28 @@ func (a *App) StartDynamicPortForward(sessionID string, localPort int, name stri
 	return info, nil
 }
 
+// StartRemotePortForward establishes a remote port listener on remotePort of the SSH server and proxies to localHost:localPort on client machine (ssh -R).
+func (a *App) StartRemotePortForward(sessionID string, remotePort int, localHost string, localPort int, name string) (*tunnel.TunnelInfo, error) {
+	if a.connMgr == nil {
+		return nil, fmt.Errorf("connection manager not initialized")
+	}
+	sess, err := a.connMgr.GetSession(sessionID)
+	if err != nil {
+		return nil, fmt.Errorf("active session required for reverse port forwarding: %w", err)
+	}
+	if sess.SSH == nil {
+		return nil, fmt.Errorf("SSH connection is not active")
+	}
+
+	info, err := a.tunnelMgr.StartRemoteForwarding(sessionID, sess.SSH, remotePort, localHost, localPort, name)
+	if err != nil {
+		return nil, err
+	}
+
+	a.saveTunnelToProfile(sess.Profile.ID, *info)
+	return info, nil
+}
+
 // SavePortForwardConfig stores a port forward config in stopped state for a session's profile without starting it.
 func (a *App) SavePortForwardConfig(sessionID string, localPort int, remoteHost string, remotePort int, name string) (*tunnel.TunnelInfo, error) {
 	if a.connMgr == nil {
@@ -946,6 +985,24 @@ func (a *App) SaveDynamicPortForwardConfig(sessionID string, localPort int, name
 	}
 
 	info := a.tunnelMgr.AddConfiguredTunnel("", sessionID, localPort, "dynamic", 0, name, tunnel.TypeDynamic)
+	a.saveTunnelToProfile(sess.Profile.ID, *info)
+	return info, nil
+}
+
+// SaveRemotePortForwardConfig stores a reverse port forward config in stopped state for a session's profile without starting it.
+func (a *App) SaveRemotePortForwardConfig(sessionID string, remotePort int, localHost string, localPort int, name string) (*tunnel.TunnelInfo, error) {
+	if a.connMgr == nil {
+		return nil, fmt.Errorf("connection manager not initialized")
+	}
+	sess, err := a.connMgr.GetSession(sessionID)
+	if err != nil {
+		return nil, fmt.Errorf("active session required: %w", err)
+	}
+	if a.tunnelMgr == nil {
+		return nil, fmt.Errorf("tunnel manager not initialized")
+	}
+
+	info := a.tunnelMgr.AddConfiguredTunnel("", sessionID, localPort, "127.0.0.1", remotePort, name, tunnel.TypeRemote)
 	a.saveTunnelToProfile(sess.Profile.ID, *info)
 	return info, nil
 }

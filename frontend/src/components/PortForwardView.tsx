@@ -14,6 +14,7 @@ import {
   Server,
   Zap,
   ArrowRight,
+  ArrowUpRight,
   AlertTriangle,
   Info,
   Activity,
@@ -24,8 +25,10 @@ import { tunnel, connections } from '../../wailsjs/go/models';
 import {
   StartPortForward,
   StartDynamicPortForward,
+  StartRemotePortForward,
   SavePortForwardConfig,
   SaveDynamicPortForwardConfig,
+  SaveRemotePortForwardConfig,
   StopPortForward,
   RestartPortForward,
   DeletePortForward,
@@ -61,6 +64,13 @@ const DYNAMIC_PRESETS = [
   { name: 'Dev Proxy (1088)', localPort: 1088 },
 ];
 
+const REMOTE_PRESETS = [
+  { name: 'Dev Web (Server :8080 ➔ Local :3000)', remotePort: 8080, localPort: 3000 },
+  { name: 'API Server (Server :5000 ➔ Local :5000)', remotePort: 5000, localPort: 5000 },
+  { name: 'Postgres (Server :5432 ➔ Local :5432)', remotePort: 5432, localPort: 5432 },
+  { name: 'Webhook (Server :8000 ➔ Local :8000)', remotePort: 8000, localPort: 8000 },
+];
+
 export const PortForwardView: React.FC<PortForwardViewProps> = ({
   sessionId,
   activeSession,
@@ -71,7 +81,7 @@ export const PortForwardView: React.FC<PortForwardViewProps> = ({
   const [tunnels, setTunnels] = useState<tunnel.TunnelInfo[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [forwardType, setForwardType] = useState<'local' | 'dynamic'>('local');
+  const [forwardType, setForwardType] = useState<'local' | 'dynamic' | 'remote'>('local');
   const [searchQuery, setSearchQuery] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [healthMap, setHealthMap] = useState<Record<string, tunnel.PortHealthStatus>>({});
@@ -80,6 +90,7 @@ export const PortForwardView: React.FC<PortForwardViewProps> = ({
   // Form State
   const [name, setName] = useState('');
   const [localPort, setLocalPort] = useState('');
+  const [localHost, setLocalHost] = useState('127.0.0.1');
   const [remoteHost, setRemoteHost] = useState('127.0.0.1');
   const [remotePort, setRemotePort] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
@@ -159,11 +170,58 @@ export const PortForwardView: React.FC<PortForwardViewProps> = ({
     setFormError(null);
   };
 
-  // Submit new port forward (Local or Dynamic SOCKS5)
+  // Apply a reverse remote preset
+  const handleApplyRemotePreset = (preset: (typeof REMOTE_PRESETS)[0]) => {
+    setName(preset.name);
+    setRemotePort(preset.remotePort.toString());
+    setLocalPort(preset.localPort.toString());
+    setLocalHost('127.0.0.1');
+    setFormError(null);
+  };
+
+  // Submit new port forward (Local, Dynamic SOCKS5, or Remote Reverse)
   const handleStartForward = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!sessionId) {
       toast.error('No active SSH connection to establish tunnel.');
+      return;
+    }
+
+    if (forwardType === 'remote') {
+      const rPort = parseInt(remotePort.trim(), 10);
+      const lPort = parseInt(localPort.trim(), 10);
+      const lHost = localHost.trim() || '127.0.0.1';
+
+      if (isNaN(rPort) || rPort < 1 || rPort > 65535) {
+        setFormError('Remote port on server must be a valid number between 1 and 65535.');
+        return;
+      }
+      if (isNaN(lPort) || lPort < 1 || lPort > 65535) {
+        setFormError('Local port must be a valid number between 1 and 65535.');
+        return;
+      }
+
+      setIsSubmitting(true);
+      setFormError(null);
+
+      try {
+        await StartRemotePortForward(sessionId, rPort, lHost, lPort, name.trim());
+        toast.success(`Reverse tunnel active on server :${rPort}`, {
+          description: `Forwarding incoming server traffic to local ${lHost}:${lPort}`,
+        });
+        setIsFormOpen(false);
+        setName('');
+        setLocalPort('');
+        setRemotePort('');
+        setLocalHost('127.0.0.1');
+        await fetchTunnels();
+      } catch (err: any) {
+        const formatted = formatErrorMessage(err, 'Reverse Port Forward');
+        setFormError(`${formatted.message}${formatted.hint ? ` — ${formatted.hint}` : ''}`);
+        toast.error(formatted.title, { description: formatted.message });
+      } finally {
+        setIsSubmitting(false);
+      }
       return;
     }
 
@@ -230,6 +288,44 @@ export const PortForwardView: React.FC<PortForwardViewProps> = ({
   const handleSaveOnly = async () => {
     if (!sessionId) {
       toast.error('No active SSH connection to save port forwarding.');
+      return;
+    }
+
+    if (forwardType === 'remote') {
+      const rPort = parseInt(remotePort.trim(), 10);
+      const lPort = parseInt(localPort.trim(), 10);
+      const lHost = localHost.trim() || '127.0.0.1';
+
+      if (isNaN(rPort) || rPort < 1 || rPort > 65535) {
+        setFormError('Remote port on server must be a valid number between 1 and 65535.');
+        return;
+      }
+      if (isNaN(lPort) || lPort < 1 || lPort > 65535) {
+        setFormError('Local port must be a valid number between 1 and 65535.');
+        return;
+      }
+
+      setIsSubmitting(true);
+      setFormError(null);
+
+      try {
+        await SaveRemotePortForwardConfig(sessionId, rPort, lHost, lPort, name.trim());
+        toast.success(`Reverse port forward saved to profile (stopped)`, {
+          description: `Turn on server :${rPort} anytime by clicking the Play button.`,
+        });
+        setIsFormOpen(false);
+        setName('');
+        setLocalPort('');
+        setRemotePort('');
+        setLocalHost('127.0.0.1');
+        await fetchTunnels();
+      } catch (err: any) {
+        const formatted = formatErrorMessage(err, 'Save Reverse Port Forward');
+        setFormError(`${formatted.message}${formatted.hint ? ` — ${formatted.hint}` : ''}`);
+        toast.error(formatted.title, { description: formatted.message });
+      } finally {
+        setIsSubmitting(false);
+      }
       return;
     }
 
@@ -377,6 +473,15 @@ export const PortForwardView: React.FC<PortForwardViewProps> = ({
     setTimeout(() => setCopiedId(null), 2000);
   };
 
+  // Copy remote test curl command for reverse tunnel
+  const handleCopyRemoteCurl = (port: number, id: string) => {
+    const cmd = `curl http://127.0.0.1:${port}`;
+    navigator.clipboard.writeText(cmd);
+    setCopiedId(`rem-${id}`);
+    toast.success('Copied remote curl test command', { description: cmd });
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+
   // Filtered & stably sorted tunnels (prevents layout jumping on periodic refresh)
   const sortedTunnels = useMemo(() => {
     const list = tunnels.filter((t) => {
@@ -387,7 +492,8 @@ export const PortForwardView: React.FC<PortForwardViewProps> = ({
         t.localPort.toString().includes(q) ||
         (t.type || '').toLowerCase().includes(q) ||
         (t.remotePort && t.remotePort.toString().includes(q)) ||
-        (t.remoteHost && t.remoteHost.toLowerCase().includes(q))
+        (t.remoteHost && t.remoteHost.toLowerCase().includes(q)) ||
+        (t.localHost && t.localHost.toLowerCase().includes(q))
       );
     });
 
@@ -470,10 +576,16 @@ export const PortForwardView: React.FC<PortForwardViewProps> = ({
             <span className="font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5">
               {forwardType === 'dynamic' ? (
                 <Globe className="w-3.5 h-3.5 text-violet-500" />
+              ) : forwardType === 'remote' ? (
+                <ArrowUpRight className="w-3.5 h-3.5 text-emerald-500" />
               ) : (
                 <Zap className="w-3.5 h-3.5 text-blue-500" />
               )}
-              {forwardType === 'dynamic' ? 'New Dynamic Port Forward (SOCKS5)' : 'New SSH Local Port Forward'}
+              {forwardType === 'dynamic'
+                ? 'New Dynamic Port Forward (SOCKS5)'
+                : forwardType === 'remote'
+                ? 'New Reverse Port Forward (Remote)'
+                : 'New SSH Local Port Forward'}
             </span>
             <button
               type="button"
@@ -494,12 +606,12 @@ export const PortForwardView: React.FC<PortForwardViewProps> = ({
               }}
               className={`flex-1 py-1 px-2 rounded-md transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
                 forwardType === 'local'
-                  ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-2xs font-semibold'
+                  ? 'bg-white dark:bg-zinc-900 text-blue-600 dark:text-blue-400 shadow-2xs font-semibold'
                   : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
               }`}
             >
-              <span>Local Port</span>
-              <span className="text-[9px] px-1 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 font-mono">
+              <span>Local</span>
+              <span className="text-[9px] px-1 rounded bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 font-mono">
                 -L
               </span>
             </button>
@@ -508,7 +620,7 @@ export const PortForwardView: React.FC<PortForwardViewProps> = ({
               onClick={() => {
                 setForwardType('dynamic');
                 setFormError(null);
-                if (!name || name.startsWith('Port ')) {
+                if (!name || name.startsWith('Port ') || name.startsWith('Dev Server')) {
                   setName('SOCKS5 Proxy');
                 }
                 if (!localPort) {
@@ -521,9 +633,38 @@ export const PortForwardView: React.FC<PortForwardViewProps> = ({
                   : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
               }`}
             >
-              <span>Dynamic (SOCKS5)</span>
+              <span>Dynamic</span>
               <span className="text-[9px] px-1 rounded bg-violet-100 dark:bg-violet-950/60 text-violet-700 dark:text-violet-300 font-mono">
                 -D
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setForwardType('remote');
+                setFormError(null);
+                if (!name || name.startsWith('Port ') || name === 'SOCKS5 Proxy') {
+                  setName('Dev Server (:8080)');
+                }
+                if (!localPort) {
+                  setLocalPort('3000');
+                }
+                if (!remotePort) {
+                  setRemotePort('8080');
+                }
+                if (!localHost) {
+                  setLocalHost('127.0.0.1');
+                }
+              }}
+              className={`flex-1 py-1 px-2 rounded-md transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                forwardType === 'remote'
+                  ? 'bg-white dark:bg-zinc-900 text-emerald-600 dark:text-emerald-400 shadow-2xs font-semibold'
+                  : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
+              }`}
+            >
+              <span>Reverse</span>
+              <span className="text-[9px] px-1 rounded bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-mono">
+                -R
               </span>
             </button>
           </div>
@@ -545,12 +686,23 @@ export const PortForwardView: React.FC<PortForwardViewProps> = ({
                       {p.name}
                     </button>
                   ))
-                : DYNAMIC_PRESETS.map((p) => (
+                : forwardType === 'dynamic'
+                ? DYNAMIC_PRESETS.map((p) => (
                     <button
                       key={p.name}
                       type="button"
                       onClick={() => handleApplyDynamicPreset(p)}
                       className="px-2 py-0.5 rounded text-[10px] bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 hover:border-violet-500 dark:hover:border-violet-500 text-zinc-700 dark:text-zinc-300 transition-colors cursor-pointer"
+                    >
+                      {p.name}
+                    </button>
+                  ))
+                : REMOTE_PRESETS.map((p) => (
+                    <button
+                      key={p.name}
+                      type="button"
+                      onClick={() => handleApplyRemotePreset(p)}
+                      className="px-2 py-0.5 rounded text-[10px] bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 hover:border-emerald-500 dark:hover:border-emerald-500 text-zinc-700 dark:text-zinc-300 transition-colors cursor-pointer"
                     >
                       {p.name}
                     </button>
@@ -568,6 +720,24 @@ export const PortForwardView: React.FC<PortForwardViewProps> = ({
                   127.0.0.1:{localPort || '1080'}
                 </span>{' '}
                 to tunnel their connections dynamically through the remote server.
+              </span>
+            </div>
+          )}
+
+          {/* Reverse Info Banner */}
+          {forwardType === 'remote' && (
+            <div className="p-2 rounded bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-900/40 text-[11px] text-emerald-900 dark:text-emerald-200 flex items-start gap-2 leading-relaxed">
+              <ArrowUpRight className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
+              <span>
+                Exposes a local port on your machine to the remote server. Connections to port{' '}
+                <span className="font-mono font-semibold text-emerald-700 dark:text-emerald-300">
+                  :{remotePort || '8080'}
+                </span>{' '}
+                on the server will be forwarded to{' '}
+                <span className="font-mono font-semibold text-emerald-700 dark:text-emerald-300">
+                  {localHost || '127.0.0.1'}:{localPort || '3000'}
+                </span>{' '}
+                on your computer.
               </span>
             </div>
           )}
@@ -635,7 +805,7 @@ export const PortForwardView: React.FC<PortForwardViewProps> = ({
                 </div>
               </div>
             </>
-          ) : (
+          ) : forwardType === 'dynamic' ? (
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <label className="text-[10px] text-zinc-600 dark:text-zinc-400 block mb-0.5">
@@ -665,6 +835,68 @@ export const PortForwardView: React.FC<PortForwardViewProps> = ({
                 />
               </div>
             </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[10px] text-zinc-600 dark:text-zinc-400 block mb-0.5">
+                    Server Listen Port <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="65535"
+                    placeholder="e.g. 8080"
+                    value={remotePort}
+                    onChange={(e) => setRemotePort(e.target.value)}
+                    required
+                    className="w-full px-2 py-1 rounded border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 font-mono text-xs focus:outline-hidden focus:ring-1 focus:ring-emerald-500"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] text-zinc-600 dark:text-zinc-400 block mb-0.5">
+                    Forward To Local Port <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="65535"
+                    placeholder="e.g. 3000"
+                    value={localPort}
+                    onChange={(e) => setLocalPort(e.target.value)}
+                    required
+                    className="w-full px-2 py-1 rounded border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 font-mono text-xs focus:outline-hidden focus:ring-1 focus:ring-emerald-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[10px] text-zinc-600 dark:text-zinc-400 block mb-0.5">
+                    Local Host
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="127.0.0.1"
+                    value={localHost}
+                    onChange={(e) => setLocalHost(e.target.value)}
+                    className="w-full px-2 py-1 rounded border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 font-mono text-xs focus:outline-hidden focus:ring-1 focus:ring-emerald-500"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] text-zinc-600 dark:text-zinc-400 block mb-0.5">
+                    Label / Name
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Local Dev Server"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="w-full px-2 py-1 rounded border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 text-xs focus:outline-hidden focus:ring-1 focus:ring-emerald-500"
+                  />
+                </div>
+              </div>
+            </>
           )}
 
           {formError && (
@@ -698,6 +930,8 @@ export const PortForwardView: React.FC<PortForwardViewProps> = ({
                 className={`px-3 py-1 rounded text-white font-medium shadow-xs transition-colors cursor-pointer flex items-center gap-1 disabled:opacity-50 ${
                   forwardType === 'dynamic'
                     ? 'bg-violet-600 hover:bg-violet-500'
+                    : forwardType === 'remote'
+                    ? 'bg-emerald-600 hover:bg-emerald-500'
                     : 'bg-blue-600 hover:bg-blue-500'
                 }`}
               >
@@ -705,6 +939,8 @@ export const PortForwardView: React.FC<PortForwardViewProps> = ({
                   ? 'Starting...'
                   : forwardType === 'dynamic'
                   ? 'Start SOCKS5 Proxy'
+                  : forwardType === 'remote'
+                  ? 'Start Reverse Tunnel'
                   : 'Start Forwarding'}
               </button>
             </div>
@@ -749,6 +985,7 @@ export const PortForwardView: React.FC<PortForwardViewProps> = ({
             const isActive = t.status === 'active';
             const isError = t.status === 'error';
             const isDynamic = t.type === 'dynamic';
+            const isRemote = t.type === 'remote';
 
             return (
               <div
@@ -763,7 +1000,9 @@ export const PortForwardView: React.FC<PortForwardViewProps> = ({
                         isActive
                           ? isDynamic
                             ? 'bg-violet-500 shadow-xs shadow-violet-500/50 animate-pulse'
-                            : 'bg-emerald-500 shadow-xs shadow-emerald-500/50 animate-pulse'
+                            : isRemote
+                            ? 'bg-emerald-500 shadow-xs shadow-emerald-500/50 animate-pulse'
+                            : 'bg-blue-500 shadow-xs shadow-blue-500/50 animate-pulse'
                           : isError
                           ? 'bg-rose-500'
                           : 'bg-zinc-400'
@@ -779,10 +1018,12 @@ export const PortForwardView: React.FC<PortForwardViewProps> = ({
                       className={`text-[9px] font-mono font-medium px-1.5 py-0.5 rounded border ${
                         isDynamic
                           ? 'bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-800/60'
+                          : isRemote
+                          ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/60'
                           : 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800/60'
                       }`}
                     >
-                      {isDynamic ? 'SOCKS5' : 'Local'}
+                      {isDynamic ? 'SOCKS5' : isRemote ? 'Reverse' : 'Local'}
                     </span>
                     <span
                       title={
@@ -815,19 +1056,37 @@ export const PortForwardView: React.FC<PortForwardViewProps> = ({
 
                 {/* Card Middle: Routing Route */}
                 <div className="flex items-center gap-2 py-1 px-2.5 rounded-md bg-zinc-50 dark:bg-zinc-950 border border-zinc-200/80 dark:border-zinc-800/80 font-mono text-[11px] text-zinc-800 dark:text-zinc-200">
-                  <span className={`font-bold ${isDynamic ? 'text-violet-600 dark:text-violet-400' : 'text-blue-600 dark:text-blue-400'}`}>
-                    127.0.0.1:{t.localPort}
-                  </span>
-                  <ArrowRight className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
-                  {isDynamic ? (
-                    <span className="text-violet-600 dark:text-violet-400 truncate flex items-center gap-1 font-medium">
-                      <Globe className="w-3 h-3 shrink-0" />
-                      Dynamic (SOCKS5 Proxy)
-                    </span>
+                  {isRemote ? (
+                    <>
+                      <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                        Server :{t.remotePort}
+                      </span>
+                      <ArrowRight className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                      <span className="text-zinc-600 dark:text-zinc-400 truncate">
+                        {t.localHost || '127.0.0.1'}:{t.localPort}
+                      </span>
+                    </>
+                  ) : isDynamic ? (
+                    <>
+                      <span className="font-bold text-violet-600 dark:text-violet-400">
+                        127.0.0.1:{t.localPort}
+                      </span>
+                      <ArrowRight className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                      <span className="text-violet-600 dark:text-violet-400 truncate flex items-center gap-1 font-medium">
+                        <Globe className="w-3 h-3 shrink-0" />
+                        Dynamic (SOCKS5 Proxy)
+                      </span>
+                    </>
                   ) : (
-                    <span className="text-zinc-600 dark:text-zinc-400 truncate">
-                      {t.remoteHost}:{t.remotePort}
-                    </span>
+                    <>
+                      <span className="font-bold text-blue-600 dark:text-blue-400">
+                        127.0.0.1:{t.localPort}
+                      </span>
+                      <ArrowRight className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                      <span className="text-zinc-600 dark:text-zinc-400 truncate">
+                        {t.remoteHost}:{t.remotePort}
+                      </span>
+                    </>
                   )}
                 </div>
 
@@ -844,6 +1103,8 @@ export const PortForwardView: React.FC<PortForwardViewProps> = ({
                           healthMap[t.id].status === 'healthy'
                             ? isDynamic
                               ? 'bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-400 border-violet-200 dark:border-violet-800/60'
+                              : isRemote
+                              ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/60'
                               : healthMap[t.id].protocol === 'http'
                               ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/60'
                               : 'bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-400 border-sky-200 dark:border-sky-800/60'
@@ -868,6 +1129,7 @@ export const PortForwardView: React.FC<PortForwardViewProps> = ({
                           {healthMap[t.id].statusText ||
                             (healthMap[t.id].status === 'unreachable' ? 'Unreachable' : healthMap[t.id].status)}
                           {isDynamic && healthMap[t.id].status === 'healthy' ? ' (SOCKS5)' : ''}
+                          {isRemote && healthMap[t.id].status === 'healthy' ? ' (Reverse)' : ''}
                         </span>
                         {healthMap[t.id].latencyMs > 0 && (
                           <span className="opacity-70 text-[9px]">({healthMap[t.id].latencyMs}ms)</span>
@@ -920,6 +1182,45 @@ export const PortForwardView: React.FC<PortForwardViewProps> = ({
                           )}
                         </button>
                       </>
+                    ) : isRemote ? (
+                      <>
+                        {/* Copy Remote server curl command */}
+                        <button
+                          onClick={() => handleCopyRemoteCurl(t.remotePort, t.id)}
+                          title={`Copy server curl command: curl http://127.0.0.1:${t.remotePort}`}
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 text-[11px] font-medium transition-colors cursor-pointer border border-emerald-200 dark:border-emerald-800/60"
+                        >
+                          {copiedId === `rem-${t.id}` ? (
+                            <Check className="w-3 h-3 text-emerald-500" />
+                          ) : (
+                            <Copy className="w-3 h-3" />
+                          )}
+                          <span>Copy curl</span>
+                        </button>
+
+                        {/* Open local target */}
+                        <button
+                          onClick={() => handleOpenBrowser(t.localPort)}
+                          title={`Open http://${t.localHost || '127.0.0.1'}:${t.localPort} in browser`}
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded bg-zinc-200/60 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 text-[11px] font-medium transition-colors cursor-pointer"
+                        >
+                          <ExternalLink className="w-3 h-3 text-emerald-500" />
+                          <span>Open</span>
+                        </button>
+
+                        {/* Copy local URL */}
+                        <button
+                          onClick={() => handleCopyUrl(t.localPort, t.id)}
+                          title={`Copy URL (http://${t.localHost || '127.0.0.1'}:${t.localPort})`}
+                          className="p-1 rounded text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+                        >
+                          {copiedId === t.id ? (
+                            <Check className="w-3.5 h-3.5 text-emerald-500" />
+                          ) : (
+                            <Copy className="w-3.5 h-3.5" />
+                          )}
+                        </button>
+                      </>
                     ) : (
                       <>
                         {/* 1-Click Open in Browser */}
@@ -954,7 +1255,7 @@ export const PortForwardView: React.FC<PortForwardViewProps> = ({
                     {isActive ? (
                       <button
                         onClick={() => handleStopTunnel(t.id, t.localPort)}
-                        title={isDynamic ? 'Stop SOCKS5 Proxy' : 'Stop Port Forward'}
+                        title={isDynamic ? 'Stop SOCKS5 Proxy' : isRemote ? 'Stop Reverse Tunnel' : 'Stop Port Forward'}
                         className="p-1 rounded text-zinc-500 hover:text-amber-600 dark:text-zinc-400 dark:hover:text-amber-400 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
                       >
                         <Square className="w-3.5 h-3.5 fill-current" />
@@ -962,7 +1263,7 @@ export const PortForwardView: React.FC<PortForwardViewProps> = ({
                     ) : (
                       <button
                         onClick={() => handleRestartTunnel(t.id, t.localPort)}
-                        title={isDynamic ? 'Turn on SOCKS5 Proxy' : 'Turn on Port Forward'}
+                        title={isDynamic ? 'Turn on SOCKS5 Proxy' : isRemote ? 'Turn on Reverse Tunnel' : 'Turn on Port Forward'}
                         className="p-1 rounded text-zinc-500 hover:text-emerald-600 dark:text-zinc-400 dark:hover:text-emerald-400 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
                       >
                         <Play className="w-3.5 h-3.5 fill-current" />
@@ -972,7 +1273,7 @@ export const PortForwardView: React.FC<PortForwardViewProps> = ({
                     {/* Delete */}
                     <button
                       onClick={() => handleDeleteTunnel(t.id, t.localPort)}
-                      title={isDynamic ? 'Delete SOCKS5 Proxy' : 'Delete Port Forward'}
+                      title={isDynamic ? 'Delete SOCKS5 Proxy' : isRemote ? 'Delete Reverse Tunnel' : 'Delete Port Forward'}
                       className="p-1 rounded text-zinc-500 hover:text-rose-600 dark:text-zinc-400 dark:hover:text-rose-400 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
                     >
                       <Trash2 className="w-3.5 h-3.5" />

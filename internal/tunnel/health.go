@@ -44,6 +44,8 @@ func (m *Manager) CheckHealth(tunnelID string) PortHealthStatus {
 	proto := "tcp"
 	if tunnelType == TypeDynamic {
 		proto = "socks5"
+	} else if tunnelType == TypeRemote {
+		proto = "remote"
 	}
 
 	if status != StatusActive {

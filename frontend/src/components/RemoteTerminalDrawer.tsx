@@ -20,6 +20,7 @@ import {
   Rows2,
   Disc,
   MoreHorizontal,
+  ChevronDown,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -137,6 +138,8 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
   const [editingTabId, setEditingTabId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState('');
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
+  type PanelTab = 'problems' | 'output' | 'debug' | 'terminal' | 'ports';
+  const [activePanelTab, setActivePanelTab] = useState<PanelTab>('terminal');
 
   // Close more menu on outside click
   useEffect(() => {
@@ -1182,34 +1185,40 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
         />
       </div>
 
-      {/* Top Header Bar */}
-      <div className="h-8 min-h-[32px] px-3 border-b border-zinc-800 bg-zinc-900/90 flex items-center justify-between text-xs select-none shrink-0">
-        {/* Left: Terminal Title & Session/CWD Breadcrumbs */}
-        <div className="flex items-center gap-2 min-w-0">
-          <span className="font-semibold text-xs tracking-wider uppercase text-zinc-300 flex items-center gap-1.5 shrink-0">
-            <Terminal className="w-3.5 h-3.5 text-blue-400" />
-            <span>Terminal</span>
-          </span>
-
-          {currentSession && activeTab && (
-            <div className="flex items-center gap-1.5 text-[11px] font-mono text-zinc-400 min-w-0">
-              <span className="text-zinc-600">•</span>
-              <span className="truncate max-w-[160px] text-zinc-300">
-                {currentSession.username}@{currentSession.host}
-              </span>
-              <span className="text-zinc-600">•</span>
-              <div
-                className="flex items-center gap-1 truncate max-w-[180px] text-zinc-400"
-                title={`CWD: ${activeTab.cwd}`}
+      {/* VS Code Panel Header Bar */}
+      <div className="h-9 min-h-[35px] px-3 border-b border-zinc-800 bg-[#181818] flex items-center justify-between text-xs select-none shrink-0">
+        {/* Left: VS Code Panel Tabs (PROBLEMS, OUTPUT, DEBUG CONSOLE, TERMINAL, PORTS) */}
+        <div className="flex items-center gap-5 h-full min-w-0">
+          {(
+            [
+              { id: 'problems', label: 'PROBLEMS' },
+              { id: 'output', label: 'OUTPUT' },
+              { id: 'debug', label: 'DEBUG CONSOLE' },
+              { id: 'terminal', label: 'TERMINAL' },
+              { id: 'ports', label: 'PORTS' },
+            ] as const
+          ).map((pt) => {
+            const isActive = activePanelTab === pt.id;
+            return (
+              <button
+                key={pt.id}
+                onClick={() => setActivePanelTab(pt.id)}
+                className={`h-full flex items-center text-[11px] font-sans tracking-wider uppercase transition-colors cursor-pointer relative pb-0.5 ${
+                  isActive
+                    ? 'text-zinc-100 font-semibold'
+                    : 'text-zinc-400 hover:text-zinc-200 font-medium'
+                }`}
               >
-                <Folder className="w-3 h-3 text-amber-400/80 shrink-0" />
-                <span className="truncate">{shortenPath(activeTab.cwd)}</span>
-              </div>
-            </div>
-          )}
+                <span>{pt.label}</span>
+                {isActive && (
+                  <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-white rounded-full" />
+                )}
+              </button>
+            );
+          })}
 
           {isRecording && (
-            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-rose-500/20 text-rose-400 border border-rose-500/30 text-[10px] font-mono font-bold animate-pulse shrink-0">
+            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-rose-500/20 text-rose-400 border border-rose-500/30 text-[10px] font-mono font-bold animate-pulse shrink-0 ml-2">
               <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
               <span>
                 REC {Math.floor(recordingSeconds / 60).toString().padStart(2, '0')}:{(recordingSeconds % 60).toString().padStart(2, '0')}
@@ -1219,27 +1228,15 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
         </div>
 
         {/* Right: VS Code Action Controls */}
-        <div className="flex items-center gap-0.5 shrink-0">
-          {/* New Terminal (+) */}
+        <div className="flex items-center gap-1 shrink-0">
+          {/* New Terminal (+ ⌵) */}
           <button
             onClick={handleNewTab}
-            className="p-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-zinc-100 transition-colors cursor-pointer"
-            title="New Terminal (Ctrl+Shift+`)"
+            className="p-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-zinc-100 transition-colors cursor-pointer flex items-center"
+            title="New Terminal"
           >
             <Plus className="w-3.5 h-3.5" />
-          </button>
-
-          {/* Split Terminal */}
-          <button
-            onClick={handleSplitVertical}
-            className={`p-1 rounded hover:bg-zinc-800 transition-colors cursor-pointer ${
-              activeTab?.splitPaneId
-                ? 'text-blue-400 bg-zinc-800'
-                : 'text-zinc-400 hover:text-zinc-100'
-            }`}
-            title="Split Terminal (side-by-side)"
-          >
-            <Columns2 className="w-3.5 h-3.5" />
+            <ChevronDown className="w-2.5 h-2.5 ml-0.5 text-zinc-500" />
           </button>
 
           {/* More Actions (...) */}
@@ -1320,16 +1317,16 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
           {/* Separator | */}
           <div className="w-px h-3.5 bg-zinc-700/80 mx-1" />
 
-          {/* Maximize / Restore */}
+          {/* Maximize / Restore Toggle [ ] */}
           <button
             onClick={handleToggleMaximize}
             className="p-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-zinc-100 transition-colors cursor-pointer"
-            title={isMaximized ? 'Restore height' : 'Maximize terminal'}
+            title={isMaximized ? 'Restore Panel Size' : 'Maximize Panel Size'}
           >
             {isMaximized ? (
               <Minimize2 className="w-3.5 h-3.5" />
             ) : (
-              <Maximize2 className="w-3.5 h-3.5" />
+              <Square className="w-3.5 h-3.5" />
             )}
           </button>
 
@@ -1337,17 +1334,19 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
           <button
             onClick={onClose}
             className="p-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-zinc-100 transition-colors cursor-pointer"
-            title="Close terminal (Ctrl+`)"
+            title="Close Panel (Ctrl+`)"
           >
             <X className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
 
-      {/* Main Viewport & VS Code Vertical Tabs Sidebar */}
-      <div className="flex-1 min-h-0 flex overflow-hidden bg-zinc-950">
-        {/* Left: Terminal Viewport */}
-        <div className="flex-1 min-w-0 h-full relative overflow-hidden bg-zinc-950">
+      {/* Main Panel Content Area */}
+      <div className="flex-1 min-h-0 flex overflow-hidden bg-[#181818]">
+        {activePanelTab === 'terminal' && (
+          <>
+            {/* Left: Terminal Viewport */}
+            <div className="flex-1 min-w-0 h-full relative overflow-hidden bg-zinc-950">
           {!currentSession && (
             <div className="flex items-center gap-2 text-zinc-500 py-4 px-4 font-mono text-xs">
               <AlertCircle className="w-4 h-4 text-amber-400" />
@@ -1454,8 +1453,8 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
         </div>
 
         {/* Right: VS Code Style Vertical Terminal Tabs Sidebar */}
-        <div className="w-36 sm:w-44 bg-zinc-900/60 border-l border-zinc-800 flex flex-col shrink-0 select-none overflow-hidden">
-          <div className="flex-1 overflow-y-auto p-1.5 space-y-0.5">
+        <div className="w-44 sm:w-52 bg-[#181818] border-l border-zinc-800 flex flex-col shrink-0 select-none overflow-hidden">
+          <div className="flex-1 overflow-y-auto p-1 space-y-0.5">
             {tabs.map((tab) => {
               const isActive = tab.id === (activeTab?.id || tabs[0]?.id);
               return (
@@ -1466,15 +1465,16 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
                     setEditingTabId(tab.id);
                     setEditingTitle(tab.title);
                   }}
-                  className={`group flex items-center justify-between px-2.5 py-1.5 rounded-md cursor-pointer text-xs font-mono transition-colors ${
+                  className={`group flex items-center justify-between px-2 py-1 rounded text-xs transition-colors cursor-pointer ${
                     isActive
-                      ? 'bg-zinc-800/90 text-zinc-100 font-semibold shadow-2xs border border-zinc-700/60'
+                      ? 'bg-[#2a2d2e] text-zinc-100 font-medium'
                       : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/40'
                   }`}
-                  title={`${tab.title} (Double-click to rename)`}
+                  title={`${tab.title} (${tab.cwd})`}
                 >
+                  {/* Left: Terminal [>_] Badge and Title */}
                   <div className="flex items-center gap-2 truncate min-w-0">
-                    <span className="inline-flex items-center justify-center w-4 h-4 rounded border border-zinc-600 text-[9px] font-bold text-zinc-300 shrink-0 font-mono leading-none">
+                    <span className="inline-flex items-center justify-center w-[18px] h-[18px] rounded border border-zinc-600 bg-zinc-900/80 text-[9px] font-bold text-zinc-300 shrink-0 font-mono leading-none">
                       &gt;_
                     </span>
                     {editingTabId === tab.id ? (
@@ -1506,27 +1506,104 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
                         className="w-full bg-zinc-950 text-zinc-100 px-1 py-0.5 rounded border border-blue-500 text-xs font-mono outline-hidden"
                       />
                     ) : (
-                      <span className="truncate text-[11px]">{tab.title}</span>
+                      <span className="truncate text-[12px] font-sans">{tab.title}</span>
                     )}
                   </div>
 
-                  {tabs.length > 1 && (
+                  {/* Right: Inline Hover Actions (Split & Kill) */}
+                  <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity ml-1">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleSplitVertical();
+                      }}
+                      className="p-1 rounded hover:bg-zinc-700/80 text-zinc-400 hover:text-zinc-100 cursor-pointer"
+                      title="Split Terminal"
+                    >
+                      <Columns2 className="w-3.5 h-3.5" />
+                    </button>
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
                         handleCloseTab(e, tab.id);
                       }}
-                      className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-zinc-700 text-zinc-400 hover:text-zinc-200 transition-opacity shrink-0 cursor-pointer ml-1"
-                      title="Kill Terminal"
+                      className="p-1 rounded hover:bg-zinc-700/80 text-zinc-400 hover:text-rose-300 cursor-pointer"
+                      title="Kill Terminal (Del)"
                     >
-                      <X className="w-3 h-3" />
+                      <Trash2 className="w-3.5 h-3.5" />
                     </button>
-                  )}
+                  </div>
                 </div>
               );
             })}
           </div>
         </div>
+          </>
+        )}
+
+        {/* If Active Panel is PORTS */}
+        {activePanelTab === 'ports' && (
+          <div className="flex-1 min-w-0 h-full p-4 overflow-y-auto bg-[#181818] text-xs font-sans text-zinc-300">
+            <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
+              <div>
+                <h3 className="text-sm font-semibold text-zinc-100">Forwarded Ports</h3>
+                <p className="text-xs text-zinc-400 mt-0.5">
+                  Ports forwarded through active SSH connection ({currentSession?.username}@{currentSession?.host})
+                </p>
+              </div>
+            </div>
+            <div className="mt-4 border border-zinc-800 rounded-lg overflow-hidden bg-zinc-900/40">
+              <div className="grid grid-cols-4 px-3 py-2 bg-zinc-900/80 text-zinc-400 font-medium text-[11px] border-b border-zinc-800">
+                <span>Port</span>
+                <span>Type</span>
+                <span>Destination</span>
+                <span>Status</span>
+              </div>
+              <div className="px-3 py-6 text-center text-zinc-500 font-mono text-xs">
+                Configure Local, Remote (ssh -R), or Dynamic tunnels in the Port Forwarding tab.
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* If Active Panel is OUTPUT */}
+        {activePanelTab === 'output' && (
+          <div className="flex-1 min-w-0 h-full p-3 overflow-y-auto bg-[#181818] font-mono text-xs text-zinc-300 select-text">
+            <div className="text-zinc-500 mb-2 pb-1 border-b border-zinc-800 flex items-center justify-between">
+              <span>[Termlet SSH Connection Log]</span>
+              <span className="text-[11px] text-zinc-400">
+                {currentSession ? `${currentSession.username}@${currentSession.host}:${currentSession.port}` : 'Disconnected'}
+              </span>
+            </div>
+            {currentSession ? (
+              <div className="space-y-1 text-zinc-400">
+                <div><span className="text-blue-400">[INFO]</span> Session established: {currentSession.id}</div>
+                <div><span className="text-blue-400">[INFO]</span> Remote Host: {currentSession.host}:{currentSession.port}</div>
+                <div><span className="text-blue-400">[INFO]</span> Connected User: {currentSession.username}</div>
+                <div><span className="text-emerald-400">[INFO]</span> Pseudo-terminal (PTY) interactive session online</div>
+                <div><span className="text-zinc-500">[DEBUG]</span> CWD initialized to: {activeTab?.cwd || '~'}</div>
+                <div><span className="text-emerald-400">[READY]</span> Terminal ready for commands</div>
+              </div>
+            ) : (
+              <div className="text-zinc-500">No active SSH session log available.</div>
+            )}
+          </div>
+        )}
+
+        {/* If Active Panel is PROBLEMS */}
+        {activePanelTab === 'problems' && (
+          <div className="flex-1 min-w-0 h-full flex flex-col items-center justify-center bg-[#181818] text-xs text-zinc-500 p-4">
+            <Check className="w-5 h-5 text-emerald-500/80 mb-2" />
+            <span>No problems have been detected in the workspace.</span>
+          </div>
+        )}
+
+        {/* If Active Panel is DEBUG CONSOLE */}
+        {activePanelTab === 'debug' && (
+          <div className="flex-1 min-w-0 h-full flex flex-col items-center justify-center bg-[#181818] text-xs text-zinc-500 p-4">
+            <span>Debug console is not active.</span>
+          </div>
+        )}
       </div>
 
       {/* Session Recorder Modal */}

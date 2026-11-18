@@ -38,7 +38,13 @@ func (m *Manager) CheckHealth(tunnelID string) PortHealthStatus {
 	status := f.info.Status
 	localPort := f.info.LocalPort
 	errorMsg := f.info.ErrorMsg
+	tunnelType := f.info.Type
 	f.mu.Unlock()
+
+	proto := "tcp"
+	if tunnelType == TypeDynamic {
+		proto = "socks5"
+	}
 
 	if status != StatusActive {
 		return PortHealthStatus{
@@ -55,7 +61,7 @@ func (m *Manager) CheckHealth(tunnelID string) PortHealthStatus {
 			LocalPort:  localPort,
 			Status:     "warning",
 			StatusText: errorMsg,
-			Protocol:   "tcp",
+			Protocol:   proto,
 		}
 	}
 
@@ -64,7 +70,7 @@ func (m *Manager) CheckHealth(tunnelID string) PortHealthStatus {
 		LocalPort:  localPort,
 		Status:     "healthy",
 		StatusText: "Ready",
-		Protocol:   "tcp",
+		Protocol:   proto,
 	}
 }
 

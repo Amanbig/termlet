@@ -18,11 +18,14 @@ import {
   Info,
   Activity,
   Loader2,
+  Terminal,
 } from 'lucide-react';
 import { tunnel, connections } from '../../wailsjs/go/models';
 import {
   StartPortForward,
+  StartDynamicPortForward,
   SavePortForwardConfig,
+  SaveDynamicPortForwardConfig,
   StopPortForward,
   RestartPortForward,
   DeletePortForward,
@@ -42,13 +45,20 @@ interface PortForwardViewProps {
   onTunnelsChange?: (count: number) => void;
 }
 
-const PRESETS = [
+const LOCAL_PRESETS = [
   { name: 'Traefik Dashboard', localPort: 8080, remoteHost: '127.0.0.1', remotePort: 8080 },
   { name: 'Web Server (HTTP)', localPort: 8080, remoteHost: '127.0.0.1', remotePort: 80 },
   { name: 'Node / Vite Dev', localPort: 3000, remoteHost: '127.0.0.1', remotePort: 3000 },
   { name: 'PostgreSQL DB', localPort: 5432, remoteHost: '127.0.0.1', remotePort: 5432 },
   { name: 'MySQL / MariaDB', localPort: 3306, remoteHost: '127.0.0.1', remotePort: 3306 },
   { name: 'Redis Cache', localPort: 6379, remoteHost: '127.0.0.1', remotePort: 6379 },
+];
+
+const DYNAMIC_PRESETS = [
+  { name: 'SOCKS5 Proxy (1080)', localPort: 1080 },
+  { name: 'Tor / Proxy (9050)', localPort: 9050 },
+  { name: 'Alt SOCKS (8888)', localPort: 8888 },
+  { name: 'Dev Proxy (1088)', localPort: 1088 },
 ];
 
 export const PortForwardView: React.FC<PortForwardViewProps> = ({
@@ -61,6 +71,7 @@ export const PortForwardView: React.FC<PortForwardViewProps> = ({
   const [tunnels, setTunnels] = useState<tunnel.TunnelInfo[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [forwardType, setForwardType] = useState<'local' | 'dynamic'>('local');
   const [searchQuery, setSearchQuery] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [healthMap, setHealthMap] = useState<Record<string, tunnel.PortHealthStatus>>({});
@@ -132,8 +143,8 @@ export const PortForwardView: React.FC<PortForwardViewProps> = ({
     return () => clearInterval(interval);
   }, [sessionId, fetchTunnels]);
 
-  // Apply a preset
-  const handleApplyPreset = (preset: (typeof PRESETS)[0]) => {
+  // Apply a local preset
+  const handleApplyLocalPreset = (preset: (typeof LOCAL_PRESETS)[0]) => {
     setName(preset.name);
     setLocalPort(preset.localPort.toString());
     setRemoteHost(preset.remoteHost);
@@ -141,7 +152,14 @@ export const PortForwardView: React.FC<PortForwardViewProps> = ({
     setFormError(null);
   };
 
-  // Submit new port forward
+  // Apply a dynamic SOCKS5 preset
+  const handleApplyDynamicPreset = (preset: (typeof DYNAMIC_PRESETS)[0]) => {
+    setName(preset.name);
+    setLocalPort(preset.localPort.toString());
+    setFormError(null);
+  };
+
+  // Submit new port forward (Local or Dynamic SOCKS5)
   const handleStartForward = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!sessionId) {
@@ -150,13 +168,36 @@ export const PortForwardView: React.FC<PortForwardViewProps> = ({
     }
 
     const lPort = parseInt(localPort.trim(), 10);
-    const rPort = parseInt(remotePort.trim(), 10);
-    const rHost = remoteHost.trim() || '127.0.0.1';
-
     if (isNaN(lPort) || lPort < 1 || lPort > 65535) {
       setFormError('Local port must be a valid number between 1 and 65535.');
       return;
     }
+
+    if (forwardType === 'dynamic') {
+      setIsSubmitting(true);
+      setFormError(null);
+      try {
+        await StartDynamicPortForward(sessionId, lPort, name.trim());
+        toast.success(`SOCKS5 proxy active on 127.0.0.1:${lPort}`, {
+          description: `Routing traffic dynamically through ${activeSession?.host || 'server'}`,
+        });
+        setIsFormOpen(false);
+        setName('');
+        setLocalPort('');
+        await fetchTunnels();
+      } catch (err: any) {
+        const formatted = formatErrorMessage(err, 'Dynamic Port Forward');
+        setFormError(`${formatted.message}${formatted.hint ? ` — ${formatted.hint}` : ''}`);
+        toast.error(formatted.title, { description: formatted.message });
+      } finally {
+        setIsSubmitting(false);
+      }
+      return;
+    }
+
+    const rPort = parseInt(remotePort.trim(), 10);
+    const rHost = remoteHost.trim() || '127.0.0.1';
+
     if (isNaN(rPort) || rPort < 1 || rPort > 65535) {
       setFormError('Remote port must be a valid number between 1 and 65535.');
       return;
@@ -166,7 +207,7 @@ export const PortForwardView: React.FC<PortForwardViewProps> = ({
     setFormError(null);
 
     try {
-      const created = await StartPortForward(sessionId, lPort, rHost, rPort, name.trim());
+      await StartPortForward(sessionId, lPort, rHost, rPort, name.trim());
       toast.success(`Port forward started on localhost:${lPort}`, {
         description: `Forwarding to ${rHost}:${rPort} on ${activeSession?.host || 'server'}`,
       });
@@ -193,13 +234,36 @@ export const PortForwardView: React.FC<PortForwardViewProps> = ({
     }
 
     const lPort = parseInt(localPort.trim(), 10);
-    const rPort = parseInt(remotePort.trim(), 10);
-    const rHost = remoteHost.trim() || '127.0.0.1';
-
     if (isNaN(lPort) || lPort < 1 || lPort > 65535) {
       setFormError('Local port must be a valid number between 1 and 65535.');
       return;
     }
+
+    if (forwardType === 'dynamic') {
+      setIsSubmitting(true);
+      setFormError(null);
+      try {
+        await SaveDynamicPortForwardConfig(sessionId, lPort, name.trim());
+        toast.success(`SOCKS5 proxy saved to profile (stopped)`, {
+          description: `Turn on 127.0.0.1:${lPort} anytime by clicking the Play button.`,
+        });
+        setIsFormOpen(false);
+        setName('');
+        setLocalPort('');
+        await fetchTunnels();
+      } catch (err: any) {
+        const formatted = formatErrorMessage(err, 'Save SOCKS5 Proxy');
+        setFormError(`${formatted.message}${formatted.hint ? ` — ${formatted.hint}` : ''}`);
+        toast.error(formatted.title, { description: formatted.message });
+      } finally {
+        setIsSubmitting(false);
+      }
+      return;
+    }
+
+    const rPort = parseInt(remotePort.trim(), 10);
+    const rHost = remoteHost.trim() || '127.0.0.1';
+
     if (isNaN(rPort) || rPort < 1 || rPort > 65535) {
       setFormError('Remote port must be a valid number between 1 and 65535.');
       return;
@@ -295,6 +359,24 @@ export const PortForwardView: React.FC<PortForwardViewProps> = ({
     setTimeout(() => setCopiedId(null), 2000);
   };
 
+  // Copy SOCKS5 Proxy URL
+  const handleCopySocks = (port: number, id: string) => {
+    const url = `socks5://127.0.0.1:${port}`;
+    navigator.clipboard.writeText(url);
+    setCopiedId(id);
+    toast.success('Copied SOCKS5 proxy URL', { description: url });
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  // Copy curl command with SOCKS5 proxy
+  const handleCopyCurl = (port: number, id: string) => {
+    const cmd = `curl -x socks5h://127.0.0.1:${port} https://checkip.amazonaws.com`;
+    navigator.clipboard.writeText(cmd);
+    setCopiedId(`curl-${id}`);
+    toast.success('Copied curl command', { description: cmd });
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+
   // Filtered & stably sorted tunnels (prevents layout jumping on periodic refresh)
   const sortedTunnels = useMemo(() => {
     const list = tunnels.filter((t) => {
@@ -303,8 +385,9 @@ export const PortForwardView: React.FC<PortForwardViewProps> = ({
       return (
         t.name.toLowerCase().includes(q) ||
         t.localPort.toString().includes(q) ||
-        t.remotePort.toString().includes(q) ||
-        t.remoteHost.toLowerCase().includes(q)
+        (t.type || '').toLowerCase().includes(q) ||
+        (t.remotePort && t.remotePort.toString().includes(q)) ||
+        (t.remoteHost && t.remoteHost.toLowerCase().includes(q))
       );
     });
 
@@ -385,8 +468,12 @@ export const PortForwardView: React.FC<PortForwardViewProps> = ({
         >
           <div className="flex items-center justify-between">
             <span className="font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5">
-              <Zap className="w-3.5 h-3.5 text-blue-500" />
-              New SSH Local Port Forward
+              {forwardType === 'dynamic' ? (
+                <Globe className="w-3.5 h-3.5 text-violet-500" />
+              ) : (
+                <Zap className="w-3.5 h-3.5 text-blue-500" />
+              )}
+              {forwardType === 'dynamic' ? 'New Dynamic Port Forward (SOCKS5)' : 'New SSH Local Port Forward'}
             </span>
             <button
               type="button"
@@ -397,85 +484,188 @@ export const PortForwardView: React.FC<PortForwardViewProps> = ({
             </button>
           </div>
 
-          {/* Quick Presets */}
+          {/* Mode Switcher */}
+          <div className="flex rounded-lg bg-zinc-200/80 dark:bg-zinc-800/90 p-0.5 text-[11px] font-medium border border-zinc-200/50 dark:border-zinc-700/50">
+            <button
+              type="button"
+              onClick={() => {
+                setForwardType('local');
+                setFormError(null);
+              }}
+              className={`flex-1 py-1 px-2 rounded-md transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                forwardType === 'local'
+                  ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-2xs font-semibold'
+                  : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
+              }`}
+            >
+              <span>Local Port</span>
+              <span className="text-[9px] px-1 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 font-mono">
+                -L
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setForwardType('dynamic');
+                setFormError(null);
+                if (!name || name.startsWith('Port ')) {
+                  setName('SOCKS5 Proxy');
+                }
+                if (!localPort) {
+                  setLocalPort('1080');
+                }
+              }}
+              className={`flex-1 py-1 px-2 rounded-md transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                forwardType === 'dynamic'
+                  ? 'bg-white dark:bg-zinc-900 text-violet-600 dark:text-violet-400 shadow-2xs font-semibold'
+                  : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
+              }`}
+            >
+              <span>Dynamic (SOCKS5)</span>
+              <span className="text-[9px] px-1 rounded bg-violet-100 dark:bg-violet-950/60 text-violet-700 dark:text-violet-300 font-mono">
+                -D
+              </span>
+            </button>
+          </div>
+
+          {/* Presets */}
           <div>
             <label className="text-[10px] text-zinc-500 dark:text-zinc-400 font-medium block mb-1">
               Quick Presets:
             </label>
             <div className="flex flex-wrap gap-1">
-              {PRESETS.map((p) => (
-                <button
-                  key={p.name}
-                  type="button"
-                  onClick={() => handleApplyPreset(p)}
-                  className="px-2 py-0.5 rounded text-[10px] bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 hover:border-blue-500 dark:hover:border-blue-500 text-zinc-700 dark:text-zinc-300 transition-colors cursor-pointer"
-                >
-                  {p.name}
-                </button>
-              ))}
+              {forwardType === 'local'
+                ? LOCAL_PRESETS.map((p) => (
+                    <button
+                      key={p.name}
+                      type="button"
+                      onClick={() => handleApplyLocalPreset(p)}
+                      className="px-2 py-0.5 rounded text-[10px] bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 hover:border-blue-500 dark:hover:border-blue-500 text-zinc-700 dark:text-zinc-300 transition-colors cursor-pointer"
+                    >
+                      {p.name}
+                    </button>
+                  ))
+                : DYNAMIC_PRESETS.map((p) => (
+                    <button
+                      key={p.name}
+                      type="button"
+                      onClick={() => handleApplyDynamicPreset(p)}
+                      className="px-2 py-0.5 rounded text-[10px] bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 hover:border-violet-500 dark:hover:border-violet-500 text-zinc-700 dark:text-zinc-300 transition-colors cursor-pointer"
+                    >
+                      {p.name}
+                    </button>
+                  ))}
             </div>
           </div>
+
+          {/* Dynamic Info Banner */}
+          {forwardType === 'dynamic' && (
+            <div className="p-2 rounded bg-violet-50/70 dark:bg-violet-950/30 border border-violet-200/80 dark:border-violet-900/40 text-[11px] text-violet-900 dark:text-violet-200 flex items-start gap-2 leading-relaxed">
+              <Globe className="w-3.5 h-3.5 text-violet-500 shrink-0 mt-0.5" />
+              <span>
+                Acts as a local SOCKS5 proxy server. Configure client apps (browser, git, curl) to use{' '}
+                <span className="font-mono font-semibold text-violet-700 dark:text-violet-300">
+                  127.0.0.1:{localPort || '1080'}
+                </span>{' '}
+                to tunnel their connections dynamically through the remote server.
+              </span>
+            </div>
+          )}
 
           {/* Form Inputs Grid */}
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className="text-[10px] text-zinc-600 dark:text-zinc-400 block mb-0.5">
-                Local Port <span className="text-rose-500">*</span>
-              </label>
-              <input
-                type="number"
-                min="1"
-                max="65535"
-                placeholder="e.g. 8080"
-                value={localPort}
-                onChange={(e) => setLocalPort(e.target.value)}
-                required
-                className="w-full px-2 py-1 rounded border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 font-mono text-xs focus:outline-hidden focus:ring-1 focus:ring-blue-500"
-              />
-            </div>
-            <div>
-              <label className="text-[10px] text-zinc-600 dark:text-zinc-400 block mb-0.5">
-                Remote Port <span className="text-rose-500">*</span>
-              </label>
-              <input
-                type="number"
-                min="1"
-                max="65535"
-                placeholder="e.g. 80 or 8080"
-                value={remotePort}
-                onChange={(e) => setRemotePort(e.target.value)}
-                required
-                className="w-full px-2 py-1 rounded border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 font-mono text-xs focus:outline-hidden focus:ring-1 focus:ring-blue-500"
-              />
-            </div>
-          </div>
+          {forwardType === 'local' ? (
+            <>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[10px] text-zinc-600 dark:text-zinc-400 block mb-0.5">
+                    Local Port <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="65535"
+                    placeholder="e.g. 8080"
+                    value={localPort}
+                    onChange={(e) => setLocalPort(e.target.value)}
+                    required
+                    className="w-full px-2 py-1 rounded border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 font-mono text-xs focus:outline-hidden focus:ring-1 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] text-zinc-600 dark:text-zinc-400 block mb-0.5">
+                    Remote Port <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="65535"
+                    placeholder="e.g. 80 or 8080"
+                    value={remotePort}
+                    onChange={(e) => setRemotePort(e.target.value)}
+                    required
+                    className="w-full px-2 py-1 rounded border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 font-mono text-xs focus:outline-hidden focus:ring-1 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
 
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className="text-[10px] text-zinc-600 dark:text-zinc-400 block mb-0.5">
-                Remote Host
-              </label>
-              <input
-                type="text"
-                placeholder="127.0.0.1 or localhost"
-                value={remoteHost}
-                onChange={(e) => setRemoteHost(e.target.value)}
-                className="w-full px-2 py-1 rounded border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 font-mono text-xs focus:outline-hidden focus:ring-1 focus:ring-blue-500"
-              />
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[10px] text-zinc-600 dark:text-zinc-400 block mb-0.5">
+                    Remote Host
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="127.0.0.1 or localhost"
+                    value={remoteHost}
+                    onChange={(e) => setRemoteHost(e.target.value)}
+                    className="w-full px-2 py-1 rounded border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 font-mono text-xs focus:outline-hidden focus:ring-1 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] text-zinc-600 dark:text-zinc-400 block mb-0.5">
+                    Label / Name
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Traefik Dashboard"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="w-full px-2 py-1 rounded border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 text-xs focus:outline-hidden focus:ring-1 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-[10px] text-zinc-600 dark:text-zinc-400 block mb-0.5">
+                  Local SOCKS5 Port <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="65535"
+                  placeholder="e.g. 1080"
+                  value={localPort}
+                  onChange={(e) => setLocalPort(e.target.value)}
+                  required
+                  className="w-full px-2 py-1 rounded border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 font-mono text-xs focus:outline-hidden focus:ring-1 focus:ring-violet-500"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] text-zinc-600 dark:text-zinc-400 block mb-0.5">
+                  Label / Name
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. SOCKS5 Proxy"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="w-full px-2 py-1 rounded border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 text-xs focus:outline-hidden focus:ring-1 focus:ring-violet-500"
+                />
+              </div>
             </div>
-            <div>
-              <label className="text-[10px] text-zinc-600 dark:text-zinc-400 block mb-0.5">
-                Label / Name
-              </label>
-              <input
-                type="text"
-                placeholder="e.g. Traefik Dashboard"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="w-full px-2 py-1 rounded border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 text-xs focus:outline-hidden focus:ring-1 focus:ring-blue-500"
-              />
-            </div>
-          </div>
+          )}
 
           {formError && (
             <div className="p-2 rounded bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 text-rose-600 dark:text-rose-400 text-[11px] flex items-start gap-1.5">
@@ -505,9 +695,17 @@ export const PortForwardView: React.FC<PortForwardViewProps> = ({
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="px-3 py-1 rounded bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-medium shadow-xs transition-colors cursor-pointer flex items-center gap-1"
+                className={`px-3 py-1 rounded text-white font-medium shadow-xs transition-colors cursor-pointer flex items-center gap-1 disabled:opacity-50 ${
+                  forwardType === 'dynamic'
+                    ? 'bg-violet-600 hover:bg-violet-500'
+                    : 'bg-blue-600 hover:bg-blue-500'
+                }`}
               >
-                {isSubmitting ? 'Starting...' : 'Start Forwarding'}
+                {isSubmitting
+                  ? 'Starting...'
+                  : forwardType === 'dynamic'
+                  ? 'Start SOCKS5 Proxy'
+                  : 'Start Forwarding'}
               </button>
             </div>
           </div>
@@ -550,6 +748,7 @@ export const PortForwardView: React.FC<PortForwardViewProps> = ({
           sortedTunnels.map((t) => {
             const isActive = t.status === 'active';
             const isError = t.status === 'error';
+            const isDynamic = t.type === 'dynamic';
 
             return (
               <div
@@ -562,7 +761,9 @@ export const PortForwardView: React.FC<PortForwardViewProps> = ({
                     <span
                       className={`w-2 h-2 rounded-full shrink-0 ${
                         isActive
-                          ? 'bg-emerald-500 shadow-xs shadow-emerald-500/50 animate-pulse'
+                          ? isDynamic
+                            ? 'bg-violet-500 shadow-xs shadow-violet-500/50 animate-pulse'
+                            : 'bg-emerald-500 shadow-xs shadow-emerald-500/50 animate-pulse'
                           : isError
                           ? 'bg-rose-500'
                           : 'bg-zinc-400'
@@ -574,6 +775,15 @@ export const PortForwardView: React.FC<PortForwardViewProps> = ({
                   </div>
 
                   <div className="flex items-center gap-1.5 shrink-0">
+                    <span
+                      className={`text-[9px] font-mono font-medium px-1.5 py-0.5 rounded border ${
+                        isDynamic
+                          ? 'bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-800/60'
+                          : 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800/60'
+                      }`}
+                    >
+                      {isDynamic ? 'SOCKS5' : 'Local'}
+                    </span>
                     <span
                       title={
                         isActive
@@ -605,13 +815,20 @@ export const PortForwardView: React.FC<PortForwardViewProps> = ({
 
                 {/* Card Middle: Routing Route */}
                 <div className="flex items-center gap-2 py-1 px-2.5 rounded-md bg-zinc-50 dark:bg-zinc-950 border border-zinc-200/80 dark:border-zinc-800/80 font-mono text-[11px] text-zinc-800 dark:text-zinc-200">
-                  <span className="font-bold text-blue-600 dark:text-blue-400">
+                  <span className={`font-bold ${isDynamic ? 'text-violet-600 dark:text-violet-400' : 'text-blue-600 dark:text-blue-400'}`}>
                     127.0.0.1:{t.localPort}
                   </span>
                   <ArrowRight className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
-                  <span className="text-zinc-600 dark:text-zinc-400 truncate">
-                    {t.remoteHost}:{t.remotePort}
-                  </span>
+                  {isDynamic ? (
+                    <span className="text-violet-600 dark:text-violet-400 truncate flex items-center gap-1 font-medium">
+                      <Globe className="w-3 h-3 shrink-0" />
+                      Dynamic (SOCKS5 Proxy)
+                    </span>
+                  ) : (
+                    <span className="text-zinc-600 dark:text-zinc-400 truncate">
+                      {t.remoteHost}:{t.remotePort}
+                    </span>
+                  )}
                 </div>
 
                 {/* Health Status Indicator */}
@@ -625,7 +842,9 @@ export const PortForwardView: React.FC<PortForwardViewProps> = ({
                       <span
                         className={`font-mono px-1.5 py-0.5 rounded flex items-center gap-1.5 border text-[10px] ${
                           healthMap[t.id].status === 'healthy'
-                            ? healthMap[t.id].protocol === 'http'
+                            ? isDynamic
+                              ? 'bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-400 border-violet-200 dark:border-violet-800/60'
+                              : healthMap[t.id].protocol === 'http'
                               ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/60'
                               : 'bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-400 border-sky-200 dark:border-sky-800/60'
                             : healthMap[t.id].status === 'warning'
@@ -637,7 +856,9 @@ export const PortForwardView: React.FC<PortForwardViewProps> = ({
                         <span
                           className={`w-1.5 h-1.5 rounded-full ${
                             healthMap[t.id].status === 'healthy'
-                              ? 'bg-emerald-500 animate-pulse'
+                              ? isDynamic
+                                ? 'bg-violet-500 animate-pulse'
+                                : 'bg-emerald-500 animate-pulse'
                               : healthMap[t.id].status === 'warning'
                               ? 'bg-amber-500'
                               : 'bg-rose-500'
@@ -646,6 +867,7 @@ export const PortForwardView: React.FC<PortForwardViewProps> = ({
                         <span>
                           {healthMap[t.id].statusText ||
                             (healthMap[t.id].status === 'unreachable' ? 'Unreachable' : healthMap[t.id].status)}
+                          {isDynamic && healthMap[t.id].status === 'healthy' ? ' (SOCKS5)' : ''}
                         </span>
                         {healthMap[t.id].latencyMs > 0 && (
                           <span className="opacity-70 text-[9px]">({healthMap[t.id].latencyMs}ms)</span>
@@ -669,29 +891,62 @@ export const PortForwardView: React.FC<PortForwardViewProps> = ({
                 {/* Card Actions Footer */}
                 <div className="flex items-center justify-between pt-1 border-t border-zinc-200/60 dark:border-zinc-800/60">
                   <div className="flex items-center gap-1.5">
-                    {/* 1-Click Open in Browser */}
-                    <button
-                      onClick={() => handleOpenBrowser(t.localPort)}
-                      disabled={!isActive}
-                      title={`Open http://localhost:${t.localPort} in browser`}
-                      className="inline-flex items-center gap-1 px-2 py-1 rounded bg-zinc-200/60 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 disabled:opacity-40 text-[11px] font-medium transition-colors cursor-pointer"
-                    >
-                      <ExternalLink className="w-3 h-3 text-blue-500" />
-                      <span>Open</span>
-                    </button>
+                    {isDynamic ? (
+                      <>
+                        {/* Copy SOCKS5 Proxy URL */}
+                        <button
+                          onClick={() => handleCopySocks(t.localPort, t.id)}
+                          title={`Copy proxy URL: socks5://127.0.0.1:${t.localPort}`}
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded bg-violet-50 hover:bg-violet-100 dark:bg-violet-950/40 dark:hover:bg-violet-900/60 text-violet-700 dark:text-violet-300 text-[11px] font-medium transition-colors cursor-pointer border border-violet-200 dark:border-violet-800/60"
+                        >
+                          {copiedId === t.id ? (
+                            <Check className="w-3 h-3 text-emerald-500" />
+                          ) : (
+                            <Copy className="w-3 h-3" />
+                          )}
+                          <span>Copy SOCKS5</span>
+                        </button>
 
-                    {/* Copy URL */}
-                    <button
-                      onClick={() => handleCopyUrl(t.localPort, t.id)}
-                      title="Copy URL (http://localhost:...)"
-                      className="p-1 rounded text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
-                    >
-                      {copiedId === t.id ? (
-                        <Check className="w-3.5 h-3.5 text-emerald-500" />
-                      ) : (
-                        <Copy className="w-3.5 h-3.5" />
-                      )}
-                    </button>
+                        {/* Copy curl snippet */}
+                        <button
+                          onClick={() => handleCopyCurl(t.localPort, t.id)}
+                          title="Copy test curl command: curl -x socks5h://127.0.0.1:... https://checkip.amazonaws.com"
+                          className="p-1 rounded text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+                        >
+                          {copiedId === `curl-${t.id}` ? (
+                            <Check className="w-3.5 h-3.5 text-emerald-500" />
+                          ) : (
+                            <Terminal className="w-3.5 h-3.5" />
+                          )}
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        {/* 1-Click Open in Browser */}
+                        <button
+                          onClick={() => handleOpenBrowser(t.localPort)}
+                          disabled={!isActive}
+                          title={`Open http://localhost:${t.localPort} in browser`}
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded bg-zinc-200/60 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 disabled:opacity-40 text-[11px] font-medium transition-colors cursor-pointer"
+                        >
+                          <ExternalLink className="w-3 h-3 text-blue-500" />
+                          <span>Open</span>
+                        </button>
+
+                        {/* Copy URL */}
+                        <button
+                          onClick={() => handleCopyUrl(t.localPort, t.id)}
+                          title="Copy URL (http://localhost:...)"
+                          className="p-1 rounded text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+                        >
+                          {copiedId === t.id ? (
+                            <Check className="w-3.5 h-3.5 text-emerald-500" />
+                          ) : (
+                            <Copy className="w-3.5 h-3.5" />
+                          )}
+                        </button>
+                      </>
+                    )}
                   </div>
 
                   <div className="flex items-center gap-1">
@@ -699,7 +954,7 @@ export const PortForwardView: React.FC<PortForwardViewProps> = ({
                     {isActive ? (
                       <button
                         onClick={() => handleStopTunnel(t.id, t.localPort)}
-                        title="Stop Port Forward"
+                        title={isDynamic ? 'Stop SOCKS5 Proxy' : 'Stop Port Forward'}
                         className="p-1 rounded text-zinc-500 hover:text-amber-600 dark:text-zinc-400 dark:hover:text-amber-400 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
                       >
                         <Square className="w-3.5 h-3.5 fill-current" />
@@ -707,7 +962,7 @@ export const PortForwardView: React.FC<PortForwardViewProps> = ({
                     ) : (
                       <button
                         onClick={() => handleRestartTunnel(t.id, t.localPort)}
-                        title="Turn on Port Forward"
+                        title={isDynamic ? 'Turn on SOCKS5 Proxy' : 'Turn on Port Forward'}
                         className="p-1 rounded text-zinc-500 hover:text-emerald-600 dark:text-zinc-400 dark:hover:text-emerald-400 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
                       >
                         <Play className="w-3.5 h-3.5 fill-current" />
@@ -717,7 +972,7 @@ export const PortForwardView: React.FC<PortForwardViewProps> = ({
                     {/* Delete */}
                     <button
                       onClick={() => handleDeleteTunnel(t.id, t.localPort)}
-                      title="Delete Port Forward"
+                      title={isDynamic ? 'Delete SOCKS5 Proxy' : 'Delete Port Forward'}
                       className="p-1 rounded text-zinc-500 hover:text-rose-600 dark:text-zinc-400 dark:hover:text-rose-400 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
                     >
                       <Trash2 className="w-3.5 h-3.5" />

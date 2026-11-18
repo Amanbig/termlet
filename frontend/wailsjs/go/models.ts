@@ -105,9 +105,10 @@ export namespace models {
 	export class ForwardedPortConfig {
 	    id: string;
 	    local_port: number;
-	    remote_host: string;
-	    remote_port: number;
+	    remote_host?: string;
+	    remote_port?: number;
 	    name: string;
+	    type?: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new ForwardedPortConfig(source);
@@ -120,6 +121,7 @@ export namespace models {
 	        this.remote_host = source["remote_host"];
 	        this.remote_port = source["remote_port"];
 	        this.name = source["name"];
+	        this.type = source["type"];
 	    }
 	}
 	export class GenerateSSHKeyRequest {
@@ -498,6 +500,7 @@ export namespace tunnel {
 	    remoteHost: string;
 	    remotePort: number;
 	    name: string;
+	    type: string;
 	    status: string;
 	    errorMsg?: string;
 	    createdAt: number;
@@ -515,6 +518,7 @@ export namespace tunnel {
 	        this.remoteHost = source["remoteHost"];
 	        this.remotePort = source["remotePort"];
 	        this.name = source["name"];
+	        this.type = source["type"];
 	        this.status = source["status"];
 	        this.errorMsg = source["errorMsg"];
 	        this.createdAt = source["createdAt"];

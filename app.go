@@ -304,7 +304,7 @@ func (a *App) Connect(profile models.Profile, password string, trustKey bool) (*
 			}
 		}
 		for _, pf := range p.PortForwards {
-			a.tunnelMgr.AddConfiguredTunnel(pf.ID, session.ID, pf.LocalPort, pf.RemoteHost, pf.RemotePort, pf.Name)
+			a.tunnelMgr.AddConfiguredTunnel(pf.ID, session.ID, pf.LocalPort, pf.RemoteHost, pf.RemotePort, pf.Name, pf.Type)
 		}
 	}
 
@@ -819,12 +819,13 @@ func (a *App) saveTunnelToProfile(profileID string, info tunnel.TunnelInfo) {
 
 	found := false
 	for i, pf := range p.PortForwards {
-		if pf.ID == info.ID || (pf.LocalPort == info.LocalPort && pf.RemotePort == info.RemotePort && pf.RemoteHost == info.RemoteHost) {
+		if pf.ID == info.ID || (pf.LocalPort == info.LocalPort && (info.Type == tunnel.TypeDynamic || (pf.RemotePort == info.RemotePort && pf.RemoteHost == info.RemoteHost))) {
 			p.PortForwards[i].ID = info.ID
 			p.PortForwards[i].LocalPort = info.LocalPort
 			p.PortForwards[i].RemoteHost = info.RemoteHost
 			p.PortForwards[i].RemotePort = info.RemotePort
 			p.PortForwards[i].Name = info.Name
+			p.PortForwards[i].Type = info.Type
 			found = true
 			break
 		}
@@ -837,6 +838,7 @@ func (a *App) saveTunnelToProfile(profileID string, info tunnel.TunnelInfo) {
 			RemoteHost: info.RemoteHost,
 			RemotePort: info.RemotePort,
 			Name:       info.Name,
+			Type:       info.Type,
 		})
 	}
 
@@ -855,7 +857,7 @@ func (a *App) removeTunnelFromProfile(profileID string, tunnelID string, localPo
 
 	var filtered []models.ForwardedPortConfig
 	for _, pf := range p.PortForwards {
-		if pf.ID == tunnelID || (localPort > 0 && pf.LocalPort == localPort && pf.RemotePort == remotePort && pf.RemoteHost == remoteHost) {
+		if pf.ID == tunnelID || (localPort > 0 && pf.LocalPort == localPort) {
 			continue
 		}
 		filtered = append(filtered, pf)
@@ -887,6 +889,31 @@ func (a *App) StartPortForward(sessionID string, localPort int, remoteHost strin
 	return info, nil
 }
 
+// StartDynamicPortForward launches a dynamic SOCKS5 proxy (ssh -D) on localPort for the active session.
+func (a *App) StartDynamicPortForward(sessionID string, localPort int, name string) (*tunnel.TunnelInfo, error) {
+	if a.connMgr == nil {
+		return nil, fmt.Errorf("connection manager not initialized")
+	}
+	sess, err := a.connMgr.GetSession(sessionID)
+	if err != nil {
+		return nil, fmt.Errorf("active session required: %w", err)
+	}
+	if a.tunnelMgr == nil {
+		return nil, fmt.Errorf("tunnel manager not initialized")
+	}
+	if sess.SSH == nil {
+		return nil, fmt.Errorf("SSH connection is not active")
+	}
+
+	info, err := a.tunnelMgr.StartDynamicForwarding(sessionID, sess.SSH, localPort, name)
+	if err != nil {
+		return nil, err
+	}
+
+	a.saveTunnelToProfile(sess.Profile.ID, *info)
+	return info, nil
+}
+
 // SavePortForwardConfig stores a port forward config in stopped state for a session's profile without starting it.
 func (a *App) SavePortForwardConfig(sessionID string, localPort int, remoteHost string, remotePort int, name string) (*tunnel.TunnelInfo, error) {
 	if a.connMgr == nil {
@@ -900,7 +927,25 @@ func (a *App) SavePortForwardConfig(sessionID string, localPort int, remoteHost 
 		return nil, fmt.Errorf("tunnel manager not initialized")
 	}
 
-	info := a.tunnelMgr.AddConfiguredTunnel("", sessionID, localPort, remoteHost, remotePort, name)
+	info := a.tunnelMgr.AddConfiguredTunnel("", sessionID, localPort, remoteHost, remotePort, name, tunnel.TypeLocal)
+	a.saveTunnelToProfile(sess.Profile.ID, *info)
+	return info, nil
+}
+
+// SaveDynamicPortForwardConfig stores a dynamic SOCKS5 port forward config in stopped state for a session's profile without starting it.
+func (a *App) SaveDynamicPortForwardConfig(sessionID string, localPort int, name string) (*tunnel.TunnelInfo, error) {
+	if a.connMgr == nil {
+		return nil, fmt.Errorf("connection manager not initialized")
+	}
+	sess, err := a.connMgr.GetSession(sessionID)
+	if err != nil {
+		return nil, fmt.Errorf("active session required: %w", err)
+	}
+	if a.tunnelMgr == nil {
+		return nil, fmt.Errorf("tunnel manager not initialized")
+	}
+
+	info := a.tunnelMgr.AddConfiguredTunnel("", sessionID, localPort, "dynamic", 0, name, tunnel.TypeDynamic)
 	a.saveTunnelToProfile(sess.Profile.ID, *info)
 	return info, nil
 }

@@ -127,6 +127,20 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
   const preMaximizedHeightRef = useRef<number>(320);
   const isDraggingRef = useRef(false);
 
+  // Tabs sidebar width with drag-to-resize
+  const [tabsSidebarWidth, setTabsSidebarWidth] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('termlet_terminal_tabs_width');
+      if (saved) {
+        const val = parseInt(saved, 10);
+        if (!isNaN(val) && val >= 80 && val <= 400) return val;
+      }
+    } catch {}
+    return 130; // compact default width
+  });
+  const [isResizingSidebar, setIsResizingSidebar] = useState(false);
+  const isResizingSidebarRef = useRef(false);
+
   const terminalScrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const drawerRef = useRef<HTMLDivElement>(null);
@@ -1158,6 +1172,54 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
     [height, isMaximized]
   );
 
+  const handleMouseDownResizeSidebar = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      isResizingSidebarRef.current = true;
+      setIsResizingSidebar(true);
+
+      const startX = e.clientX;
+      const startWidth = tabsSidebarWidth;
+
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+
+      const handleMouseMove = (moveEvent: MouseEvent) => {
+        if (!isResizingSidebarRef.current) return;
+        const deltaX = startX - moveEvent.clientX;
+        const minAllowed = 80;
+        const maxAllowed = Math.min(360, window.innerWidth * 0.45);
+        const newW = Math.max(minAllowed, Math.min(startWidth + deltaX, maxAllowed));
+
+        setTabsSidebarWidth(newW);
+      };
+
+      const handleMouseUp = (upEvent: MouseEvent) => {
+        isResizingSidebarRef.current = false;
+        setIsResizingSidebar(false);
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+
+        window.removeEventListener('mousemove', handleMouseMove);
+        window.removeEventListener('mouseup', handleMouseUp);
+
+        const deltaX = startX - upEvent.clientX;
+        const minAllowed = 80;
+        const maxAllowed = Math.min(360, window.innerWidth * 0.45);
+        const finalW = Math.max(minAllowed, Math.min(startWidth + deltaX, maxAllowed));
+
+        setTabsSidebarWidth(finalW);
+        try {
+          localStorage.setItem('termlet_terminal_tabs_width', String(finalW));
+        } catch {}
+      };
+
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+    },
+    [tabsSidebarWidth]
+  );
+
   if (!isOpen) return null;
 
   return (
@@ -1452,8 +1514,29 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
             })}
         </div>
 
+        {/* Vertical Drag Handle between Terminal Viewport and Tabs Sidebar */}
+        <div
+          onMouseDown={handleMouseDownResizeSidebar}
+          className="w-1.5 -ml-1 hover:w-1.5 cursor-col-resize z-20 group flex items-center justify-center shrink-0 select-none relative"
+          title="Drag to resize terminal tabs list"
+        >
+          <div
+            className={`w-0.5 h-full transition-colors ${
+              isResizingSidebar
+                ? 'bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.8)]'
+                : 'bg-zinc-800 group-hover:bg-blue-500/80'
+            }`}
+          />
+        </div>
+
         {/* Right: VS Code Style Vertical Terminal Tabs Sidebar */}
-        <div className="w-44 sm:w-52 bg-[#181818] border-l border-zinc-800 flex flex-col shrink-0 select-none overflow-hidden">
+        <div
+          style={{
+            width: `${tabsSidebarWidth}px`,
+            transition: isResizingSidebar ? 'none' : 'width 100ms ease-out',
+          }}
+          className="bg-[#181818] border-l border-zinc-800 flex flex-col shrink-0 select-none overflow-hidden"
+        >
           <div className="flex-1 overflow-y-auto p-1 space-y-0.5">
             {tabs.map((tab) => {
               const isActive = tab.id === (activeTab?.id || tabs[0]?.id);
@@ -1465,7 +1548,7 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
                     setEditingTabId(tab.id);
                     setEditingTitle(tab.title);
                   }}
-                  className={`group flex items-center justify-between px-2 py-1 rounded text-xs transition-colors cursor-pointer ${
+                  className={`group flex items-center justify-between px-1.5 py-1 rounded text-xs transition-colors cursor-pointer ${
                     isActive
                       ? 'bg-[#2a2d2e] text-zinc-100 font-medium'
                       : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/40'
@@ -1473,8 +1556,8 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
                   title={`${tab.title} (${tab.cwd})`}
                 >
                   {/* Left: Terminal [>_] Badge and Title */}
-                  <div className="flex items-center gap-2 truncate min-w-0">
-                    <span className="inline-flex items-center justify-center w-[18px] h-[18px] rounded border border-zinc-600 bg-zinc-900/80 text-[9px] font-bold text-zinc-300 shrink-0 font-mono leading-none">
+                  <div className="flex items-center gap-1.5 truncate min-w-0 flex-1">
+                    <span className="inline-flex items-center justify-center w-4 h-4 rounded border border-zinc-600 bg-zinc-900/80 text-[8.5px] font-bold text-zinc-300 shrink-0 font-mono leading-none">
                       &gt;_
                     </span>
                     {editingTabId === tab.id ? (
@@ -1506,7 +1589,7 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
                         className="w-full bg-zinc-950 text-zinc-100 px-1 py-0.5 rounded border border-blue-500 text-xs font-mono outline-hidden"
                       />
                     ) : (
-                      <span className="truncate text-[12px] font-sans">{tab.title}</span>
+                      <span className="truncate text-[11px] font-sans">{tab.title}</span>
                     )}
                   </div>
 
@@ -1517,20 +1600,20 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
                         e.stopPropagation();
                         handleSplitVertical();
                       }}
-                      className="p-1 rounded hover:bg-zinc-700/80 text-zinc-400 hover:text-zinc-100 cursor-pointer"
+                      className="p-0.5 rounded hover:bg-zinc-700/80 text-zinc-400 hover:text-zinc-100 cursor-pointer"
                       title="Split Terminal"
                     >
-                      <Columns2 className="w-3.5 h-3.5" />
+                      <Columns2 className="w-3 h-3" />
                     </button>
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
                         handleCloseTab(e, tab.id);
                       }}
-                      className="p-1 rounded hover:bg-zinc-700/80 text-zinc-400 hover:text-rose-300 cursor-pointer"
+                      className="p-0.5 rounded hover:bg-zinc-700/80 text-zinc-400 hover:text-rose-300 cursor-pointer"
                       title="Kill Terminal (Del)"
                     >
-                      <Trash2 className="w-3.5 h-3.5" />
+                      <Trash2 className="w-3 h-3" />
                     </button>
                   </div>
                 </div>

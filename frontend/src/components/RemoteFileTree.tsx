@@ -31,7 +31,9 @@ import {
   Shield,
   Copy,
   Power,
+  FolderSync,
 } from 'lucide-react';
+import { DirectoryCompareModal } from './DirectoryCompareModal';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import {
@@ -81,6 +83,7 @@ export const RemoteFileTree: React.FC<RemoteFileTreeProps> = ({
   const [renameValue, setRenameValue] = useState<string>('');
   const [chmodTarget, setChmodTarget] = useState<TreeItem | null>(null);
   const [menuOpenPath, setMenuOpenPath] = useState<string | null>(null);
+  const [isCompareOpen, setIsCompareOpen] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const openPathsRef = useRef<Set<string>>(new Set());
@@ -678,6 +681,16 @@ export const RemoteFileTree: React.FC<RemoteFileTreeProps> = ({
             variant="ghost"
             size="icon"
             className="h-6 w-6 text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200 hover:bg-zinc-200/70 dark:hover:bg-zinc-800 cursor-pointer"
+            title="Compare & Sync Directory with Local Folder"
+            onClick={() => setIsCompareOpen(true)}
+          >
+            <FolderSync className="w-3.5 h-3.5" />
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6 text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200 hover:bg-zinc-200/70 dark:hover:bg-zinc-800 cursor-pointer"
             title="Refresh"
             onClick={() => fetchDirectory(currentPath)}
           >
@@ -775,6 +788,16 @@ export const RemoteFileTree: React.FC<RemoteFileTreeProps> = ({
           isDir={chmodTarget.is_dir}
           initialPermissions={chmodTarget.permissions}
           onPermissionsUpdated={() => fetchDirectory(currentPath)}
+        />
+      )}
+
+      {isCompareOpen && sessionId && (
+        <DirectoryCompareModal
+          isOpen={true}
+          onClose={() => setIsCompareOpen(false)}
+          sessionId={sessionId}
+          initialRemoteDir={currentPath}
+          onSyncCompleted={() => fetchDirectory(currentPath, true)}
         />
       )}
     </div>

@@ -15,15 +15,18 @@ import (
 	"runtime"
 	"strings"
 	"termlet/internal/connections"
+	"termlet/internal/diagnostics"
 	"termlet/internal/models"
 	"termlet/internal/sftpclient"
 	"termlet/internal/sshconfig"
 	"termlet/internal/sshkeys"
 	"termlet/internal/storage"
+	"termlet/internal/syncdir"
 	"termlet/internal/transfer"
 	"termlet/internal/tunnel"
 	"termlet/internal/updater"
 	"termlet/internal/version"
+	"time"
 
 	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -1232,4 +1235,104 @@ func (a *App) CloseTerminal(sessionID string, terminalID string) error {
 		return fmt.Errorf("connection manager not initialized")
 	}
 	return a.connMgr.CloseTerminal(sessionID, terminalID)
+}
+
+// SelectLocalDirectory prompts the user with a native directory chooser dialog.
+func (a *App) SelectLocalDirectory() (string, error) {
+	if a.ctx == nil {
+		return "", fmt.Errorf("application context not initialized")
+	}
+	return wailsRuntime.OpenDirectoryDialog(a.ctx, wailsRuntime.OpenDialogOptions{
+		Title: "Select Local Folder for Sync / Compare",
+	})
+}
+
+// CompareDirectories compares a local folder against a remote folder recursively.
+func (a *App) CompareDirectories(sessionID string, remoteDir string, localDir string) (*models.DirectoryCompareResult, error) {
+	if localDir == "" {
+		return nil, fmt.Errorf("local directory path cannot be empty")
+	}
+	if remoteDir == "" {
+		remoteDir = "."
+	}
+
+	localMap, err := syncdir.ScanLocalDirectory(localDir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to scan local directory: %w", err)
+	}
+
+	sftpCl, err := a.getSFTPClient(sessionID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get sftp client: %w", err)
+	}
+
+	remoteMap, err := syncdir.ScanRemoteDirectory(sftpCl, remoteDir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to scan remote directory: %w", err)
+	}
+
+	return syncdir.CompareMaps(localDir, remoteDir, localMap, remoteMap), nil
+}
+
+// SyncDirectories synchronizes the specified files between local and remote directories.
+func (a *App) SyncDirectories(sessionID string, remoteDir string, localDir string, actions []models.SyncAction) (*models.SyncResult, error) {
+	if localDir == "" {
+		return nil, fmt.Errorf("local directory path cannot be empty")
+	}
+	if remoteDir == "" {
+		remoteDir = "."
+	}
+
+	sftpCl, err := a.getSFTPClient(sessionID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get sftp client: %w", err)
+	}
+
+	return syncdir.ExecuteSync(sftpCl, localDir, remoteDir, actions), nil
+}
+
+// GetSystemStats queries live server health metrics (CPU, RAM, Disk, Uptime, Top Processes).
+func (a *App) GetSystemStats(sessionID string) (*models.SystemStats, error) {
+	script := diagnostics.GetSystemStatsScript()
+	res, err := a.ExecRemoteCommand(sessionID, "diag-stats", script)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute system stats script: %w", err)
+	}
+	if res == nil {
+		return nil, fmt.Errorf("no output returned from remote server")
+	}
+
+	return diagnostics.ParseSystemStats(res.Output), nil
+}
+
+// RunNetworkDiag runs network diagnostic tools (ping, dns, port_check, listening_ports, traceroute).
+func (a *App) RunNetworkDiag(sessionID string, tool string, target string) (*models.NetworkDiagResult, error) {
+	cmd, err := diagnostics.BuildDiagnosticCommand(tool, target)
+	if err != nil {
+		return nil, err
+	}
+
+	start := time.Now()
+	res, execErr := a.ExecRemoteCommand(sessionID, "diag-net", cmd)
+	duration := time.Since(start).Milliseconds()
+
+	out := &models.NetworkDiagResult{
+		Tool:       tool,
+		Target:     target,
+		DurationMs: duration,
+	}
+
+	if res != nil {
+		out.Output = res.Output
+		out.ExitCode = res.ExitCode
+		if res.Error != "" {
+			out.Error = res.Error
+		}
+	}
+
+	if execErr != nil {
+		out.Error = execErr.Error()
+	}
+
+	return out, nil
 }

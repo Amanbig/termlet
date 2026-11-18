@@ -1,7 +1,7 @@
 import React from 'react';
-import { Files, Server, Plus, HardDrive, Settings, Radio } from 'lucide-react';
+import { Files, Server, Plus, HardDrive, Settings, Radio, Activity } from 'lucide-react';
 
-export type ActivityView = 'explorer' | 'connections' | 'ports';
+export type ActivityView = 'explorer' | 'connections' | 'ports' | 'diagnostics';
 
 interface ActivityBarProps {
   activeView: ActivityView;
@@ -80,6 +80,22 @@ export const ActivityBar: React.FC<ActivityBarProps> = ({
               {activePortsCount > 9 ? '9+' : activePortsCount}
             </span>
           )}
+        </button>
+
+        {/* Server Diagnostics & Network Tools */}
+        <button
+          onClick={() => onSelectView('diagnostics')}
+          title="Server Diagnostics & Network Tools"
+          className={`relative w-full h-10 flex items-center justify-center transition-colors cursor-pointer ${
+            activeView === 'diagnostics'
+              ? 'text-zinc-900 dark:text-zinc-100'
+              : 'text-zinc-400 hover:text-zinc-800 dark:text-zinc-500 dark:hover:text-zinc-200'
+          }`}
+        >
+          {activeView === 'diagnostics' && (
+            <span className="absolute left-0 top-1.5 bottom-1.5 w-0.5 bg-blue-500 rounded-r" />
+          )}
+          <Activity className="w-5 h-5 stroke-[1.6]" />
         </button>
       </div>
 

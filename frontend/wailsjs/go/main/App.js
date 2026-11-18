@@ -42,6 +42,10 @@ export function CloseTerminal(arg1, arg2) {
   return window['go']['main']['App']['CloseTerminal'](arg1, arg2);
 }
 
+export function CompareDirectories(arg1, arg2, arg3) {
+  return window['go']['main']['App']['CompareDirectories'](arg1, arg2, arg3);
+}
+
 export function Connect(arg1, arg2, arg3) {
   return window['go']['main']['App']['Connect'](arg1, arg2, arg3);
 }
@@ -120,6 +124,10 @@ export function GetReleaseNotes() {
 
 export function GetRemoteCwd(arg1, arg2) {
   return window['go']['main']['App']['GetRemoteCwd'](arg1, arg2);
+}
+
+export function GetSystemStats(arg1) {
+  return window['go']['main']['App']['GetSystemStats'](arg1);
 }
 
 export function GetUpdateProgress() {
@@ -210,6 +218,10 @@ export function RestartPortForward(arg1, arg2) {
   return window['go']['main']['App']['RestartPortForward'](arg1, arg2);
 }
 
+export function RunNetworkDiag(arg1, arg2, arg3) {
+  return window['go']['main']['App']['RunNetworkDiag'](arg1, arg2, arg3);
+}
+
 export function SaveDynamicPortForwardConfig(arg1, arg2, arg3) {
   return window['go']['main']['App']['SaveDynamicPortForwardConfig'](arg1, arg2, arg3);
 }
@@ -236,6 +248,10 @@ export function SaveSnippet(arg1) {
 
 export function SearchRemoteFiles(arg1, arg2, arg3, arg4) {
   return window['go']['main']['App']['SearchRemoteFiles'](arg1, arg2, arg3, arg4);
+}
+
+export function SelectLocalDirectory() {
+  return window['go']['main']['App']['SelectLocalDirectory']();
 }
 
 export function SelectPrivateKeyFile() {
@@ -268,6 +284,10 @@ export function StartTerminalSession(arg1, arg2, arg3, arg4) {
 
 export function StopPortForward(arg1) {
   return window['go']['main']['App']['StopPortForward'](arg1);
+}
+
+export function SyncDirectories(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['SyncDirectories'](arg1, arg2, arg3, arg4);
 }
 
 export function UploadFileContent(arg1, arg2, arg3, arg4) {

@@ -31,6 +31,7 @@ import { KnownHostsView } from './components/KnownHostsView';
 import { SSHKeysView } from './components/SSHKeysView';
 import { SSHKeyModal } from './components/SSHKeyModal';
 import { PortForwardView } from './components/PortForwardView';
+import { DiagnosticsView } from './components/DiagnosticsView';
 import { WelcomeScreen } from './components/WelcomeScreen';
 import { TitleBar } from './components/TitleBar';
 import { QuickOpenModal } from './components/QuickOpenModal';
@@ -811,6 +812,17 @@ export function App() {
                       setConnectDialogOpen(true);
                     }}
                     onTunnelsChange={setActivePortsCount}
+                  />
+                </div>
+
+                <div className={activeActivityView === 'diagnostics' ? 'h-full flex flex-col' : 'hidden'}>
+                  <DiagnosticsView
+                    sessionId={currentSessionId}
+                    activeSession={currentSession}
+                    onOpenConnectDialog={() => {
+                      setEditingProfile(null);
+                      setConnectDialogOpen(true);
+                    }}
                   />
                 </div>
 

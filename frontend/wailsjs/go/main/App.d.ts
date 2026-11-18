@@ -28,6 +28,8 @@ export function ClearKnownHosts(arg1:string):Promise<void>;
 
 export function CloseTerminal(arg1:string,arg2:string):Promise<void>;
 
+export function CompareDirectories(arg1:string,arg2:string,arg3:string):Promise<models.DirectoryCompareResult>;
+
 export function Connect(arg1:models.Profile,arg2:string,arg3:boolean):Promise<main.ConnectResponse>;
 
 export function CreateRemoteDirectory(arg1:string,arg2:string):Promise<void>;
@@ -67,6 +69,8 @@ export function GetProfileSecret(arg1:string):Promise<string>;
 export function GetReleaseNotes():Promise<string>;
 
 export function GetRemoteCwd(arg1:string,arg2:string):Promise<string>;
+
+export function GetSystemStats(arg1:string):Promise<models.SystemStats>;
 
 export function GetUpdateProgress():Promise<updater.DownloadProgress>;
 
@@ -112,6 +116,8 @@ export function RestartApp():Promise<void>;
 
 export function RestartPortForward(arg1:string,arg2:string):Promise<tunnel.TunnelInfo>;
 
+export function RunNetworkDiag(arg1:string,arg2:string,arg3:string):Promise<models.NetworkDiagResult>;
+
 export function SaveDynamicPortForwardConfig(arg1:string,arg2:number,arg3:string):Promise<tunnel.TunnelInfo>;
 
 export function SavePortForwardConfig(arg1:string,arg2:number,arg3:string,arg4:number,arg5:string):Promise<tunnel.TunnelInfo>;
@@ -125,6 +131,8 @@ export function SaveRemotePortForwardConfig(arg1:string,arg2:number,arg3:string,
 export function SaveSnippet(arg1:models.Snippet):Promise<models.Snippet>;
 
 export function SearchRemoteFiles(arg1:string,arg2:string,arg3:string,arg4:number):Promise<Array<models.RemoteFile>>;
+
+export function SelectLocalDirectory():Promise<string>;
 
 export function SelectPrivateKeyFile():Promise<string>;
 
@@ -141,5 +149,7 @@ export function StartRemotePortForward(arg1:string,arg2:number,arg3:string,arg4:
 export function StartTerminalSession(arg1:string,arg2:string,arg3:number,arg4:number):Promise<void>;
 
 export function StopPortForward(arg1:string):Promise<void>;
+
+export function SyncDirectories(arg1:string,arg2:string,arg3:string,arg4:Array<models.SyncAction>):Promise<models.SyncResult>;
 
 export function UploadFileContent(arg1:string,arg2:string,arg3:string,arg4:string):Promise<void>;

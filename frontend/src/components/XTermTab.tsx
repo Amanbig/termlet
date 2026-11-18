@@ -17,6 +17,7 @@ interface XTermTabProps {
   tabId: string;
   isActive: boolean;
   onCommandExecuted?: () => void;
+  onFocus?: () => void;
 }
 
 export const XTermTab: React.FC<XTermTabProps> = ({
@@ -24,6 +25,7 @@ export const XTermTab: React.FC<XTermTabProps> = ({
   tabId,
   isActive,
   onCommandExecuted,
+  onFocus,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<Terminal | null>(null);
@@ -318,6 +320,7 @@ export const XTermTab: React.FC<XTermTabProps> = ({
         isActive ? 'block' : 'hidden'
       }`}
       onContextMenu={handleContextMenu}
+      onMouseDown={() => onFocus?.()}
     >
       <div
         ref={containerRef}

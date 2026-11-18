@@ -17,6 +17,9 @@ import {
   ChevronRight,
   ClipboardPaste,
   ScrollText,
+  Columns2,
+  Rows2,
+  Disc,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -27,8 +30,9 @@ import {
   CloseTerminal,
 } from '../../wailsjs/go/main/App';
 import { connections } from '../../wailsjs/go/models';
-import { ClipboardGetText, ClipboardSetText } from '../../wailsjs/runtime/runtime';
+import { ClipboardGetText, ClipboardSetText, EventsOn, EventsOff } from '../../wailsjs/runtime/runtime';
 import { XTermTab } from './XTermTab';
+import { SessionRecorderModal, RecordedEvent } from './SessionRecorderModal';
 
 interface RemoteTerminalDrawerProps {
   isOpen: boolean;
@@ -60,6 +64,9 @@ export interface TerminalTab {
   executing: boolean;
   cmdHistory: string[];
   historyIndex: number;
+  splitPaneId?: string;
+  splitDirection?: 'horizontal' | 'vertical';
+  activePaneId?: string;
 }
 
 const MAX_HISTORY_ENTRIES = 200;
@@ -132,6 +139,126 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
 
   // Derive active tab
   const activeTab = tabs.find((t) => t.id === activeTabId) || tabs[0] || null;
+
+  // Split pane handlers
+  const handleSplitVertical = () => {
+    if (!activeTab || !currentSession) return;
+    if (activeTab.splitPaneId) {
+      setTabs((prev) =>
+        prev.map((t) => (t.id === activeTab.id ? { ...t, splitDirection: 'vertical' } : t))
+      );
+      toast.info('Switched to side-by-side split');
+      return;
+    }
+    const paneId = `${activeTab.id}-pane-${Date.now().toString().slice(-4)}`;
+    setTabs((prev) =>
+      prev.map((t) =>
+        t.id === activeTab.id
+          ? { ...t, splitPaneId: paneId, splitDirection: 'vertical', activePaneId: paneId }
+          : t
+      )
+    );
+    toast.success('Split terminal side-by-side');
+  };
+
+  const handleSplitHorizontal = () => {
+    if (!activeTab || !currentSession) return;
+    if (activeTab.splitPaneId) {
+      setTabs((prev) =>
+        prev.map((t) => (t.id === activeTab.id ? { ...t, splitDirection: 'horizontal' } : t))
+      );
+      toast.info('Switched to top-and-bottom split');
+      return;
+    }
+    const paneId = `${activeTab.id}-pane-${Date.now().toString().slice(-4)}`;
+    setTabs((prev) =>
+      prev.map((t) =>
+        t.id === activeTab.id
+          ? { ...t, splitPaneId: paneId, splitDirection: 'horizontal', activePaneId: paneId }
+          : t
+      )
+    );
+    toast.success('Split terminal top-and-bottom');
+  };
+
+  const handleCloseSplitPane = (tabId: string) => {
+    setTabs((prev) =>
+      prev.map((t) => {
+        if (t.id === tabId && t.splitPaneId) {
+          if (currentSession) {
+            CloseTerminal(currentSession.id, t.splitPaneId).catch(() => {});
+          }
+          return { ...t, splitPaneId: undefined, activePaneId: t.id };
+        }
+        return t;
+      })
+    );
+    toast.info('Closed split pane');
+  };
+
+  // Session recording state
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const recordingEventsRef = useRef<RecordedEvent[]>([]);
+  const recordingStartTimeRef = useRef<number>(0);
+  const [recordedModalData, setRecordedModalData] = useState<{
+    events: RecordedEvent[];
+    duration: number;
+    title: string;
+  } | null>(null);
+
+  // Timer while recording
+  useEffect(() => {
+    if (!isRecording) return;
+    const interval = setInterval(() => {
+      setRecordingSeconds((s) => s + 1);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [isRecording]);
+
+  // Capture terminal stream while recording
+  useEffect(() => {
+    if (!isRecording || !currentSession || !activeTab) return;
+    const targetPaneId = activeTab.activePaneId || activeTab.id;
+    const eventName = `terminal:data:${currentSession.id}:${targetPaneId}`;
+
+    const unsub = EventsOn(eventName, (incoming: string) => {
+      const now = performance.now();
+      const offset = (now - recordingStartTimeRef.current) / 1000;
+      recordingEventsRef.current.push({
+        time: offset,
+        type: 'o',
+        data: incoming,
+      });
+    });
+
+    return () => {
+      unsub();
+      EventsOff(eventName);
+    };
+  }, [isRecording, currentSession, activeTab]);
+
+  const handleToggleRecording = () => {
+    if (!isRecording) {
+      if (!currentSession || !activeTab) return;
+      recordingEventsRef.current = [];
+      recordingStartTimeRef.current = performance.now();
+      setRecordingSeconds(0);
+      setIsRecording(true);
+      toast.success('Session recording started', {
+        description: 'Capturing terminal stream in Asciinema format',
+      });
+    } else {
+      setIsRecording(false);
+      const events = [...recordingEventsRef.current];
+      const dur = recordingSeconds;
+      setRecordedModalData({
+        events,
+        duration: dur,
+        title: `${currentSession?.profile_name || currentSession?.host || 'Remote'} - ${activeTab?.title || 'Terminal'}`,
+      });
+    }
+  };
 
   // Initialize or reset session history
   useEffect(() => {
@@ -1201,6 +1328,58 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
             </button>
           )}
 
+          {/* Record Session Button */}
+          <button
+            onClick={handleToggleRecording}
+            className={`flex items-center gap-1 px-1.5 py-0.5 rounded transition-colors cursor-pointer text-[11px] mr-1 ${
+              isRecording
+                ? 'bg-rose-500/20 text-rose-400 border border-rose-500/40 hover:bg-rose-500/30'
+                : 'hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200'
+            }`}
+            title={isRecording ? 'Stop Recording' : 'Record Terminal Session (.cast / Asciinema)'}
+          >
+            {isRecording ? (
+              <>
+                <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+                <span className="font-mono text-rose-400 font-bold">
+                  REC {Math.floor(recordingSeconds / 60).toString().padStart(2, '0')}:{(recordingSeconds % 60).toString().padStart(2, '0')}
+                </span>
+                <Square className="w-2.5 h-2.5 ml-0.5 fill-current" />
+              </>
+            ) : (
+              <>
+                <Disc className="w-3.5 h-3.5 text-rose-500" />
+                <span className="hidden sm:inline">Record</span>
+              </>
+            )}
+          </button>
+
+          {/* Split Right (Vertical) */}
+          <button
+            onClick={handleSplitVertical}
+            className={`p-1 rounded hover:bg-zinc-800 transition-colors cursor-pointer ${
+              activeTab?.splitPaneId && activeTab.splitDirection === 'vertical'
+                ? 'text-blue-400 bg-zinc-800'
+                : 'text-zinc-400 hover:text-zinc-200'
+            }`}
+            title="Split Terminal Right (side-by-side)"
+          >
+            <Columns2 className="w-3.5 h-3.5" />
+          </button>
+
+          {/* Split Down (Horizontal) */}
+          <button
+            onClick={handleSplitHorizontal}
+            className={`p-1 rounded hover:bg-zinc-800 transition-colors cursor-pointer ${
+              activeTab?.splitPaneId && activeTab.splitDirection === 'horizontal'
+                ? 'text-blue-400 bg-zinc-800'
+                : 'text-zinc-400 hover:text-zinc-200'
+            }`}
+            title="Split Terminal Down (top-and-bottom)"
+          >
+            <Rows2 className="w-3.5 h-3.5" />
+          </button>
+
           <button
             onClick={() => {
               if (activeTabId) {
@@ -1259,16 +1438,115 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
         )}
 
         {currentSession &&
-          tabs.map((tab) => (
-            <XTermTab
-              key={tab.id}
-              sessionId={currentSession.id}
-              tabId={tab.id}
-              isActive={tab.id === (activeTab?.id || tabs[0]?.id)}
-              onCommandExecuted={onCommandExecuted}
-            />
-          ))}
+          tabs.map((tab) => {
+            const isTabActive = tab.id === (activeTab?.id || tabs[0]?.id);
+
+            if (!tab.splitPaneId) {
+              return (
+                <XTermTab
+                  key={tab.id}
+                  sessionId={currentSession.id}
+                  tabId={tab.id}
+                  isActive={isTabActive}
+                  onCommandExecuted={onCommandExecuted}
+                  onFocus={() => {
+                    setTabs((prev) =>
+                      prev.map((t) => (t.id === tab.id ? { ...t, activePaneId: tab.id } : t))
+                    );
+                  }}
+                />
+              );
+            }
+
+            // Render Split Panes for this tab
+            return (
+              <div
+                key={tab.id}
+                className={`w-full h-full ${isTabActive ? 'flex' : 'hidden'} ${
+                  tab.splitDirection === 'horizontal' ? 'flex-col divide-y' : 'flex-row divide-x'
+                } divide-zinc-800 bg-zinc-950`}
+              >
+                {/* Pane 1 */}
+                <div className="flex-1 min-w-0 min-h-0 relative flex flex-col">
+                  <div className="px-2 py-0.5 bg-zinc-900/90 border-b border-zinc-800 text-[10px] text-zinc-400 flex items-center justify-between select-none">
+                    <span className="font-mono flex items-center gap-1.5 truncate">
+                      <span
+                        className={`w-1.5 h-1.5 rounded-full ${
+                          !tab.activePaneId || tab.activePaneId === tab.id
+                            ? 'bg-blue-500'
+                            : 'bg-zinc-600'
+                        }`}
+                      />
+                      <span>Pane 1: {tab.title}</span>
+                    </span>
+                  </div>
+                  <div className="flex-1 min-h-0 relative">
+                    <XTermTab
+                      sessionId={currentSession.id}
+                      tabId={tab.id}
+                      isActive={isTabActive}
+                      onCommandExecuted={onCommandExecuted}
+                      onFocus={() => {
+                        setTabs((prev) =>
+                          prev.map((t) => (t.id === tab.id ? { ...t, activePaneId: tab.id } : t))
+                        );
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Pane 2 */}
+                <div className="flex-1 min-w-0 min-h-0 relative flex flex-col">
+                  <div className="px-2 py-0.5 bg-zinc-900/90 border-b border-zinc-800 text-[10px] text-zinc-400 flex items-center justify-between select-none">
+                    <span className="font-mono flex items-center gap-1.5 truncate">
+                      <span
+                        className={`w-1.5 h-1.5 rounded-full ${
+                          tab.activePaneId === tab.splitPaneId ? 'bg-blue-500' : 'bg-zinc-600'
+                        }`}
+                      />
+                      <span>Pane 2: Split Shell</span>
+                    </span>
+                    <button
+                      onClick={() => handleCloseSplitPane(tab.id)}
+                      className="p-0.5 rounded hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 cursor-pointer"
+                      title="Close split pane"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                  <div className="flex-1 min-h-0 relative">
+                    <XTermTab
+                      sessionId={currentSession.id}
+                      tabId={tab.splitPaneId}
+                      isActive={isTabActive}
+                      onCommandExecuted={onCommandExecuted}
+                      onFocus={() => {
+                        setTabs((prev) =>
+                          prev.map((t) =>
+                            t.id === tab.id ? { ...t, activePaneId: tab.splitPaneId } : t
+                          )
+                        );
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+            );
+          })}
       </div>
+
+      {/* Session Recorder Modal */}
+      {recordedModalData && (
+        <SessionRecorderModal
+          isOpen={true}
+          onClose={() => setRecordedModalData(null)}
+          sessionTitle={recordedModalData.title}
+          cols={80}
+          rows={24}
+          events={recordedModalData.events}
+          totalDurationSeconds={recordedModalData.duration}
+        />
+      )}
     </div>
   );
 };

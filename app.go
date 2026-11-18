@@ -15,15 +15,18 @@ import (
 	"runtime"
 	"strings"
 	"termlet/internal/connections"
+	"termlet/internal/diagnostics"
 	"termlet/internal/models"
 	"termlet/internal/sftpclient"
 	"termlet/internal/sshconfig"
 	"termlet/internal/sshkeys"
 	"termlet/internal/storage"
+	"termlet/internal/syncdir"
 	"termlet/internal/transfer"
 	"termlet/internal/tunnel"
 	"termlet/internal/updater"
 	"termlet/internal/version"
+	"time"
 
 	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -819,9 +822,19 @@ func (a *App) saveTunnelToProfile(profileID string, info tunnel.TunnelInfo) {
 
 	found := false
 	for i, pf := range p.PortForwards {
-		if pf.ID == info.ID || (pf.LocalPort == info.LocalPort && (info.Type == tunnel.TypeDynamic || (pf.RemotePort == info.RemotePort && pf.RemoteHost == info.RemoteHost))) {
+		matched := false
+		if pf.ID == info.ID {
+			matched = true
+		} else if info.Type == tunnel.TypeRemote && pf.Type == tunnel.TypeRemote {
+			matched = (pf.RemotePort == info.RemotePort)
+		} else if info.Type != tunnel.TypeRemote && pf.Type != tunnel.TypeRemote {
+			matched = (pf.LocalPort == info.LocalPort)
+		}
+
+		if matched {
 			p.PortForwards[i].ID = info.ID
 			p.PortForwards[i].LocalPort = info.LocalPort
+			p.PortForwards[i].LocalHost = info.LocalHost
 			p.PortForwards[i].RemoteHost = info.RemoteHost
 			p.PortForwards[i].RemotePort = info.RemotePort
 			p.PortForwards[i].Name = info.Name
@@ -835,6 +848,7 @@ func (a *App) saveTunnelToProfile(profileID string, info tunnel.TunnelInfo) {
 		p.PortForwards = append(p.PortForwards, models.ForwardedPortConfig{
 			ID:         info.ID,
 			LocalPort:  info.LocalPort,
+			LocalHost:  info.LocalHost,
 			RemoteHost: info.RemoteHost,
 			RemotePort: info.RemotePort,
 			Name:       info.Name,
@@ -857,7 +871,13 @@ func (a *App) removeTunnelFromProfile(profileID string, tunnelID string, localPo
 
 	var filtered []models.ForwardedPortConfig
 	for _, pf := range p.PortForwards {
-		if pf.ID == tunnelID || (localPort > 0 && pf.LocalPort == localPort) {
+		if pf.ID == tunnelID {
+			continue
+		}
+		if localPort > 0 && pf.Type != tunnel.TypeRemote && pf.LocalPort == localPort {
+			continue
+		}
+		if remotePort > 0 && pf.Type == tunnel.TypeRemote && pf.RemotePort == remotePort {
 			continue
 		}
 		filtered = append(filtered, pf)
@@ -914,6 +934,28 @@ func (a *App) StartDynamicPortForward(sessionID string, localPort int, name stri
 	return info, nil
 }
 
+// StartRemotePortForward establishes a remote port listener on remotePort of the SSH server and proxies to localHost:localPort on client machine (ssh -R).
+func (a *App) StartRemotePortForward(sessionID string, remotePort int, localHost string, localPort int, name string) (*tunnel.TunnelInfo, error) {
+	if a.connMgr == nil {
+		return nil, fmt.Errorf("connection manager not initialized")
+	}
+	sess, err := a.connMgr.GetSession(sessionID)
+	if err != nil {
+		return nil, fmt.Errorf("active session required for reverse port forwarding: %w", err)
+	}
+	if sess.SSH == nil {
+		return nil, fmt.Errorf("SSH connection is not active")
+	}
+
+	info, err := a.tunnelMgr.StartRemoteForwarding(sessionID, sess.SSH, remotePort, localHost, localPort, name)
+	if err != nil {
+		return nil, err
+	}
+
+	a.saveTunnelToProfile(sess.Profile.ID, *info)
+	return info, nil
+}
+
 // SavePortForwardConfig stores a port forward config in stopped state for a session's profile without starting it.
 func (a *App) SavePortForwardConfig(sessionID string, localPort int, remoteHost string, remotePort int, name string) (*tunnel.TunnelInfo, error) {
 	if a.connMgr == nil {
@@ -946,6 +988,24 @@ func (a *App) SaveDynamicPortForwardConfig(sessionID string, localPort int, name
 	}
 
 	info := a.tunnelMgr.AddConfiguredTunnel("", sessionID, localPort, "dynamic", 0, name, tunnel.TypeDynamic)
+	a.saveTunnelToProfile(sess.Profile.ID, *info)
+	return info, nil
+}
+
+// SaveRemotePortForwardConfig stores a reverse port forward config in stopped state for a session's profile without starting it.
+func (a *App) SaveRemotePortForwardConfig(sessionID string, remotePort int, localHost string, localPort int, name string) (*tunnel.TunnelInfo, error) {
+	if a.connMgr == nil {
+		return nil, fmt.Errorf("connection manager not initialized")
+	}
+	sess, err := a.connMgr.GetSession(sessionID)
+	if err != nil {
+		return nil, fmt.Errorf("active session required: %w", err)
+	}
+	if a.tunnelMgr == nil {
+		return nil, fmt.Errorf("tunnel manager not initialized")
+	}
+
+	info := a.tunnelMgr.AddConfiguredTunnel("", sessionID, localPort, "127.0.0.1", remotePort, name, tunnel.TypeRemote)
 	a.saveTunnelToProfile(sess.Profile.ID, *info)
 	return info, nil
 }
@@ -1175,4 +1235,104 @@ func (a *App) CloseTerminal(sessionID string, terminalID string) error {
 		return fmt.Errorf("connection manager not initialized")
 	}
 	return a.connMgr.CloseTerminal(sessionID, terminalID)
+}
+
+// SelectLocalDirectory prompts the user with a native directory chooser dialog.
+func (a *App) SelectLocalDirectory() (string, error) {
+	if a.ctx == nil {
+		return "", fmt.Errorf("application context not initialized")
+	}
+	return wailsRuntime.OpenDirectoryDialog(a.ctx, wailsRuntime.OpenDialogOptions{
+		Title: "Select Local Folder for Sync / Compare",
+	})
+}
+
+// CompareDirectories compares a local folder against a remote folder recursively.
+func (a *App) CompareDirectories(sessionID string, remoteDir string, localDir string) (*models.DirectoryCompareResult, error) {
+	if localDir == "" {
+		return nil, fmt.Errorf("local directory path cannot be empty")
+	}
+	if remoteDir == "" {
+		remoteDir = "."
+	}
+
+	localMap, err := syncdir.ScanLocalDirectory(localDir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to scan local directory: %w", err)
+	}
+
+	sftpCl, err := a.getSFTPClient(sessionID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get sftp client: %w", err)
+	}
+
+	remoteMap, err := syncdir.ScanRemoteDirectory(sftpCl, remoteDir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to scan remote directory: %w", err)
+	}
+
+	return syncdir.CompareMaps(localDir, remoteDir, localMap, remoteMap), nil
+}
+
+// SyncDirectories synchronizes the specified files between local and remote directories.
+func (a *App) SyncDirectories(sessionID string, remoteDir string, localDir string, actions []models.SyncAction) (*models.SyncResult, error) {
+	if localDir == "" {
+		return nil, fmt.Errorf("local directory path cannot be empty")
+	}
+	if remoteDir == "" {
+		remoteDir = "."
+	}
+
+	sftpCl, err := a.getSFTPClient(sessionID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get sftp client: %w", err)
+	}
+
+	return syncdir.ExecuteSync(sftpCl, localDir, remoteDir, actions), nil
+}
+
+// GetSystemStats queries live server health metrics (CPU, RAM, Disk, Uptime, Top Processes).
+func (a *App) GetSystemStats(sessionID string) (*models.SystemStats, error) {
+	script := diagnostics.GetSystemStatsScript()
+	res, err := a.ExecRemoteCommand(sessionID, "diag-stats", script)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute system stats script: %w", err)
+	}
+	if res == nil {
+		return nil, fmt.Errorf("no output returned from remote server")
+	}
+
+	return diagnostics.ParseSystemStats(res.Output), nil
+}
+
+// RunNetworkDiag runs network diagnostic tools (ping, dns, port_check, listening_ports, traceroute).
+func (a *App) RunNetworkDiag(sessionID string, tool string, target string) (*models.NetworkDiagResult, error) {
+	cmd, err := diagnostics.BuildDiagnosticCommand(tool, target)
+	if err != nil {
+		return nil, err
+	}
+
+	start := time.Now()
+	res, execErr := a.ExecRemoteCommand(sessionID, "diag-net", cmd)
+	duration := time.Since(start).Milliseconds()
+
+	out := &models.NetworkDiagResult{
+		Tool:       tool,
+		Target:     target,
+		DurationMs: duration,
+	}
+
+	if res != nil {
+		out.Output = res.Output
+		out.ExitCode = res.ExitCode
+		if res.Error != "" {
+			out.Error = res.Error
+		}
+	}
+
+	if execErr != nil {
+		out.Error = execErr.Error()
+	}
+
+	return out, nil
 }

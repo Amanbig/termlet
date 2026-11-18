@@ -16,7 +16,11 @@ import {
   ChevronLeft,
   ChevronRight,
   ClipboardPaste,
-  ScrollText,
+  Columns2,
+  Rows2,
+  Disc,
+  MoreHorizontal,
+  ChevronDown,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -27,8 +31,9 @@ import {
   CloseTerminal,
 } from '../../wailsjs/go/main/App';
 import { connections } from '../../wailsjs/go/models';
-import { ClipboardGetText, ClipboardSetText } from '../../wailsjs/runtime/runtime';
+import { ClipboardGetText, ClipboardSetText, EventsOn, EventsOff } from '../../wailsjs/runtime/runtime';
 import { XTermTab } from './XTermTab';
+import { SessionRecorderModal, RecordedEvent } from './SessionRecorderModal';
 
 interface RemoteTerminalDrawerProps {
   isOpen: boolean;
@@ -60,6 +65,9 @@ export interface TerminalTab {
   executing: boolean;
   cmdHistory: string[];
   historyIndex: number;
+  splitPaneId?: string;
+  splitDirection?: 'horizontal' | 'vertical';
+  activePaneId?: string;
 }
 
 const MAX_HISTORY_ENTRIES = 200;
@@ -119,6 +127,20 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
   const preMaximizedHeightRef = useRef<number>(320);
   const isDraggingRef = useRef(false);
 
+  // Tabs sidebar width with drag-to-resize
+  const [tabsSidebarWidth, setTabsSidebarWidth] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('termlet_terminal_tabs_width');
+      if (saved) {
+        const val = parseInt(saved, 10);
+        if (!isNaN(val) && val >= 80 && val <= 400) return val;
+      }
+    } catch {}
+    return 130; // compact default width
+  });
+  const [isResizingSidebar, setIsResizingSidebar] = useState(false);
+  const isResizingSidebarRef = useRef(false);
+
   const terminalScrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const drawerRef = useRef<HTMLDivElement>(null);
@@ -129,9 +151,140 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
   const nextTabNumRef = useRef<number>(1);
   const [editingTabId, setEditingTabId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState('');
+  const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
+  type PanelTab = 'problems' | 'output' | 'debug' | 'terminal' | 'ports';
+  const [activePanelTab, setActivePanelTab] = useState<PanelTab>('terminal');
+
+  // Close more menu on outside click
+  useEffect(() => {
+    if (!isMoreMenuOpen) return;
+    const handleOutside = () => setIsMoreMenuOpen(false);
+    window.addEventListener('click', handleOutside);
+    return () => window.removeEventListener('click', handleOutside);
+  }, [isMoreMenuOpen]);
 
   // Derive active tab
   const activeTab = tabs.find((t) => t.id === activeTabId) || tabs[0] || null;
+
+  // Split pane handlers
+  const handleSplitVertical = () => {
+    if (!activeTab || !currentSession) return;
+    if (activeTab.splitPaneId) {
+      setTabs((prev) =>
+        prev.map((t) => (t.id === activeTab.id ? { ...t, splitDirection: 'vertical' } : t))
+      );
+      toast.info('Switched to side-by-side split');
+      return;
+    }
+    const paneId = `${activeTab.id}-pane-${Date.now().toString().slice(-4)}`;
+    setTabs((prev) =>
+      prev.map((t) =>
+        t.id === activeTab.id
+          ? { ...t, splitPaneId: paneId, splitDirection: 'vertical', activePaneId: paneId }
+          : t
+      )
+    );
+    toast.success('Split terminal side-by-side');
+  };
+
+  const handleSplitHorizontal = () => {
+    if (!activeTab || !currentSession) return;
+    if (activeTab.splitPaneId) {
+      setTabs((prev) =>
+        prev.map((t) => (t.id === activeTab.id ? { ...t, splitDirection: 'horizontal' } : t))
+      );
+      toast.info('Switched to top-and-bottom split');
+      return;
+    }
+    const paneId = `${activeTab.id}-pane-${Date.now().toString().slice(-4)}`;
+    setTabs((prev) =>
+      prev.map((t) =>
+        t.id === activeTab.id
+          ? { ...t, splitPaneId: paneId, splitDirection: 'horizontal', activePaneId: paneId }
+          : t
+      )
+    );
+    toast.success('Split terminal top-and-bottom');
+  };
+
+  const handleCloseSplitPane = (tabId: string) => {
+    setTabs((prev) =>
+      prev.map((t) => {
+        if (t.id === tabId && t.splitPaneId) {
+          if (currentSession) {
+            CloseTerminal(currentSession.id, t.splitPaneId).catch(() => {});
+          }
+          return { ...t, splitPaneId: undefined, activePaneId: t.id };
+        }
+        return t;
+      })
+    );
+    toast.info('Closed split pane');
+  };
+
+  // Session recording state
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const recordingEventsRef = useRef<RecordedEvent[]>([]);
+  const recordingStartTimeRef = useRef<number>(0);
+  const [recordedModalData, setRecordedModalData] = useState<{
+    events: RecordedEvent[];
+    duration: number;
+    title: string;
+  } | null>(null);
+
+  // Timer while recording
+  useEffect(() => {
+    if (!isRecording) return;
+    const interval = setInterval(() => {
+      setRecordingSeconds((s) => s + 1);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [isRecording]);
+
+  // Capture terminal stream while recording
+  useEffect(() => {
+    if (!isRecording || !currentSession || !activeTab) return;
+    const targetPaneId = activeTab.activePaneId || activeTab.id;
+    const eventName = `terminal:data:${currentSession.id}:${targetPaneId}`;
+
+    const unsub = EventsOn(eventName, (incoming: string) => {
+      const now = performance.now();
+      const offset = (now - recordingStartTimeRef.current) / 1000;
+      recordingEventsRef.current.push({
+        time: offset,
+        type: 'o',
+        data: incoming,
+      });
+    });
+
+    return () => {
+      unsub();
+      EventsOff(eventName);
+    };
+  }, [isRecording, currentSession, activeTab]);
+
+  const handleToggleRecording = () => {
+    if (!isRecording) {
+      if (!currentSession || !activeTab) return;
+      recordingEventsRef.current = [];
+      recordingStartTimeRef.current = performance.now();
+      setRecordingSeconds(0);
+      setIsRecording(true);
+      toast.success('Session recording started', {
+        description: 'Capturing terminal stream in Asciinema format',
+      });
+    } else {
+      setIsRecording(false);
+      const events = [...recordingEventsRef.current];
+      const dur = recordingSeconds;
+      setRecordedModalData({
+        events,
+        duration: dur,
+        title: `${currentSession?.profile_name || currentSession?.host || 'Remote'} - ${activeTab?.title || 'Terminal'}`,
+      });
+    }
+  };
 
   // Initialize or reset session history
   useEffect(() => {
@@ -152,7 +305,7 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
 
       const firstTab: TerminalTab = {
         id: firstTabId,
-        title: 'Terminal 1',
+        title: 'bash',
         cwd: initialDir,
         history: [
           {
@@ -244,7 +397,7 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
 
     const newTab: TerminalTab = {
       id: newId,
-      title: `Terminal ${tabNum}`,
+      title: 'bash',
       cwd: startDir,
       history: [
         {
@@ -1019,6 +1172,54 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
     [height, isMaximized]
   );
 
+  const handleMouseDownResizeSidebar = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      isResizingSidebarRef.current = true;
+      setIsResizingSidebar(true);
+
+      const startX = e.clientX;
+      const startWidth = tabsSidebarWidth;
+
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+
+      const handleMouseMove = (moveEvent: MouseEvent) => {
+        if (!isResizingSidebarRef.current) return;
+        const deltaX = startX - moveEvent.clientX;
+        const minAllowed = 80;
+        const maxAllowed = Math.min(360, window.innerWidth * 0.45);
+        const newW = Math.max(minAllowed, Math.min(startWidth + deltaX, maxAllowed));
+
+        setTabsSidebarWidth(newW);
+      };
+
+      const handleMouseUp = (upEvent: MouseEvent) => {
+        isResizingSidebarRef.current = false;
+        setIsResizingSidebar(false);
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+
+        window.removeEventListener('mousemove', handleMouseMove);
+        window.removeEventListener('mouseup', handleMouseUp);
+
+        const deltaX = startX - upEvent.clientX;
+        const minAllowed = 80;
+        const maxAllowed = Math.min(360, window.innerWidth * 0.45);
+        const finalW = Math.max(minAllowed, Math.min(startWidth + deltaX, maxAllowed));
+
+        setTabsSidebarWidth(finalW);
+        try {
+          localStorage.setItem('termlet_terminal_tabs_width', String(finalW));
+        } catch {}
+      };
+
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+    },
+    [tabsSidebarWidth]
+  );
+
   if (!isOpen) return null;
 
   return (
@@ -1046,229 +1247,460 @@ export const RemoteTerminalDrawer: React.FC<RemoteTerminalDrawerProps> = ({
         />
       </div>
 
-      {/* Header Bar with Terminal Tabs */}
-      <div className="flex items-center justify-between px-2 py-1 bg-zinc-900 border-b border-zinc-800 shrink-0 select-none gap-2 min-h-[34px]">
-        {/* Left: Terminal Tab Strip with Horizontal Mouse-Wheel Scrolling & Action Buttons */}
-        <div className="flex items-center gap-0.5 min-w-0 flex-1 overflow-hidden">
-          {tabs.length > 3 && (
-            <button
-              onClick={() => handleScrollTabs('left')}
-              className="p-1 rounded hover:bg-zinc-800 text-zinc-500 hover:text-zinc-200 shrink-0 transition-colors cursor-pointer"
-              title="Scroll tabs left"
-            >
-              <ChevronLeft className="w-3 h-3" />
-            </button>
-          )}
+      {/* VS Code Panel Header Bar */}
+      <div className="h-9 min-h-[35px] px-3 border-b border-zinc-800 bg-[#181818] flex items-center justify-between text-xs select-none shrink-0">
+        {/* Left: VS Code Panel Tabs (PROBLEMS, OUTPUT, DEBUG CONSOLE, TERMINAL, PORTS) */}
+        <div className="flex items-center gap-5 h-full min-w-0">
+          {(
+            [
+              { id: 'problems', label: 'PROBLEMS' },
+              { id: 'output', label: 'OUTPUT' },
+              { id: 'debug', label: 'DEBUG CONSOLE' },
+              { id: 'terminal', label: 'TERMINAL' },
+              { id: 'ports', label: 'PORTS' },
+            ] as const
+          ).map((pt) => {
+            const isActive = activePanelTab === pt.id;
+            return (
+              <button
+                key={pt.id}
+                onClick={() => setActivePanelTab(pt.id)}
+                className={`h-full flex items-center text-[11px] font-sans tracking-wider uppercase transition-colors cursor-pointer relative pb-0.5 ${
+                  isActive
+                    ? 'text-zinc-100 font-semibold'
+                    : 'text-zinc-400 hover:text-zinc-200 font-medium'
+                }`}
+              >
+                <span>{pt.label}</span>
+                {isActive && (
+                  <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-white rounded-full" />
+                )}
+              </button>
+            );
+          })}
 
-          <div
-            ref={tabsContainerRef}
-            onWheel={handleTabsWheel}
-            className="flex items-center gap-1 min-w-0 overflow-x-auto scrollbar-none py-0.5 scroll-smooth"
-          >
-            {tabs.map((tab) => {
-              const isActive = tab.id === activeTabId;
-              return (
-                <div
-                  key={tab.id}
-                  ref={isActive ? activeTabButtonRef : undefined}
-                  onClick={() => {
-                    setActiveTabId(tab.id);
-                    setTimeout(() => inputRef.current?.focus({ preventScroll: true }), 40);
-                  }}
-                  className={`group flex items-center gap-1.5 px-2.5 py-1 rounded text-xs cursor-pointer transition-colors shrink-0 ${
-                    isActive
-                      ? 'bg-zinc-800/90 text-zinc-100 font-semibold border border-zinc-700/70 shadow-xs'
-                      : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50'
-                  }`}
-                  title={`${tab.title} (${tab.cwd})`}
-                >
-                  <Terminal className={`w-3 h-3 ${isActive ? 'text-emerald-400' : 'text-zinc-500'}`} />
-                  {editingTabId === tab.id ? (
-                    <input
-                      type="text"
-                      value={editingTitle}
-                      autoFocus
-                      onChange={(e) => setEditingTitle(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.stopPropagation();
-                          handleSaveRenameTab(tab.id);
-                        } else if (e.key === 'Escape') {
-                          e.stopPropagation();
-                          setEditingTabId(null);
-                        }
-                      }}
-                      onBlur={() => handleSaveRenameTab(tab.id)}
-                      onClick={(e) => e.stopPropagation()}
-                      className="bg-zinc-950 border border-blue-500 rounded px-1 py-0 text-xs text-zinc-100 outline-none w-20"
-                    />
-                  ) : (
-                    <span
-                      onDoubleClick={(e) => handleStartRenameTab(e, tab)}
-                      className="truncate max-w-[120px]"
-                      title="Double-click to rename"
-                    >
-                      {tab.title}
-                    </span>
-                  )}
-
-                  {tab.executing && (
-                    <span
-                      className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse shrink-0"
-                      title="Running remote command"
-                    />
-                  )}
-
-                  {tabs.length > 1 && (
-                    <button
-                      onClick={(e) => handleCloseTab(e, tab.id)}
-                      className="p-0.5 rounded hover:bg-zinc-700 text-zinc-500 hover:text-zinc-200 opacity-60 group-hover:opacity-100 transition-opacity ml-0.5 cursor-pointer"
-                      title="Close Terminal"
-                    >
-                      <X className="w-2.5 h-2.5" />
-                    </button>
-                  )}
-                </div>
-              );
-            })}
-
-            {/* New Terminal Tab Button */}
-            <button
-              onClick={handleNewTab}
-              className="flex items-center gap-1 px-1.5 py-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-zinc-100 text-xs transition-colors cursor-pointer shrink-0"
-              title="New Terminal Tab (Ctrl+Shift+`)"
-            >
-              <Plus className="w-3.5 h-3.5" />
-            </button>
-
-            {/* Duplicate Active Tab Button */}
-            <button
-              onClick={() => handleDuplicateTab(activeTab?.id)}
-              className="flex items-center gap-1 px-1.5 py-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-zinc-100 text-xs transition-colors cursor-pointer shrink-0"
-              title="Duplicate Active Tab in Current CWD"
-            >
-              <CopyPlus className="w-3.5 h-3.5" />
-            </button>
-          </div>
-
-          {tabs.length > 3 && (
-            <button
-              onClick={() => handleScrollTabs('right')}
-              className="p-1 rounded hover:bg-zinc-800 text-zinc-500 hover:text-zinc-200 shrink-0 transition-colors cursor-pointer"
-              title="Scroll tabs right"
-            >
-              <ChevronRight className="w-3 h-3" />
-            </button>
+          {isRecording && (
+            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-rose-500/20 text-rose-400 border border-rose-500/30 text-[10px] font-mono font-bold animate-pulse shrink-0 ml-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+              <span>
+                REC {Math.floor(recordingSeconds / 60).toString().padStart(2, '0')}:{(recordingSeconds % 60).toString().padStart(2, '0')}
+              </span>
+            </div>
           )}
         </div>
 
-        {/* Right: Active Session Info & Action Controls */}
-        <div className="flex items-center gap-1.5 shrink-0">
-          {currentSession && activeTab && (
-            <div className="hidden sm:flex items-center gap-1 text-[11px]">
-              <span className="px-1.5 py-0.5 rounded bg-zinc-800/70 text-zinc-300 font-mono text-[10px] border border-zinc-700/50 truncate max-w-[180px]">
-                {currentSession.username}@{currentSession.host}
-              </span>
+        {/* Right: VS Code Action Controls */}
+        <div className="flex items-center gap-1 shrink-0">
+          {/* New Terminal (+ ⌵) */}
+          <button
+            onClick={handleNewTab}
+            className="p-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-zinc-100 transition-colors cursor-pointer flex items-center"
+            title="New Terminal"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <ChevronDown className="w-2.5 h-2.5 ml-0.5 text-zinc-500" />
+          </button>
+
+          {/* More Actions (...) */}
+          <div className="relative">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsMoreMenuOpen(!isMoreMenuOpen);
+              }}
+              className="p-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-zinc-100 transition-colors cursor-pointer"
+              title="More Actions..."
+            >
+              <MoreHorizontal className="w-3.5 h-3.5" />
+            </button>
+
+            {isMoreMenuOpen && (
               <div
-                className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-zinc-800/70 text-zinc-400 font-mono text-[10px] border border-zinc-700/40 truncate max-w-[180px]"
-                title={`CWD: ${activeTab.cwd}`}
+                className="absolute right-0 top-full mt-1 w-48 bg-zinc-900 border border-zinc-700/80 rounded-lg shadow-2xl py-1 z-50 text-xs font-sans text-zinc-200 select-none animate-in fade-in zoom-in-95 duration-100"
+                onClick={(e) => e.stopPropagation()}
               >
-                <Folder className="w-2.5 h-2.5 text-amber-400/80 shrink-0" />
-                <span className="truncate">{shortenPath(activeTab.cwd)}</span>
+                {/* Record Toggle */}
+                <button
+                  onClick={() => {
+                    setIsMoreMenuOpen(false);
+                    handleToggleRecording();
+                  }}
+                  className="w-full flex items-center gap-2 px-3 py-1.5 hover:bg-zinc-800 hover:text-white transition-colors cursor-pointer text-left"
+                >
+                  <Disc className={`w-3.5 h-3.5 ${isRecording ? 'text-rose-500 animate-pulse' : 'text-zinc-400'}`} />
+                  <span>{isRecording ? 'Stop Recording' : 'Record Session (.cast)'}</span>
+                </button>
+
+                {/* Split Horizontal */}
+                <button
+                  onClick={() => {
+                    setIsMoreMenuOpen(false);
+                    handleSplitHorizontal();
+                  }}
+                  className="w-full flex items-center gap-2 px-3 py-1.5 hover:bg-zinc-800 hover:text-white transition-colors cursor-pointer text-left"
+                >
+                  <Rows2 className="w-3.5 h-3.5 text-zinc-400" />
+                  <span>Split Terminal Down</span>
+                </button>
+
+                <div className="h-px bg-zinc-800 my-1" />
+
+                {/* Clear Buffer */}
+                <button
+                  onClick={() => {
+                    setIsMoreMenuOpen(false);
+                    if (activeTabId) {
+                      setTabs((prev) =>
+                        prev.map((t) => (t.id === activeTabId ? { ...t, history: [] } : t))
+                      );
+                    }
+                  }}
+                  className="w-full flex items-center gap-2 px-3 py-1.5 hover:bg-zinc-800 hover:text-white transition-colors cursor-pointer text-left"
+                >
+                  <Trash2 className="w-3.5 h-3.5 text-zinc-400" />
+                  <span>Clear Buffer</span>
+                </button>
+
+                {/* Copy All Output */}
+                <button
+                  onClick={() => {
+                    setIsMoreMenuOpen(false);
+                    handleCopyAll();
+                  }}
+                  className="w-full flex items-center gap-2 px-3 py-1.5 hover:bg-zinc-800 hover:text-white transition-colors cursor-pointer text-left"
+                >
+                  <Copy className="w-3.5 h-3.5 text-zinc-400" />
+                  <span>Copy All Output</span>
+                </button>
               </div>
-            </div>
-          )}
-
-          {activeTab?.executing && (
-            <button
-              onClick={handleCancelCommand}
-              className="flex items-center gap-1 px-2 py-0.5 rounded bg-rose-950/80 border border-rose-800/70 text-rose-300 hover:bg-rose-900 text-[11px] font-medium transition-colors cursor-pointer mr-1"
-              title="Cancel running command (Ctrl+C)"
-            >
-              <Square className="w-2.5 h-2.5 fill-rose-300" />
-              <span>Cancel</span>
-            </button>
-          )}
-
-          {onOpenSnippets && (
-            <button
-              onClick={onOpenSnippets}
-              className="flex items-center gap-1 px-1.5 py-0.5 rounded hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors cursor-pointer text-[11px] mr-0.5"
-              title="Command Snippets & Macros (Ctrl+K)"
-            >
-              <ScrollText className="w-3.5 h-3.5 text-blue-400" />
-              <span className="hidden sm:inline">Snippets</span>
-            </button>
-          )}
-
-          <button
-            onClick={() => {
-              if (activeTabId) {
-                setTabs((prev) =>
-                  prev.map((t) => (t.id === activeTabId ? { ...t, history: [] } : t))
-                );
-              }
-            }}
-            className="p-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors cursor-pointer"
-            title="Clear terminal (Ctrl+L)"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
-
-          <button
-            onClick={handleCopyAll}
-            className="p-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors cursor-pointer"
-            title="Copy all output"
-          >
-            {copied ? (
-              <Check className="w-3.5 h-3.5 text-emerald-400" />
-            ) : (
-              <Copy className="w-3.5 h-3.5" />
             )}
-          </button>
+          </div>
 
+          {/* Separator | */}
+          <div className="w-px h-3.5 bg-zinc-700/80 mx-1" />
+
+          {/* Maximize / Restore Toggle [ ] */}
           <button
             onClick={handleToggleMaximize}
-            className="p-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors cursor-pointer"
-            title={isMaximized ? 'Restore height' : 'Maximize terminal'}
+            className="p-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-zinc-100 transition-colors cursor-pointer"
+            title={isMaximized ? 'Restore Panel Size' : 'Maximize Panel Size'}
           >
             {isMaximized ? (
               <Minimize2 className="w-3.5 h-3.5" />
             ) : (
-              <Maximize2 className="w-3.5 h-3.5" />
+              <Square className="w-3.5 h-3.5" />
             )}
           </button>
 
+          {/* Close Panel (X) */}
           <button
             onClick={onClose}
-            className="p-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors cursor-pointer"
-            title="Close terminal (Ctrl+`)"
+            className="p-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-zinc-100 transition-colors cursor-pointer"
+            title="Close Panel (Ctrl+`)"
           >
             <X className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
 
-      {/* Interactive Real-Time PTY Terminal Viewport */}
-      <div className="flex-1 min-h-0 relative overflow-hidden bg-zinc-950">
-        {!currentSession && (
-          <div className="flex items-center gap-2 text-zinc-500 py-4 px-4 font-mono text-xs">
-            <AlertCircle className="w-4 h-4 text-amber-400" />
-            <span>No active SSH connection. Connect to a server to use the terminal.</span>
+      {/* Main Panel Content Area */}
+      <div className="flex-1 min-h-0 flex overflow-hidden bg-[#181818]">
+        {activePanelTab === 'terminal' && (
+          <>
+            {/* Left: Terminal Viewport */}
+            <div className="flex-1 min-w-0 h-full relative overflow-hidden bg-zinc-950">
+          {!currentSession && (
+            <div className="flex items-center gap-2 text-zinc-500 py-4 px-4 font-mono text-xs">
+              <AlertCircle className="w-4 h-4 text-amber-400" />
+              <span>No active SSH connection. Connect to a server to use the terminal.</span>
+            </div>
+          )}
+
+          {currentSession &&
+            tabs.map((tab) => {
+              const isTabActive = tab.id === (activeTab?.id || tabs[0]?.id);
+
+              if (!tab.splitPaneId) {
+                return (
+                  <XTermTab
+                    key={tab.id}
+                    sessionId={currentSession.id}
+                    tabId={tab.id}
+                    isActive={isTabActive}
+                    onCommandExecuted={onCommandExecuted}
+                    onFocus={() => {
+                      setTabs((prev) =>
+                        prev.map((t) => (t.id === tab.id ? { ...t, activePaneId: tab.id } : t))
+                      );
+                    }}
+                  />
+                );
+              }
+
+              // Render Split Panes for this tab
+              return (
+                <div
+                  key={tab.id}
+                  className={`w-full h-full ${isTabActive ? 'flex' : 'hidden'} ${
+                    tab.splitDirection === 'horizontal' ? 'flex-col divide-y' : 'flex-row divide-x'
+                  } divide-zinc-800 bg-zinc-950`}
+                >
+                  {/* Pane 1 */}
+                  <div className="flex-1 min-w-0 min-h-0 relative flex flex-col">
+                    <div className="px-2 py-0.5 bg-zinc-900/90 border-b border-zinc-800 text-[10px] text-zinc-400 flex items-center justify-between select-none">
+                      <span className="font-mono flex items-center gap-1.5 truncate">
+                        <span
+                          className={`w-1.5 h-1.5 rounded-full ${
+                            !tab.activePaneId || tab.activePaneId === tab.id
+                              ? 'bg-blue-500'
+                              : 'bg-zinc-600'
+                          }`}
+                        />
+                        <span>Pane 1: {tab.title}</span>
+                      </span>
+                    </div>
+                    <div className="flex-1 min-h-0 relative">
+                      <XTermTab
+                        sessionId={currentSession.id}
+                        tabId={tab.id}
+                        isActive={isTabActive}
+                        onCommandExecuted={onCommandExecuted}
+                        onFocus={() => {
+                          setTabs((prev) =>
+                            prev.map((t) => (t.id === tab.id ? { ...t, activePaneId: tab.id } : t))
+                          );
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Pane 2 */}
+                  <div className="flex-1 min-w-0 min-h-0 relative flex flex-col">
+                    <div className="px-2 py-0.5 bg-zinc-900/90 border-b border-zinc-800 text-[10px] text-zinc-400 flex items-center justify-between select-none">
+                      <span className="font-mono flex items-center gap-1.5 truncate">
+                        <span
+                          className={`w-1.5 h-1.5 rounded-full ${
+                            tab.activePaneId === tab.splitPaneId ? 'bg-blue-500' : 'bg-zinc-600'
+                          }`}
+                        />
+                        <span>Pane 2: Split Shell</span>
+                      </span>
+                      <button
+                        onClick={() => handleCloseSplitPane(tab.id)}
+                        className="p-0.5 rounded hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 cursor-pointer"
+                        title="Close split pane"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                    <div className="flex-1 min-h-0 relative">
+                      <XTermTab
+                        sessionId={currentSession.id}
+                        tabId={tab.splitPaneId}
+                        isActive={isTabActive}
+                        onCommandExecuted={onCommandExecuted}
+                        onFocus={() => {
+                          setTabs((prev) =>
+                            prev.map((t) =>
+                              t.id === tab.id ? { ...t, activePaneId: tab.splitPaneId } : t
+                            )
+                          );
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+        </div>
+
+        {/* Vertical Drag Handle between Terminal Viewport and Tabs Sidebar */}
+        <div
+          onMouseDown={handleMouseDownResizeSidebar}
+          className="w-1.5 -ml-1 hover:w-1.5 cursor-col-resize z-20 group flex items-center justify-center shrink-0 select-none relative"
+          title="Drag to resize terminal tabs list"
+        >
+          <div
+            className={`w-0.5 h-full transition-colors ${
+              isResizingSidebar
+                ? 'bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.8)]'
+                : 'bg-zinc-800 group-hover:bg-blue-500/80'
+            }`}
+          />
+        </div>
+
+        {/* Right: VS Code Style Vertical Terminal Tabs Sidebar */}
+        <div
+          style={{
+            width: `${tabsSidebarWidth}px`,
+            transition: isResizingSidebar ? 'none' : 'width 100ms ease-out',
+          }}
+          className="bg-[#181818] border-l border-zinc-800 flex flex-col shrink-0 select-none overflow-hidden"
+        >
+          <div className="flex-1 overflow-y-auto p-1 space-y-0.5">
+            {tabs.map((tab) => {
+              const isActive = tab.id === (activeTab?.id || tabs[0]?.id);
+              return (
+                <div
+                  key={tab.id}
+                  onClick={() => setActiveTabId(tab.id)}
+                  onDoubleClick={() => {
+                    setEditingTabId(tab.id);
+                    setEditingTitle(tab.title);
+                  }}
+                  className={`group flex items-center justify-between px-1.5 py-1 rounded text-xs transition-colors cursor-pointer ${
+                    isActive
+                      ? 'bg-[#2a2d2e] text-zinc-100 font-medium'
+                      : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/40'
+                  }`}
+                  title={`${tab.title} (${tab.cwd})`}
+                >
+                  {/* Left: Terminal [>_] Badge and Title */}
+                  <div className="flex items-center gap-1.5 truncate min-w-0 flex-1">
+                    <span className="inline-flex items-center justify-center w-4 h-4 rounded border border-zinc-600 bg-zinc-900/80 text-[8.5px] font-bold text-zinc-300 shrink-0 font-mono leading-none">
+                      &gt;_
+                    </span>
+                    {editingTabId === tab.id ? (
+                      <input
+                        type="text"
+                        value={editingTitle}
+                        autoFocus
+                        onChange={(e) => setEditingTitle(e.target.value)}
+                        onBlur={() => {
+                          if (editingTitle.trim()) {
+                            setTabs((prev) =>
+                              prev.map((t) => (t.id === tab.id ? { ...t, title: editingTitle.trim() } : t))
+                            );
+                          }
+                          setEditingTabId(null);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            if (editingTitle.trim()) {
+                              setTabs((prev) =>
+                                prev.map((t) => (t.id === tab.id ? { ...t, title: editingTitle.trim() } : t))
+                              );
+                            }
+                            setEditingTabId(null);
+                          }
+                          if (e.key === 'Escape') setEditingTabId(null);
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                        className="w-full bg-zinc-950 text-zinc-100 px-1 py-0.5 rounded border border-blue-500 text-xs font-mono outline-hidden"
+                      />
+                    ) : (
+                      <span className="truncate text-[11px] font-sans">{tab.title}</span>
+                    )}
+                  </div>
+
+                  {/* Right: Inline Hover Actions (Split & Kill) */}
+                  <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity ml-1">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleSplitVertical();
+                      }}
+                      className="p-0.5 rounded hover:bg-zinc-700/80 text-zinc-400 hover:text-zinc-100 cursor-pointer"
+                      title="Split Terminal"
+                    >
+                      <Columns2 className="w-3 h-3" />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleCloseTab(e, tab.id);
+                      }}
+                      className="p-0.5 rounded hover:bg-zinc-700/80 text-zinc-400 hover:text-rose-300 cursor-pointer"
+                      title="Kill Terminal (Del)"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+          </>
+        )}
+
+        {/* If Active Panel is PORTS */}
+        {activePanelTab === 'ports' && (
+          <div className="flex-1 min-w-0 h-full p-4 overflow-y-auto bg-[#181818] text-xs font-sans text-zinc-300">
+            <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
+              <div>
+                <h3 className="text-sm font-semibold text-zinc-100">Forwarded Ports</h3>
+                <p className="text-xs text-zinc-400 mt-0.5">
+                  Ports forwarded through active SSH connection ({currentSession?.username}@{currentSession?.host})
+                </p>
+              </div>
+            </div>
+            <div className="mt-4 border border-zinc-800 rounded-lg overflow-hidden bg-zinc-900/40">
+              <div className="grid grid-cols-4 px-3 py-2 bg-zinc-900/80 text-zinc-400 font-medium text-[11px] border-b border-zinc-800">
+                <span>Port</span>
+                <span>Type</span>
+                <span>Destination</span>
+                <span>Status</span>
+              </div>
+              <div className="px-3 py-6 text-center text-zinc-500 font-mono text-xs">
+                Configure Local, Remote (ssh -R), or Dynamic tunnels in the Port Forwarding tab.
+              </div>
+            </div>
           </div>
         )}
 
-        {currentSession &&
-          tabs.map((tab) => (
-            <XTermTab
-              key={tab.id}
-              sessionId={currentSession.id}
-              tabId={tab.id}
-              isActive={tab.id === (activeTab?.id || tabs[0]?.id)}
-              onCommandExecuted={onCommandExecuted}
-            />
-          ))}
+        {/* If Active Panel is OUTPUT */}
+        {activePanelTab === 'output' && (
+          <div className="flex-1 min-w-0 h-full p-3 overflow-y-auto bg-[#181818] font-mono text-xs text-zinc-300 select-text">
+            <div className="text-zinc-500 mb-2 pb-1 border-b border-zinc-800 flex items-center justify-between">
+              <span>[Termlet SSH Connection Log]</span>
+              <span className="text-[11px] text-zinc-400">
+                {currentSession ? `${currentSession.username}@${currentSession.host}:${currentSession.port}` : 'Disconnected'}
+              </span>
+            </div>
+            {currentSession ? (
+              <div className="space-y-1 text-zinc-400">
+                <div><span className="text-blue-400">[INFO]</span> Session established: {currentSession.id}</div>
+                <div><span className="text-blue-400">[INFO]</span> Remote Host: {currentSession.host}:{currentSession.port}</div>
+                <div><span className="text-blue-400">[INFO]</span> Connected User: {currentSession.username}</div>
+                <div><span className="text-emerald-400">[INFO]</span> Pseudo-terminal (PTY) interactive session online</div>
+                <div><span className="text-zinc-500">[DEBUG]</span> CWD initialized to: {activeTab?.cwd || '~'}</div>
+                <div><span className="text-emerald-400">[READY]</span> Terminal ready for commands</div>
+              </div>
+            ) : (
+              <div className="text-zinc-500">No active SSH session log available.</div>
+            )}
+          </div>
+        )}
+
+        {/* If Active Panel is PROBLEMS */}
+        {activePanelTab === 'problems' && (
+          <div className="flex-1 min-w-0 h-full flex flex-col items-center justify-center bg-[#181818] text-xs text-zinc-500 p-4">
+            <Check className="w-5 h-5 text-emerald-500/80 mb-2" />
+            <span>No problems have been detected in the workspace.</span>
+          </div>
+        )}
+
+        {/* If Active Panel is DEBUG CONSOLE */}
+        {activePanelTab === 'debug' && (
+          <div className="flex-1 min-w-0 h-full flex flex-col items-center justify-center bg-[#181818] text-xs text-zinc-500 p-4">
+            <span>Debug console is not active.</span>
+          </div>
+        )}
       </div>
+
+      {/* Session Recorder Modal */}
+      {recordedModalData && (
+        <SessionRecorderModal
+          isOpen={true}
+          onClose={() => setRecordedModalData(null)}
+          sessionTitle={recordedModalData.title}
+          cols={80}
+          rows={24}
+          events={recordedModalData.events}
+          totalDurationSeconds={recordedModalData.duration}
+        />
+      )}
     </div>
   );
 };

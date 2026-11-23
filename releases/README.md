@@ -10,7 +10,8 @@ For the active release currently being compiled or deployed, refer to the root [
 
 | Version | Release Date / Milestone | Highlights | Release Notes |
 | :--- | :--- | :--- | :---: |
-| **v0.10.3** | *Current* | Remote Reverse Port Forwarding (`ssh -R`), Terminal Split Panes, Session Recording (`.cast`/`.txt`/`.html`), Server Diagnostics & Network Toolkit, SFTP Directory Sync, and VS Code Terminal with resizable tabs | [v0.10.3.md](v0.10.3.md) |
+| **v0.10.4** | *Current* | Maintenance and security release updating `marked` (18.2.1) and `lucide-react` (1.78.0) via Dependabot, alongside build stability improvements | [v0.10.4.md](v0.10.4.md) |
+| **v0.10.3** | Minor Release | Remote Reverse Port Forwarding (`ssh -R`), Terminal Split Panes, Session Recording (`.cast`/`.txt`/`.html`), Server Diagnostics & Network Toolkit, SFTP Directory Sync, and VS Code Terminal with resizable tabs | [v0.10.3.md](v0.10.3.md) |
 | **v0.10.0** | Minor Release | SSH Jump Host & Bastion (ProxyJump) tunneling, Command Snippets & Quick Actions Palette (`Ctrl+K`/`Cmd+K`), select dark/light theme polish, viewport-bounded dialogs, and core dependencies updates | [v0.10.0.md](v0.10.0.md) |
 | **v0.9.5** | Minor Release | Non-intrusive port forwarding (eliminated unsolicited HTTP GET probes), fixed React polling spin loop, Ubuntu USN-8975-1 security resolution for Snap, and full dependency updates across Go/Node/CI | [v0.9.5.md](v0.9.5.md) |
 | **v0.9.4** | Minor Release | Real-Time Interactive PTY Terminal (`@xterm/xterm`, `htop`, `vim`, `docker pull`), empty folder safety `(empty folder)`, persistent tree expansion on reload, native Wails OS clipboard, and instant right-click copy with toast notifications | [v0.9.4.md](v0.9.4.md) |
